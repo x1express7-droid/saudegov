@@ -3,6 +3,9 @@
   "include": ["**/*.ts", "**/*.tsx", "next-env.d.ts", ".next/types/**/*.ts"],
   "exclude": ["node_modules"],
   "compilerOptions": {
+    "paths": {
+      "@prisma/client": ["../../packages/core-db/node_modules/.prisma/client"]
+    },
     "plugins": [{ "name": "next" }],
     "jsx": "preserve",
     "noEmit": true,

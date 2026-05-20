@@ -3,6 +3,7 @@
 import { createHash, randomBytes } from 'crypto'
 import { headers } from 'next/headers'
 import { z } from 'zod'
+import type { Prisma } from '@prisma/client'
 import { findValidPasswordResetByTokenHash, getPrismaForTenant } from '@saude/core-db'
 import type { ActionResponse } from '@saude/validators'
 import { hashPassword } from './crypto'
@@ -142,7 +143,7 @@ export async function redefinirSenha(rawInput: unknown): Promise<ActionResponse>
     const db = await getPrismaForTenant(tenantId)
     const passwordHash = await hashPassword(novaSenha)
 
-    await db.$transaction(async (tx) => {
+    await db.$transaction(async (tx: Prisma.TransactionClient) => {
       await tx.user.update({
         where: { id: resetRecord.user.id },
         data: { password_hash: passwordHash },

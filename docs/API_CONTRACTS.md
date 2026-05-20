@@ -110,7 +110,7 @@ Output: ActionResponse<{
 // Server Action: alternarModulo
 Input: { tenantId: string; sistema: string; modulo: string; ativo: boolean }
 Output: ActionResponse<void>
-// Invalida cache do tenant
+// Atualiza módulos do tenant no banco
 ```
 
 ### 3.4 Suspender Município
@@ -118,7 +118,7 @@ Output: ActionResponse<void>
 // Server Action: suspenderMunicipio
 Input: { tenantId: string; motivo: string }
 Output: ActionResponse<void>
-// active → false + invalida cache
+// active → false; resolver passa a retornar null para o domínio
 ```
 
 ### 3.5 Exportar Dados do Município

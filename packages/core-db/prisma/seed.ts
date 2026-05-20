@@ -72,7 +72,7 @@ const SPRINT_03_PLATFORM_FEATURES = [
     sistema: 'plataforma',
     modulo: 'auth',
     funcionalidade: 'tenant_resolver',
-    descricao: 'Resolução de município pelo domínio com cache em memória',
+    descricao: 'Resolução de município pelo domínio (consulta ao banco a cada requisição)',
     painel_dev: false,
     painel_servidor: true,
     sprint: '0.3',

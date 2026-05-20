@@ -1,4 +1,5 @@
 // Exporta apenas o client tenant-aware — use sempre getPrismaForTenant em código de negócio
+export { getPrismaAdmin } from './admin-client'
 export { getPrismaForTenant } from './tenant-client'
 export { getTenantByDomain } from './get-tenant-by-domain'
 export { findValidPasswordResetByTokenHash } from './find-password-reset-by-token'

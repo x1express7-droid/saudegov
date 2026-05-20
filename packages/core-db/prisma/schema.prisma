@@ -1,3 +1,6 @@
+// ATENÇÃO: migration 20260520160002_add_password_resets foi alterada após aplicada.
+// Rodar `prisma migrate reset` no ambiente dev antes da próxima migrate.
+
 generator client {
   provider        = "prisma-client-js"
   previewFeatures = ["multiSchema"]
@@ -112,9 +115,10 @@ model User {
   email          String    @db.VarChar(255)
   email_verified Boolean   @default(false)
   phone          String?   @db.VarChar(20)
-  password_hash  String?   @db.VarChar(255)
-  active         Boolean   @default(true)
-  permissions    Json      @default("{}")
+  password_hash        String?  @db.VarChar(255)
+  mustChangePassword Boolean @default(false) @map("must_change_password")
+  active               Boolean  @default(true)
+  permissions          Json     @default("{}")
   last_login_at  DateTime? @db.Timestamptz
   deleted_at     DateTime? @db.Timestamptz
   created_at     DateTime  @default(now()) @db.Timestamptz

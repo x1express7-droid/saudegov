@@ -2,6 +2,9 @@
   "extends": "../../tsconfig.base.json",
   "include": ["src/**/*"],
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@prisma/client": ["../core-db/node_modules/.prisma/client"]
+    }
   }
 }

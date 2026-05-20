@@ -1,3 +1,7 @@
+// [PENDENTE — Sprint 0.6] Redirecionar usuários com must_change_password após login
+// para fluxo de troca de senha obrigatória (painel-servidor). Login em auth.config.ts
+// ainda não consulta esse campo.
+
 import { forbidden, redirect } from 'next/navigation'
 import type { Session } from 'next-auth'
 import { auth } from './auth.config'
@@ -37,6 +41,16 @@ export async function requireAuth(): Promise<SaudeMunicSession> {
     redirect('/login')
   }
   return toSaudeMunicSession(session)
+}
+
+export async function requireSuperAdmin(): Promise<SaudeMunicSession> {
+  const session = await requireAuth()
+
+  if (session.user.role !== 'SUPERADMIN') {
+    redirect('/login')
+  }
+
+  return session
 }
 
 export async function requireTenantRole(minimumRole: UserRole): Promise<SaudeMunicSession> {

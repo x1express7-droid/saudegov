@@ -62,13 +62,8 @@ Roda antes de qualquer lógica de negócio, autenticação ou renderização.
 ```typescript
 // packages/core-auth/src/tenant-resolver.ts
 
-import { NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { getTenantByDomain } from '@saude/core-db'
-
-// Cache em memória — evita query ao banco a cada requisição
-// TTL de 5 minutos: mudanças de configuração propagam em até 5min
-const tenantCache = new Map<string, { tenant: TenantContext; expiresAt: number }>()
-const CACHE_TTL_MS = parseInt(process.env.TENANT_CACHE_TTL_MS ?? '300000', 10)
 
 export interface TenantContext {
   id: string
@@ -81,20 +76,16 @@ export interface TenantContext {
 
 export async function resolveTenant(req: NextRequest): Promise<TenantContext | null> {
   const host = req.headers.get('host') ?? ''
-  const domain = host.replace(/^www\./, '').split(':')[0]
+  const domain = host.replace(/^www\./, '').split(':')[0] ?? ''
+  if (!domain) return null
 
   // Painel Dev não é tenant
   if (domain === process.env.ADMIN_DOMAIN) return null
 
-  // Verifica cache
-  const cached = tenantCache.get(domain)
-  if (cached && cached.expiresAt > Date.now()) return cached.tenant
-
-  // Busca no banco por domain ou domain_custom
   const tenant = await getTenantByDomain(domain)
   if (!tenant || !tenant.active) return null
 
-  const context: TenantContext = {
+  return {
     id: tenant.id,
     slug: tenant.slug,
     name: tenant.name,
@@ -102,15 +93,10 @@ export async function resolveTenant(req: NextRequest): Promise<TenantContext | n
     modules: tenant.modules as Record<string, Record<string, boolean>>,
     settings: tenant.settings as Record<string, unknown>,
   }
-
-  tenantCache.set(domain, { tenant: context, expiresAt: Date.now() + CACHE_TTL_MS })
-  return context
-}
-
-export function invalidateTenantCache(domain: string): void {
-  tenantCache.delete(domain)
 }
 ```
+
+> **Cache:** durante o desenvolvimento o resolver consulta o banco em toda requisição (dados sempre frescos). Cache em memória com TTL e `invalidateTenantCache` serão implementados na **fase final**, antes do go-live em produção.
 
 ### Middleware do Painel Servidor
 
@@ -397,8 +383,6 @@ Executado via Painel Dev:
    (senha temporária gerada e exibida uma única vez)
 
 5. Sistema registra em audit_logs com acao = 'TENANT_CRIADO'
-
-6. Sistema invalida cache do Tenant Resolver para o domínio
 ```
 
 ---
@@ -413,7 +397,7 @@ UPDATE public.tenants SET active = false WHERE id = 'uuid-do-tenant';
 O Tenant Resolver retorna `null` para tenants inativos → middleware retorna 404.
 Todos os dados permanecem intactos no banco.
 
-Para **reativar**: `UPDATE public.tenants SET active = true` + `invalidateTenantCache`.
+Para **reativar**: `UPDATE public.tenants SET active = true` — na próxima requisição o resolver já enxerga o tenant ativo.
 
 ---
 
@@ -469,7 +453,6 @@ Execute antes de commitar qualquer código que acesse dados:
 |---|---|---|
 | Dados de outro município aparecendo | RLS desabilitado ou `prisma` usado direto | Sempre `getPrismaForTenant`, RLS obrigatório |
 | Tenant não resolvido em Server Component | Middleware não cobre a rota | Verificar `matcher` no `middleware.ts` |
-| Cache retornando tenant desatualizado | TTL alto após mudança | Chamar `invalidateTenantCache` após atualizar tenant |
 | Módulo 403 em vez de 404 | Verificação retorna proibido | Usar `notFound()` do Next.js |
 | `tenant_id` aceito da URL | Input não validado | `tenant_id` vem sempre de `getTenantContext()` |
 
@@ -484,13 +467,6 @@ ADMIN_DOMAIN=admin.saudemunic.com.br
 # Cloudflare
 CF_API_TOKEN=        # token com permissão de DNS edit
 CF_ZONE_ID=          # ID da zona saudemunic.com.br no Cloudflare
-
-# Cache do Tenant Resolver (padrão: 5 minutos)
-TENANT_CACHE_TTL_MS=300000   # produção: 5 minutos
-                              # desenvolvimento: defina como 0 para desabilitar o cache
-# Em desenvolvimento use TENANT_CACHE_TTL_MS=0 no .env.local
-# TTL=0 desabilita o cache — toda requisição busca no banco (dados sempre frescos)
-# Em produção mantenha 300000 para evitar query ao banco a cada requisição
 
 # Banco
 DATABASE_URL=postgresql://user:pass@host:5432/saudemunic?schema=public

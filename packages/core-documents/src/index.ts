@@ -1,1 +1,1 @@
-// @saude/core-documents
+export { createAuditLog, type CreateAuditLogInput } from './audit'

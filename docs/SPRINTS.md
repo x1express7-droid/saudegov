@@ -63,7 +63,7 @@ FASE 4 → Módulo UBS
 **Status:** ✅ Concluído
 
 **Entregas:**
-- [x] `packages/core-auth` — Tenant Resolver com cache
+- [x] `packages/core-auth` — Tenant Resolver (sem cache; cache na fase final de produção)
 - [x] `packages/core-auth` — NextAuth v5 configurado
 - [x] Middleware `painel-servidor` — Tenant Resolver + Auth Guard
 - [x] Middleware `painel-dev` — IP allowlist + Auth Guard SUPERADMIN
@@ -78,18 +78,18 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 0.4 — Painel Dev — Gestão de Municípios
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Listagem de municípios com status e módulos ativos
-- [ ] Formulário de criação de município
-- [ ] Integração API Cloudflare — criação automática de subdomínio
-- [ ] Suporte a domínio `.gov.br` customizado com instrução clara
-- [ ] Ativar/desativar módulos por município (toggle)
-- [ ] Suspender município
-- [ ] Criação do primeiro ADMIN do município (senha temporária)
-- [ ] Página de audit logs globais
-- [ ] Página de `platform_features`
+- [x] Listagem de municípios com status e módulos ativos
+- [x] Formulário de criação de município
+- [x] Integração API Cloudflare — criação automática de subdomínio
+- [x] Suporte a domínio `.gov.br` customizado com instrução clara
+- [x] Ativar/desativar módulos por município (toggle)
+- [x] Suspender município
+- [x] Criação do primeiro ADMIN do município (senha temporária)
+- [x] Página de audit logs globais
+- [x] Página de `platform_features`
 
 **Critério de conclusão:** município criado no painel → subdomínio ativo → login funciona.
 
@@ -310,7 +310,7 @@ FASE 4 → Módulo UBS
 | 0.1 | Monorepo e infraestrutura | ✅ Concluído |
 | 0.2 | Schema base do banco | ✅ Concluído |
 | 0.3 | Autenticação e multi-tenant | ✅ Concluído |
-| 0.4 | Painel Dev — municípios | 📋 Planejado |
+| 0.4 | Painel Dev — municípios | ✅ Concluído |
 | 0.5 | UI base e design system | 📋 Planejado |
 | 0.6 | Configuração do município | 📋 Planejado |
 | 1.1 | Schema TFD e configurações | 📋 Planejado |

@@ -1,7 +1,10 @@
 {
   "extends": "../../tsconfig.base.json",
-  "include": ["src/**/*", "prisma/**/*"],
+  "include": ["src/**/*"],
   "compilerOptions": {
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@prisma/client": ["./node_modules/.prisma/client"]
+    }
   }
 }

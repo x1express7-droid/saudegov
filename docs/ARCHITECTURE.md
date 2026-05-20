@@ -199,7 +199,7 @@ Requisição → Cloudflare → Vercel → Next.js Middleware
   ↓
 Middleware lê o host da requisição
   ↓
-Resolve tenant_id pelo domínio (cache em memória, TTL 5min)
+Resolve tenant_id pelo domínio (consulta ao banco; cache na fase final)
   ↓
 Injeta tenant_id, módulos ativos e tema no contexto
   ↓
@@ -329,7 +329,7 @@ saude-munic/
 ```
 1. Requisição chega em campograndems.saudemunic.com.br/saude/tfd
 2. Cloudflare → Vercel → Next.js Middleware
-3. Tenant Resolver: resolve tenant_id pelo domínio (cache TTL 5min)
+3. Tenant Resolver: resolve tenant_id pelo domínio (consulta ao banco)
 4. Verifica módulo ativo para o município → 404 se inativo
 5. Injeta tenant_id, módulos ativos e tema no contexto
 6. NextAuth valida sessão → extrai user_id, role, permissões
@@ -383,6 +383,9 @@ saude-munic/
 | platform_features no banco | Só nos docs markdown | Consultável pelo agente em tempo real durante o desenvolvimento |
 | CADSUS stub no MVP | Integração real desde o início | Reduz complexidade; arquitetura preparada para ativar quando necessário |
 | Plataforma exclusiva de Saúde | Plataforma genérica municipal | Foco no domínio, regras específicas, menos complexidade geral |
+| getPrismaAdmin() separado de getPrismaForTenant | Usar getPrismaForTenant no Dev | Painel Dev opera sobre tabelas globais sem RLS — helper explícito documenta o uso intencional e evita violação da regra do painel-servidor |
+| requireSuperAdmin() como função separada | Reutilizar requireTenantRole | SUPERADMIN não tem tenant — papel e fluxo de autenticação distintos |
+| Actions e queries de tenant em apps/painel-dev/lib/ | Colocar em packages/core-auth | Exclusivas do Painel Dev — não pertencem ao core compartilhado |
 
 ---
 
