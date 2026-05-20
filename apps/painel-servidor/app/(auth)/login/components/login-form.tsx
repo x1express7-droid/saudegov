@@ -1,5 +1,6 @@
 'use client'
 
+import { Alert, Button, Input } from '@saude/ui'
 import { useState, useTransition } from 'react'
 import { signIn } from '@saude/core-auth/client'
 
@@ -37,48 +38,45 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-      {error && (
-        <p role="alert" className="text-sm text-red-600">
+    <form
+      onSubmit={handleSubmit}
+      className="flex w-full max-w-sm flex-col gap-[var(--space-4)]"
+      noValidate
+    >
+      {error ? (
+        <Alert variant="error" titulo="Não foi possível entrar">
           {error}
-        </p>
-      )}
+        </Alert>
+      ) : null}
 
-      <label className="flex flex-col gap-1 text-sm">
-        E-mail
-        <input
-          type="email"
-          name="email"
-          autoComplete="email"
-          required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={isPending}
-          className="rounded border border-neutral-300 px-3 py-2 text-base"
-        />
-      </label>
-
-      <label className="flex flex-col gap-1 text-sm">
-        Senha
-        <input
-          type="password"
-          name="password"
-          autoComplete="current-password"
-          required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={isPending}
-          className="rounded border border-neutral-300 px-3 py-2 text-base"
-        />
-      </label>
-
-      <button
-        type="submit"
+      <Input
+        id="login-email"
+        label="E-mail"
+        type="email"
+        name="email"
+        autoComplete="email"
+        required
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
         disabled={isPending}
-        className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
-      >
+        placeholder="seu.email@municipio.gov.br"
+      />
+
+      <Input
+        id="login-password"
+        label="Senha"
+        type="password"
+        name="password"
+        autoComplete="current-password"
+        required
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
+        disabled={isPending}
+      />
+
+      <Button type="submit" variant="primary" className="w-full" loading={isPending}>
         {isPending ? 'Entrando...' : 'Entrar'}
-      </button>
+      </Button>
     </form>
   )
 }

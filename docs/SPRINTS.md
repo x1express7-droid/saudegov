@@ -96,19 +96,19 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 0.5 — UI Base e Design System
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] `packages/ui` — tokens CSS em `tokens.css`
-- [ ] Layout do `painel-servidor` — header, sidebar, content area
-- [ ] Tema visual por tenant (CSS vars via layout.tsx)
-- [ ] Componentes base: Button, Input, Select, Textarea, Card, Badge
-- [ ] Componentes operacionais: StatusBadge, UrgenciaBadge, ProtocoloBadge
-- [ ] DataTable com paginação
-- [ ] PageHeader, EmptyState, Alert, Spinner, Dialog
-- [ ] FileUpload (drag & drop, validação tipo/tamanho)
-- [ ] PermissionGate
-- [ ] TramitacaoTimeline
+- [x] `packages/ui` — tokens CSS em `tokens.css`
+- [x] Layout do `painel-servidor` — header, sidebar, content area
+- [x] Tema visual por tenant (CSS vars via layout.tsx)
+- [x] Componentes base: Button, Input, Select, Textarea, Card, Badge
+- [x] Componentes operacionais: StatusBadge, UrgenciaBadge, ProtocoloBadge
+- [x] DataTable com paginação
+- [x] PageHeader, EmptyState, Alert, Spinner, Dialog
+- [x] FileUpload (drag & drop, validação tipo/tamanho)
+- [x] PermissionGate
+- [x] TramitacaoTimeline
 
 **Critério de conclusão:** Storybook ou página de exemplo com todos os componentes.
 
@@ -311,7 +311,7 @@ FASE 4 → Módulo UBS
 | 0.2 | Schema base do banco | ✅ Concluído |
 | 0.3 | Autenticação e multi-tenant | ✅ Concluído |
 | 0.4 | Painel Dev — municípios | ✅ Concluído |
-| 0.5 | UI base e design system | 📋 Planejado |
+| 0.5 | UI base e design system | ✅ Concluído |
 | 0.6 | Configuração do município | 📋 Planejado |
 | 1.1 | Schema TFD e configurações | 📋 Planejado |
 | 1.2 | Gestão financeira TFD | 📋 Planejado |

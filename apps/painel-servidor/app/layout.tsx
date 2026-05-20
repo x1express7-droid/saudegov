@@ -1,18 +1,7 @@
 import type { Metadata } from 'next'
-import type { CSSProperties } from 'react'
-import { Geist, Geist_Mono } from 'next/font/google'
 import { getTenantContext } from '@saude/core-auth'
+import { themeToCssVarsStyle } from '../lib/theme-to-css-vars'
 import './globals.css'
-
-const geistSans = Geist({
-  variable: '--font-geist-sans',
-  subsets: ['latin'],
-})
-
-const geistMono = Geist_Mono({
-  variable: '--font-geist-mono',
-  subsets: ['latin'],
-})
 
 export async function generateMetadata(): Promise<Metadata> {
   const tenant = await getTenantContext()
@@ -30,22 +19,11 @@ export default async function RootLayout({
   children: React.ReactNode
 }>) {
   const tenant = await getTenantContext()
-  const { theme } = tenant
-
-  const cssVars = {
-    '--color-primary': theme.primaryColor ?? '#1a5fa8',
-    '--color-header-bg': theme.headerBgColor ?? theme.primaryColor ?? '#1a5fa8',
-    '--color-header-text': theme.headerTextColor ?? '#ffffff',
-  } as CSSProperties
+  const themeCssVars = themeToCssVarsStyle(tenant.theme)
 
   return (
-    <html lang="pt-BR">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
-        style={cssVars}
-      >
-        {children}
-      </body>
+    <html lang="pt-BR" style={themeCssVars}>
+      <body className="antialiased">{children}</body>
     </html>
   )
 }

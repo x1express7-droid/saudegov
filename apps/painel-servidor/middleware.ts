@@ -14,6 +14,7 @@ export async function middleware(req: NextRequest) {
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
     const res = NextResponse.next()
     res.headers.set('x-tenant-id', tenant.id)
+    res.headers.set('x-pathname', pathname)
     return res
   }
 
@@ -33,6 +34,7 @@ export async function middleware(req: NextRequest) {
   res.headers.set('x-tenant-theme', JSON.stringify(tenant.theme))
   res.headers.set('x-user-id', session.user.id)
   res.headers.set('x-user-role', session.user.role)
+  res.headers.set('x-pathname', pathname)
   return res
 }
 
