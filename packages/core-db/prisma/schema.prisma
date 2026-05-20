@@ -131,6 +131,7 @@ model User {
   notificacoes                Notificacao[]
   audit_logs                  AuditLog[]
   pacientes                   Paciente[]
+  password_resets             PasswordReset[]
 
   @@unique([tenant_id, email], map: "uq_users_tenant_email")
   @@unique([tenant_id, cpf], map: "uq_users_tenant_cpf")
@@ -141,6 +142,22 @@ model User {
   @@index([tenant_id, active], map: "idx_users_active")
   @@index([permissions], map: "idx_users_permissions", type: Gin)
   @@map("users")
+  @@schema("public")
+}
+
+model PasswordReset {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    String    @db.Uuid
+  token_hash String    @db.VarChar(255)
+  expires_at DateTime  @db.Timestamptz
+  used_at    DateTime? @db.Timestamptz
+  created_at DateTime  @default(now()) @db.Timestamptz
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@index([token_hash], map: "idx_password_resets_token")
+  @@index([user_id], map: "idx_password_resets_user")
+  @@map("password_resets")
   @@schema("public")
 }
 

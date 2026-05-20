@@ -60,18 +60,18 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 0.3 — Autenticação e Multi-tenant
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] `packages/core-auth` — Tenant Resolver com cache
-- [ ] `packages/core-auth` — NextAuth v5 configurado
-- [ ] Middleware `painel-servidor` — Tenant Resolver + Auth Guard
-- [ ] Middleware `painel-dev` — IP allowlist + Auth Guard SUPERADMIN
-- [ ] Rotas de login nos 2 apps
-- [ ] Recuperação de senha (token 1h, uso único)
-- [ ] Funções `requireAuth`, `requireTenantRole`, `requirePermission`
-- [ ] `assertModuleActive` → 404 para módulo inativo
-- [ ] `getTenantContext` em Server Components
+- [x] `packages/core-auth` — Tenant Resolver com cache
+- [x] `packages/core-auth` — NextAuth v5 configurado
+- [x] Middleware `painel-servidor` — Tenant Resolver + Auth Guard
+- [x] Middleware `painel-dev` — IP allowlist + Auth Guard SUPERADMIN
+- [x] Rotas de login nos 2 apps
+- [x] Recuperação de senha (token 1h, uso único)
+- [x] Funções `requireAuth`, `requireTenantRole`, `requirePermission`
+- [x] `assertModuleActive` → 404 para módulo inativo
+- [x] `getTenantContext` em Server Components
 
 **Critério de conclusão:** login funciona em ambos os painéis, RLS validado por tenant.
 
@@ -309,7 +309,7 @@ FASE 4 → Módulo UBS
 |---|---|---|
 | 0.1 | Monorepo e infraestrutura | ✅ Concluído |
 | 0.2 | Schema base do banco | ✅ Concluído |
-| 0.3 | Autenticação e multi-tenant | 📋 Planejado |
+| 0.3 | Autenticação e multi-tenant | ✅ Concluído |
 | 0.4 | Painel Dev — municípios | 📋 Planejado |
 | 0.5 | UI base e design system | 📋 Planejado |
 | 0.6 | Configuração do município | 📋 Planejado |

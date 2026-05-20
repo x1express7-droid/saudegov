@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@saude/core-auth": "*",
+    "@saude/core-db": "*",
     "next": "15.5.18",
     "react": "19.1.0",
     "react-dom": "19.1.0"

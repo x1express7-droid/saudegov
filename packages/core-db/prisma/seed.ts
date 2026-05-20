@@ -67,6 +67,97 @@ async function upsertUser(params: {
   })
 }
 
+const SPRINT_03_PLATFORM_FEATURES = [
+  {
+    sistema: 'plataforma',
+    modulo: 'auth',
+    funcionalidade: 'tenant_resolver',
+    descricao: 'Resolução de município pelo domínio com cache em memória',
+    painel_dev: false,
+    painel_servidor: true,
+    sprint: '0.3',
+  },
+  {
+    sistema: 'plataforma',
+    modulo: 'auth',
+    funcionalidade: 'login',
+    descricao: 'Autenticação com e-mail e senha via NextAuth v5',
+    painel_dev: true,
+    painel_servidor: true,
+    sprint: '0.3',
+  },
+  {
+    sistema: 'plataforma',
+    modulo: 'auth',
+    funcionalidade: 'recuperar_senha',
+    descricao: 'Fluxo de recuperação de senha com token SHA-256, expira em 1h',
+    painel_dev: false,
+    painel_servidor: true,
+    sprint: '0.3',
+  },
+  {
+    sistema: 'plataforma',
+    modulo: 'auth',
+    funcionalidade: 'multi_tenant_middleware',
+    descricao: 'Middleware de isolamento por tenant com injeção de contexto',
+    painel_dev: true,
+    painel_servidor: true,
+    sprint: '0.3',
+  },
+  {
+    sistema: 'plataforma',
+    modulo: 'auth',
+    funcionalidade: 'autorizacao_roles',
+    descricao:
+      'Verificação de papel mínimo (SUPERADMIN > ADMIN > GESTOR > SERVIDOR)',
+    painel_dev: false,
+    painel_servidor: true,
+    sprint: '0.3',
+  },
+  {
+    sistema: 'plataforma',
+    modulo: 'auth',
+    funcionalidade: 'autorizacao_permissoes',
+    descricao:
+      'Verificação de permissões granulares por chave saude.{modulo}.{acao}',
+    painel_dev: false,
+    painel_servidor: true,
+    sprint: '0.3',
+  },
+] as const
+
+async function seedPlatformFeaturesSprint03(): Promise<number> {
+  for (const feature of SPRINT_03_PLATFORM_FEATURES) {
+    await prisma.platformFeature.upsert({
+      where: {
+        sistema_modulo_funcionalidade: {
+          sistema: feature.sistema,
+          modulo: feature.modulo,
+          funcionalidade: feature.funcionalidade,
+        },
+      },
+      update: {
+        descricao: feature.descricao,
+        painel_dev: feature.painel_dev,
+        painel_servidor: feature.painel_servidor,
+        sprint: feature.sprint,
+        status: 'ativo',
+      },
+      create: {
+        sistema: feature.sistema,
+        modulo: feature.modulo,
+        funcionalidade: feature.funcionalidade,
+        descricao: feature.descricao,
+        painel_dev: feature.painel_dev,
+        painel_servidor: feature.painel_servidor,
+        sprint: feature.sprint,
+        status: 'ativo',
+      },
+    })
+  }
+  return SPRINT_03_PLATFORM_FEATURES.length
+}
+
 async function seedOrganograma(
   tenantId: string,
   ids: (typeof IDS)['campograndems'] | (typeof IDS)['altamirapa'],
@@ -286,6 +377,11 @@ async function main() {
     pacienteCpf: '39053344705',
     pacienteCns: '898001160660004',
   })
+
+  const platformFeaturesCount = await seedPlatformFeaturesSprint03()
+  console.log(
+    `\n📌 platform_features (Sprint 0.3): ${platformFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
 
   console.log('✅ Seed concluído.')
   console.log('\n📋 Credenciais de desenvolvimento (senha: senha123):')
