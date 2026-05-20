@@ -115,16 +115,16 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 0.6 — Configuração do Município (ADMIN)
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] CRUD de secretarias, departamentos e setores
-- [ ] Definir setor responsável por módulo
-- [ ] CRUD de servidores com seleção de papel
-- [ ] Tela de permissões granulares (toggles por servidor)
-- [ ] Configuração de tema visual (cores, logo)
-- [ ] Configuração de dados do município (CNPJ, timezone, e-mail)
-- [ ] Stub de configuração CADSUS (campo ativo/inativo + token)
+- [x] CRUD de departamentos e setores (secretaria fixa por tenant)
+- [x] Definir setor responsável por módulo
+- [x] CRUD de servidores com seleção de papel
+- [x] Tela de permissões granulares (toggles por servidor)
+- [x] Configuração de tema visual (cores, logo)
+- [x] Configuração de dados do município (CNPJ, timezone, e-mail)
+- [x] Stub de configuração CADSUS (campo ativo/inativo + token)
 
 **Critério de conclusão:** ADMIN configura o município completo sem ajuda do dev.
 
@@ -312,7 +312,7 @@ FASE 4 → Módulo UBS
 | 0.3 | Autenticação e multi-tenant | ✅ Concluído |
 | 0.4 | Painel Dev — municípios | ✅ Concluído |
 | 0.5 | UI base e design system | ✅ Concluído |
-| 0.6 | Configuração do município | 📋 Planejado |
+| 0.6 | Configuração do município | ✅ Concluído |
 | 1.1 | Schema TFD e configurações | 📋 Planejado |
 | 1.2 | Gestão financeira TFD | 📋 Planejado |
 | 1.3 | Paciente e CADSUS stub | 📋 Planejado |

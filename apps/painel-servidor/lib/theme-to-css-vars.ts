@@ -6,6 +6,8 @@ export type TenantTheme = Record<string, string | undefined>
 const DEFAULT_PRIMARY = '#1a5fa8'
 const DEFAULT_PRIMARY_HOVER = '#155090'
 const DEFAULT_PRIMARY_LIGHT = '#e8f0fb'
+const DEFAULT_SECONDARY = '#64748b'
+const DEFAULT_ACCENT = '#d97706'
 const DEFAULT_HEADER_TEXT = '#ffffff'
 
 export interface TenantThemeCssVars {
@@ -14,6 +16,8 @@ export interface TenantThemeCssVars {
   '--color-primary-light': string
   '--color-header-bg': string
   '--color-header-text': string
+  '--color-secondary': string
+  '--color-accent': string
 }
 
 function isHexColor(value: string | undefined): value is string {
@@ -74,12 +78,26 @@ function resolveTenantThemeCssVars(theme: TenantTheme): TenantThemeCssVars {
       ? theme.header_text_color
       : DEFAULT_HEADER_TEXT
 
+  const secondary = isHexColor(theme.secondaryColor)
+    ? theme.secondaryColor
+    : isHexColor(theme.secondary_color)
+      ? theme.secondary_color
+      : DEFAULT_SECONDARY
+
+  const accent = isHexColor(theme.accentColor)
+    ? theme.accentColor
+    : isHexColor(theme.accent_color)
+      ? theme.accent_color
+      : DEFAULT_ACCENT
+
   return {
     '--color-primary': primary,
     '--color-primary-hover': primaryHover,
     '--color-primary-light': primaryLight,
     '--color-header-bg': headerBg,
     '--color-header-text': headerText,
+    '--color-secondary': secondary,
+    '--color-accent': accent,
   }
 }
 

@@ -11,6 +11,7 @@ export interface AppShellProps {
   municipalityName: string
   userName: string
   logoUrl?: string
+  showAdminNav?: boolean
   children: ReactNode
 }
 
@@ -20,6 +21,7 @@ export function AppShell({
   municipalityName,
   userName,
   logoUrl,
+  showAdminNav = false,
   children,
 }: AppShellProps) {
   const sidebarMode = useSidebarMode()
@@ -90,6 +92,7 @@ export function AppShell({
             pathname={pathname}
             collapsed={sidebarCollapsed}
             onNavigate={closeDrawer}
+            showAdminNav={showAdminNav}
             className="h-[calc(100vh-4rem)] min-h-0"
           />
         </aside>

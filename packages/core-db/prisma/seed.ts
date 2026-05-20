@@ -158,6 +158,224 @@ async function seedPlatformFeaturesSprint03(): Promise<number> {
   return SPRINT_03_PLATFORM_FEATURES.length
 }
 
+const SPRINT_06_ORGANOGRAMA_FEATURES = [
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'listar_organograma',
+    descricao:
+      'Listagem do organograma: secretaria fixa (somente leitura), departamentos e setores.',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.organograma',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'criar_departamento',
+    descricao: 'Cadastro de departamento na Secretaria Municipal de Saúde.',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.organograma',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'atualizar_departamento',
+    descricao: 'Edição de departamento no organograma.',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.organograma',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'desativar_departamento',
+    descricao: 'Desativação de departamento (soft delete via campo ativo).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.organograma',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'criar_setor',
+    descricao: 'Cadastro de setor vinculado a um departamento.',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.organograma',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'atualizar_setor',
+    descricao: 'Edição de setor no organograma (nome, sigla, e-mail).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.organograma',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'desativar_setor',
+    descricao: 'Desativação de setor (soft delete via campo ativo).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.organograma',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'definir_setor_responsavel',
+    descricao:
+      'Definição do setor responsável por cada módulo ativo do município (modulo_setor_responsavel).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.responsaveis',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'criar_servidor',
+    descricao: 'Cadastro de servidor (GESTOR ou SERVIDOR) com vínculo a setores.',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.servidores',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'atualizar_servidor',
+    descricao: 'Edição de servidor municipal (nome, e-mail, papel, setores).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.servidores',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'desativar_servidor',
+    descricao: 'Desativação de servidor (users.active = false).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.servidores',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'atualizar_permissoes',
+    descricao: 'Atualização de permissões granulares por servidor (JSONB users.permissions).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.permissoes',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'atualizar_tema',
+    descricao: 'Atualização de cores do tema visual do município (JSONB tenants.theme).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.tema',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'atualizar_logo',
+    descricao: 'Atualização da URL da logo do município no tema (JSONB tenants.theme).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.tema',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'atualizar_dados_municipio',
+    descricao:
+      'Atualização de dados institucionais do município (CNPJ, timezone, e-mail de notificação em tenants.settings).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.municipio',
+    sprint: '0.6',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'config',
+    funcionalidade: 'configurar_cadsus_stub',
+    descricao:
+      'Configuração operacional do stub CADSUS (cadsus_enabled, cadsus_token placeholder em tenants.settings).',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.config.municipio',
+    sprint: '0.6',
+  },
+] as const
+
+const SPRINT_06_ORGANOGRAMA_FEATURES_REMOVED = [
+  'criar_secretaria',
+  'atualizar_secretaria',
+  'desativar_secretaria',
+] as const
+
+async function seedPlatformFeaturesSprint06Organograma(): Promise<number> {
+  for (const funcionalidade of SPRINT_06_ORGANOGRAMA_FEATURES_REMOVED) {
+    await prisma.platformFeature.updateMany({
+      where: {
+        sistema: 'saude',
+        modulo: 'config',
+        funcionalidade,
+      },
+      data: { status: 'inativo' },
+    })
+  }
+
+  for (const feature of SPRINT_06_ORGANOGRAMA_FEATURES) {
+    await prisma.platformFeature.upsert({
+      where: {
+        sistema_modulo_funcionalidade: {
+          sistema: feature.sistema,
+          modulo: feature.modulo,
+          funcionalidade: feature.funcionalidade,
+        },
+      },
+      update: {
+        descricao: feature.descricao,
+        painel_dev: feature.painel_dev,
+        painel_servidor: feature.painel_servidor,
+        permissao_chave: feature.permissao_chave,
+        sprint: feature.sprint,
+        status: 'ativo',
+      },
+      create: {
+        sistema: feature.sistema,
+        modulo: feature.modulo,
+        funcionalidade: feature.funcionalidade,
+        descricao: feature.descricao,
+        painel_dev: feature.painel_dev,
+        painel_servidor: feature.painel_servidor,
+        permissao_chave: feature.permissao_chave,
+        sprint: feature.sprint,
+        status: 'ativo',
+      },
+    })
+  }
+  return SPRINT_06_ORGANOGRAMA_FEATURES.length
+}
+
 async function seedOrganograma(
   tenantId: string,
   ids: (typeof IDS)['campograndems'] | (typeof IDS)['altamirapa'],
@@ -381,6 +599,11 @@ async function main() {
   const platformFeaturesCount = await seedPlatformFeaturesSprint03()
   console.log(
     `\n📌 platform_features (Sprint 0.3): ${platformFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const organogramaFeaturesCount = await seedPlatformFeaturesSprint06Organograma()
+  console.log(
+    `\n📌 platform_features (Sprint 0.6 organograma): ${organogramaFeaturesCount} entradas inseridas/atualizadas.`
   )
 
   console.log('✅ Seed concluído.')

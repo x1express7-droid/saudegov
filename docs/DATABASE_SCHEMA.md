@@ -110,9 +110,17 @@ CREATE INDEX idx_tenants_active        ON public.tenants(active);
   "cnpj": "03.501.598/0001-18",
   "cadsus_enabled": false,
   "cadsus_token": null,
-  "notification_email": "saude@campogrande.ms.gov.br"
+  "notification_email": "saude@campogrande.ms.gov.br",
+  "smtp_custom_enabled": false,
+  "smtp_host": null,
+  "smtp_port": 587,
+  "smtp_user": null,
+  "smtp_from": null,
+  "smtp_secure": true
 }
 ```
+
+> **SMTP:** `smtp_password` não é persistido em texto claro — ver `DECISIONS.md` D12. Campo reservado para Sprint 2.x: `smtp_password_enc` (ciphertext). Enquanto `smtp_custom_enabled` for `false`, o envio usa o SMTP padrão da plataforma (variáveis `SMTP_PLATFORM_*` no `.env`).
 
 ---
 
@@ -235,6 +243,12 @@ CREATE TABLE public.modulo_setor_responsavel (
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   CONSTRAINT uq_modulo_setor UNIQUE (tenant_id, modulo, setor_id)
 );
+
+-- Regra estrutural: no máximo um vínculo ativo por (tenant_id, modulo).
+-- Histórico (ativo = false) e reativação do mesmo setor seguem permitidos via uq_modulo_setor.
+CREATE UNIQUE INDEX uq_modulo_setor_ativo
+  ON public.modulo_setor_responsavel (tenant_id, modulo)
+  WHERE ativo = true;
 
 -- RLS em todas as tabelas do organograma
 ALTER TABLE public.secretarias ENABLE ROW LEVEL SECURITY;

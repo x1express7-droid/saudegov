@@ -1,4 +1,13 @@
-import { Activity, ClipboardList, LayoutDashboard } from 'lucide-react'
+import {
+  Activity,
+  Building2,
+  ClipboardList,
+  LayoutDashboard,
+  Network,
+  Landmark,
+  Palette,
+  Users,
+} from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../utils/cn'
 import { focusRingClassName } from '../utils/field-control'
@@ -15,9 +24,13 @@ export interface SidebarProps {
   className?: string
   collapsed?: boolean
   onNavigate?: () => void
+  showAdminNav?: boolean
 }
 
-function buildNavItems(modules: Record<string, Record<string, boolean>>): SidebarNavItem[] {
+function buildNavItems(
+  modules: Record<string, Record<string, boolean>>,
+  showAdminNav: boolean
+): SidebarNavItem[] {
   const items: SidebarNavItem[] = [
     {
       label: 'Dashboard',
@@ -32,6 +45,36 @@ function buildNavItems(modules: Record<string, Record<string, boolean>>): Sideba
       href: '/saude/tfd',
       icon: <ClipboardList className="size-5 shrink-0" aria-hidden="true" />,
     })
+  }
+
+  if (showAdminNav) {
+    items.push(
+      {
+        label: 'Organograma',
+        href: '/configuracoes/organograma',
+        icon: <Building2 className="size-5 shrink-0" aria-hidden="true" />,
+      },
+      {
+        label: 'Responsáveis',
+        href: '/configuracoes/responsaveis',
+        icon: <Network className="size-5 shrink-0" aria-hidden="true" />,
+      },
+      {
+        label: 'Servidores',
+        href: '/configuracoes/servidores',
+        icon: <Users className="size-5 shrink-0" aria-hidden="true" />,
+      },
+      {
+        label: 'Tema',
+        href: '/configuracoes/tema',
+        icon: <Palette className="size-5 shrink-0" aria-hidden="true" />,
+      },
+      {
+        label: 'Município',
+        href: '/configuracoes/municipio',
+        icon: <Landmark className="size-5 shrink-0" aria-hidden="true" />,
+      }
+    )
   }
 
   return items
@@ -50,8 +93,9 @@ export function Sidebar({
   className,
   collapsed = false,
   onNavigate,
+  showAdminNav = false,
 }: SidebarProps) {
-  const items = buildNavItems(modules)
+  const items = buildNavItems(modules, showAdminNav)
 
   return (
     <nav

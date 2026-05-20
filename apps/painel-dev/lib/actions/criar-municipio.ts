@@ -9,7 +9,11 @@ import {
   removerRegistroDns,
   requireSuperAdmin,
 } from '@saude/core-auth'
-import { getPrismaAdmin } from '@saude/core-db'
+import {
+  getPrismaAdmin,
+  SECRETARIA_SAUDE_NOME,
+  SECRETARIA_SAUDE_SIGLA,
+} from '@saude/core-db'
 import type { ActionResponse } from '@saude/validators'
 import { criarMunicipioSchema } from '../validators/municipio.schema'
 
@@ -136,6 +140,15 @@ export async function criarMunicipio(
           mustChangePassword: true,
           permissions: {},
           active: true,
+        },
+      })
+
+      await tx.secretaria.create({
+        data: {
+          tenant_id: created.id,
+          nome: SECRETARIA_SAUDE_NOME,
+          sigla: SECRETARIA_SAUDE_SIGLA,
+          ativa: true,
         },
       })
 

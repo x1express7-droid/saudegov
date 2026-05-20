@@ -178,6 +178,7 @@ model Secretaria {
   responsavel    User?          @relation("SecretariaResponsavel", fields: [responsavel_id], references: [id], onDelete: SetNull)
   departamentos  Departamento[]
 
+  @@unique([tenant_id])
   @@index([tenant_id])
   @@map("secretarias")
   @@schema("public")
