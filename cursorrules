@@ -1,0 +1,296 @@
+# .cursorrules
+# saudegov — Instruções Permanentes do Agente
+
+Você é o agente de desenvolvimento do projeto **saudegov** — uma plataforma
+SaaS multi-tenant de gestão de saúde pública municipal no Brasil.
+
+Leia este arquivo completamente antes de qualquer tarefa.
+Estas regras nunca são ignoradas, independente do que o prompt peça.
+
+---
+
+## 1. IDENTIDADE DO PROJETO
+
+**O que é:** Plataforma exclusiva para Secretaria Municipal de Saúde.
+**Não é:** Sistema genérico de gestão municipal — é exclusivamente de saúde.
+**MVP atual:** Módulo TFD (Tratamento Fora de Domicílio).
+**Estrutura:**
+```
+saudegov (plataforma)
+  └── Município (tenant)
+        └── Sistema de Saúde (Secretaria)
+              ├── Módulo TFD  ← MVP atual
+              ├── Módulo Regulação (futuro)
+              └── ...
+```
+
+**Sem portal de cidadão.** Apenas dois painéis:
+- `apps/painel-dev` → SUPERADMIN gerencia municípios e a plataforma
+- `apps/painel-servidor` → servidores públicos operam os módulos
+
+---
+
+## 2. ANTES DE QUALQUER TAREFA — LEITURA OBRIGATÓRIA
+
+Antes de escrever qualquer código, consulte os documentos correspondentes:
+
+| Tarefa | Leia antes |
+|---|---|
+| Qualquer coisa | `docs/ARCHITECTURE.md` |
+| Criar arquivo ou pasta | `docs/MONOREPO.md` |
+| Criar Server Action | `docs/CODING_STANDARDS.md` + `docs/SKILL_API_ROUTE.md` |
+| Criar migration | `docs/DATABASE_SCHEMA.md` + `docs/SKILL_DB_MIGRATION.md` |
+| Criar rota ou página | `docs/AUTH_PERMISSIONS.md` + `docs/MULTI_TENANT.md` |
+| Criar componente | `docs/DESIGN_SYSTEM.md` + `docs/SKILL_UI_COMPONENT.md` |
+| Lógica de negócio | `docs/BUSINESS_RULES.md` |
+| Permissões | `docs/AUTH_PERMISSIONS.md` + `docs/SKILL_PERMISSIONS_CHECK.md` |
+| Novo módulo de saúde | `docs/MUNICIPAL_MAP.md` + `docs/SKILL_NEW_MODULE.md` |
+| Nova sprint | `docs/SPRINTS.md` + `docs/SKILL_NEW_SPRINT.md` |
+| Paciente/CADSUS | `docs/CADSUS.md` |
+| Exportação/relatório | `docs/SECURITY.md` + `docs/SKILL_EXPORT_DATA.md` |
+| Notificação | `docs/BUSINESS_RULES.md` seção 1.14 + `docs/SKILL_NOTIFICATION_EVENT.md` |
+
+**Nunca implemente de memória** — sempre verifique os documentos primeiro.
+
+---
+
+## 3. REGRAS DE SEGURANÇA — INVIOLÁVEIS
+
+Estas regras nunca são quebradas, independente do contexto:
+
+### 3.1 Multi-tenant
+```typescript
+// ✅ SEMPRE assim
+const db = await getPrismaForTenant(session.user.tenantId!)
+const dados = await db.tabela.findMany({
+  where: { tenant_id: session.user.tenantId! } // explícito além do RLS
+})
+
+// ❌ NUNCA assim — falha crítica de segurança
+import { prisma } from '@saude/core-db'
+const dados = await prisma.tabela.findMany()
+```
+
+### 3.2 Três camadas em toda Server Action
+```typescript
+// Ordem exata — nunca alterar
+await assertModuleActive('saude', '{modulo}')     // Camada 1 → 404
+const session = await requireTenantRole('{PAPEL}') // Camada 2 → redirect
+await requirePermission(session, '{chave}')        // Camada 3 → 403
+```
+
+### 3.3 Dados sensíveis de saúde (LGPD Art. 11)
+```typescript
+// ❌ NUNCA em listagens
+select: { cid_principal: true, diagnostico: true }
+
+// ✅ Apenas no detalhe com permissão analisar_laudo
+// Laudo: URL pré-assinada 15min + audit READ_SENSITIVE
+```
+
+### 3.4 tenant_id sempre da sessão
+```typescript
+// ✅ CORRETO
+const tenantId = session.user.tenantId!
+
+// ❌ NUNCA de parâmetro externo
+const tenantId = params.tenantId    // PROIBIDO
+const tenantId = body.tenantId      // PROIBIDO
+const tenantId = searchParams.get('tenant') // PROIBIDO
+```
+
+### 3.5 Módulo inativo = 404, nunca 403
+```typescript
+// ✅ CORRETO
+await assertModuleActive('saude', 'tfd') // usa notFound() internamente
+
+// ❌ NUNCA expor que o módulo existe com 403
+throw new Error('Acesso negado') // expõe existência do módulo
+```
+
+---
+
+## 4. REGRAS DE BANCO DE DADOS
+
+- Toda migration cria `tenant_id UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE`
+- Toda nova tabela de negócio tem `ENABLE ROW LEVEL SECURITY` + policy `tenant_isolation`
+- Toda nova tabela tem índice em `tenant_id`
+- Nenhuma alteração direta no banco — sempre `prisma migrate dev`
+- Novo schema segue convenção `saude_{sigla}` — consulte `docs/MUNICIPAL_MAP.md`
+- Tabelas imutáveis (tramitacoes, movimentacoes_saldo, audit_logs) não têm `updated_at`
+
+**Banco local de desenvolvimento:**
+```
+Host:     localhost
+Banco:    saudegov
+Senha:    admin123
+```
+
+---
+
+## 5. REGRAS DE CÓDIGO
+
+- TypeScript `strict: true` — nenhum `any`
+- `rawInput: unknown` em toda Server Action — validar com Zod antes de usar
+- Retorno de actions: sempre `ActionResponse<T>` de `@saude/validators`
+- Nenhum módulo importa de outro módulo — apenas de `packages/*`
+- Nenhum dado sensível em `console.error` (CPF, CNS, CID, senha, token)
+- `revalidatePath` obrigatório após toda mutation
+- `createAuditLog` obrigatório para toda escrita
+- Operações multi-tabela sempre em `db.$transaction`
+
+---
+
+## 6. REGRA DE PARIDADE ENTRE PAINÉIS
+
+Antes de qualquer implementação, verifique:
+
+```sql
+SELECT funcionalidade, painel_dev, painel_servidor, status
+FROM public.platform_features
+WHERE modulo = '{modulo}'
+ORDER BY funcionalidade;
+```
+
+**Se uma funcionalidade existe em um painel mas não no outro:**
+1. Sinalizar explicitamente: `⚠️ Esta funcionalidade está faltando no painel {X}`
+2. Perguntar se deve implementar nos dois agora
+3. Não deixar lacuna silenciosamente
+
+**Após implementar, sempre registrar:**
+```sql
+INSERT INTO public.platform_features
+  (sistema, modulo, funcionalidade, descricao, painel_dev, painel_servidor, permissao_chave, status, sprint)
+VALUES ('{sistema}', '{modulo}', '{funcionalidade}', '{descricao}', {bool}, {bool}, '{chave}', 'ativo', '{sprint}');
+```
+
+---
+
+## 7. REGRAS DE NOMENCLATURA
+
+```
+Arquivos/pastas:  kebab-case     → get-solicitacoes.ts, status-badge.tsx
+Variáveis:        camelCase      → tenantId, prazoEnvioAt
+Tipos/interfaces: PascalCase     → ActionResponse, TenantContext
+Constantes:       UPPER_SNAKE    → MAX_FILE_SIZE_BYTES
+Schemas Zod:      camelCase      → abrirSolicitacaoSchema
+Permissões:       saude.{mod}.{acao} → saude.tfd.decidir_solicitacao
+Schemas banco:    saude_{sigla}  → saude_tfd, saude_regul
+Protocolos:       ANO-SAUDE-{SIGLA}-{SEQ} → 2025-SAUDE-TFD-000001
+```
+
+---
+
+## 8. ESTRUTURA DO MONOREPO
+
+```
+apps/painel-dev/          → porta 3000 — SUPERADMIN
+apps/painel-servidor/     → porta 3001 — operação municipal
+
+packages/core-auth/       → @saude/core-auth
+packages/core-db/         → @saude/core-db
+packages/core-documents/  → @saude/core-documents
+packages/core-notifications/ → @saude/core-notifications
+packages/ui/              → @saude/ui
+packages/validators/      → @saude/validators
+
+modules/saude/tfd/        → @saude/mod-saude-tfd (MVP)
+```
+
+**Hierarquia de importação:**
+```
+apps → packages e modules
+modules → apenas packages
+packages → outros packages
+
+❌ módulo nunca importa de outro módulo
+```
+
+---
+
+## 9. FLUXO DE STATUS TFD — REFERÊNCIA RÁPIDA
+
+```
+RASCUNHO → ENVIADO → EM_ANALISE → APROVADO → AGENDADO → EM_VIAGEM
+                           ↓                                  ↓
+                        PENDENTE                       AGUARDANDO_PC
+                           ↓                                  ↓
+                      EM_ANALISE                       PC_EM_ANALISE
+                                                              ↓
+                        NEGADO                          CONCLUIDO
+
+Em qualquer etapa antes de AGENDADO → CANCELADO
+```
+
+Toda transição inválida retorna erro 422.
+Consulte `docs/BUSINESS_RULES.md` seção 1.3 para a tabela completa.
+
+---
+
+## 10. QUANDO ENCONTRAR ALGO AMBÍGUO
+
+Se durante a implementação encontrar algo que:
+- Não está documentado nos docs
+- Contradiz alguma regra documentada
+- Pode impactar segurança ou LGPD
+- Parece duplicar algo existente
+
+**Sempre pare e pergunte** antes de implementar.
+Nunca assuma — os docs são a fonte de verdade.
+
+---
+
+## 11. CHECKLIST ANTES DE QUALQUER COMMIT
+
+**Segurança:**
+- [ ] `getPrismaForTenant` em toda query — nunca `prisma` direto?
+- [ ] `tenant_id` explícito no `where` além do RLS?
+- [ ] 3 camadas de verificação na Server Action?
+- [ ] `tenant_id` lido da sessão — nunca de parâmetro externo?
+- [ ] CID e diagnóstico ausentes em listagens?
+- [ ] Nenhum dado sensível em logs?
+
+**Qualidade:**
+- [ ] TypeScript sem erros (`tsc --noEmit` passa)?
+- [ ] `createAuditLog` para toda escrita?
+- [ ] `revalidatePath` após mutations?
+- [ ] Tramitação registrada se é processo?
+- [ ] Nenhum `any` no código?
+
+**Estrutura:**
+- [ ] Arquivo no lugar correto conforme `MONOREPO.md`?
+- [ ] Funcionalidade registrada em `platform_features`?
+- [ ] Paridade entre painéis verificada?
+- [ ] Imports na ordem correta?
+- [ ] Barrel exports atualizados em `src/index.ts`?
+
+---
+
+## 12. REFERÊNCIA DE DOCUMENTOS
+
+```
+docs/ARCHITECTURE.md       → visão geral e decisões da plataforma
+docs/MUNICIPAL_MAP.md      → módulos, siglas e bases legais
+docs/DATABASE_SCHEMA.md    → schema completo do banco
+docs/AUTH_PERMISSIONS.md   → papéis e permissões granulares
+docs/BUSINESS_RULES.md     → regras de negócio (baseadas na lei)
+docs/MULTI_TENANT.md       → isolamento por município
+docs/MONOREPO.md           → estrutura de pastas e packages
+docs/CODING_STANDARDS.md   → padrões de código obrigatórios
+docs/API_CONTRACTS.md      → contratos de Server Actions
+docs/DESIGN_SYSTEM.md      → tokens visuais e componentes
+docs/SECURITY.md           → LGPD e proteção de dados
+docs/CADSUS.md             → integração com sistema federal
+docs/SPRINTS.md            → roteiro de implementação
+docs/PROMPT_TEMPLATES.md   → templates prontos para tarefas
+
+docs/skills/SKILL_NEW_SPRINT.md         → como iniciar uma sprint
+docs/skills/SKILL_API_ROUTE.md          → como criar Server Action
+docs/skills/SKILL_DB_MIGRATION.md       → como criar migrations
+docs/skills/SKILL_UI_COMPONENT.md       → como criar componentes
+docs/skills/SKILL_NEW_MODULE.md         → como adicionar módulo
+docs/skills/SKILL_PERMISSIONS_CHECK.md  → como verificar permissões
+docs/skills/SKILL_TENANT_SEED.md        → como criar seed
+docs/skills/SKILL_NOTIFICATION_EVENT.md → como criar notificação
+docs/skills/SKILL_EXPORT_DATA.md        → como implementar exportação
+```

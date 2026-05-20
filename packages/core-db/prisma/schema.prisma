@@ -1,0 +1,474 @@
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+  output          = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public", "saude_base", "saude_tfd"]
+}
+
+enum UserRole {
+  SUPERADMIN
+  ADMIN
+  GESTOR
+  SERVIDOR
+
+  @@map("user_role")
+  @@schema("public")
+}
+
+enum ProcessoStatus {
+  ABERTO
+  EM_ANDAMENTO
+  AGUARDANDO_COMPLEMENTO
+  CONCLUIDO
+  CANCELADO
+  ARQUIVADO
+
+  @@map("processo_status")
+  @@schema("public")
+}
+
+enum TramitacaoTipo {
+  ABERTURA
+  ENCAMINHAMENTO
+  COMPLEMENTO_SOLICITADO
+  COMPLEMENTO_ENVIADO
+  DECISAO
+  AGENDAMENTO
+  RETORNO_REGISTRADO
+  PRESTACAO_ENVIADA
+  PRESTACAO_APROVADA
+  PRESTACAO_REJEITADA
+  CANCELAMENTO
+  CONCLUSAO
+  OBSERVACAO_INTERNA
+
+  @@map("tramitacao_tipo")
+  @@schema("public")
+}
+
+enum NotificacaoCanal {
+  EMAIL
+  IN_APP
+
+  @@map("notificacao_canal")
+  @@schema("public")
+}
+
+enum NotificacaoStatus {
+  PENDENTE
+  ENVIADO
+  FALHOU
+  LIDO
+
+  @@map("notificacao_status")
+  @@schema("public")
+}
+
+model Tenant {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  slug                 String   @unique @db.VarChar(100)
+  name                 String   @db.VarChar(200)
+  domain               String   @unique @db.VarChar(255)
+  domain_custom        String?  @unique @db.VarChar(255)
+  cloudflare_zone_id   String?  @db.VarChar(100)
+  cloudflare_record_id String?  @db.VarChar(100)
+  modules              Json     @default("{\"saude\": {\"tfd\": false}}")
+  theme                Json     @default("{}")
+  settings             Json     @default("{}")
+  active               Boolean  @default(true)
+  created_at           DateTime @default(now()) @db.Timestamptz
+  updated_at           DateTime @updatedAt @db.Timestamptz
+  users                User[]
+  secretarias          Secretaria[]
+  departamentos        Departamento[]
+  setores              Setor[]
+  servidor_setores     ServidorSetor[]
+  modulo_setor_responsavel ModuloSetorResponsavel[]
+  processos            Processo[]
+  tramitacoes          Tramitacao[]
+  anexos               Anexo[]
+  notificacoes         Notificacao[]
+  audit_logs           AuditLog[]
+  protocolo_sequencias ProtocoloSequencia[]
+  pacientes            Paciente[]
+  unidades             Unidade[]
+
+  @@map("tenants")
+  @@schema("public")
+}
+
+model User {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String?   @db.Uuid
+  role           UserRole  @default(SERVIDOR)
+  name           String    @db.VarChar(200)
+  cpf            String?   @db.VarChar(11)
+  matricula      String?   @db.VarChar(50)
+  email          String    @db.VarChar(255)
+  email_verified Boolean   @default(false)
+  phone          String?   @db.VarChar(20)
+  password_hash  String?   @db.VarChar(255)
+  active         Boolean   @default(true)
+  permissions    Json      @default("{}")
+  last_login_at  DateTime? @db.Timestamptz
+  deleted_at     DateTime? @db.Timestamptz
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  updated_at     DateTime  @updatedAt @db.Timestamptz
+  tenant         Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  secretarias_responsavel     Secretaria[]             @relation("SecretariaResponsavel")
+  departamentos_responsavel   Departamento[]           @relation("DepartamentoResponsavel")
+  setores_responsavel         Setor[]                  @relation("SetorResponsavel")
+  servidor_setores            ServidorSetor[]
+  processos_responsavel       Processo[]     @relation("ProcessoResponsavel")
+  processos_abertos           Processo[]     @relation("ProcessoAbertoPor")
+  tramitacoes                 Tramitacao[]
+  anexos_enviados             Anexo[]        @relation("AnexoUploader")
+  notificacoes                Notificacao[]
+  audit_logs                  AuditLog[]
+  pacientes                   Paciente[]
+
+  @@unique([tenant_id, email], map: "uq_users_tenant_email")
+  @@unique([tenant_id, cpf], map: "uq_users_tenant_cpf")
+  @@index([tenant_id], map: "idx_users_tenant_id")
+  @@index([tenant_id, email], map: "idx_users_email")
+  @@index([tenant_id, cpf], map: "idx_users_cpf")
+  @@index([tenant_id, role], map: "idx_users_role")
+  @@index([tenant_id, active], map: "idx_users_active")
+  @@index([permissions], map: "idx_users_permissions", type: Gin)
+  @@map("users")
+  @@schema("public")
+}
+
+model Secretaria {
+  id             String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String         @db.Uuid
+  nome           String         @db.VarChar(200)
+  sigla          String?        @db.VarChar(20)
+  responsavel_id String?        @db.Uuid
+  ativa          Boolean        @default(true)
+  created_at     DateTime       @default(now()) @db.Timestamptz
+  updated_at     DateTime       @updatedAt @db.Timestamptz
+  tenant         Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  responsavel    User?          @relation("SecretariaResponsavel", fields: [responsavel_id], references: [id], onDelete: SetNull)
+  departamentos  Departamento[]
+
+  @@index([tenant_id])
+  @@map("secretarias")
+  @@schema("public")
+}
+
+model Departamento {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String      @db.Uuid
+  secretaria_id  String      @db.Uuid
+  nome           String      @db.VarChar(200)
+  sigla          String?     @db.VarChar(20)
+  responsavel_id String?     @db.Uuid
+  ativo          Boolean     @default(true)
+  created_at     DateTime    @default(now()) @db.Timestamptz
+  updated_at     DateTime    @updatedAt @db.Timestamptz
+  tenant         Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  secretaria     Secretaria  @relation(fields: [secretaria_id], references: [id], onDelete: Cascade)
+  responsavel    User?       @relation("DepartamentoResponsavel", fields: [responsavel_id], references: [id], onDelete: SetNull)
+  setores        Setor[]
+
+  @@index([tenant_id])
+  @@map("departamentos")
+  @@schema("public")
+}
+
+model Setor {
+  id                      String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id               String                   @db.Uuid
+  departamento_id         String                   @db.Uuid
+  nome                    String                   @db.VarChar(200)
+  sigla                   String?                  @db.VarChar(20)
+  email_setor             String?                  @db.VarChar(255)
+  responsavel_id          String?                  @db.Uuid
+  ativo                   Boolean                  @default(true)
+  created_at              DateTime                 @default(now()) @db.Timestamptz
+  updated_at              DateTime                 @updatedAt @db.Timestamptz
+  tenant                  Tenant                   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  departamento            Departamento             @relation(fields: [departamento_id], references: [id], onDelete: Cascade)
+  responsavel             User?                    @relation("SetorResponsavel", fields: [responsavel_id], references: [id], onDelete: SetNull)
+  servidor_setores        ServidorSetor[]
+  modulo_setor_responsavel ModuloSetorResponsavel[]
+  processos                Processo[]
+
+  @@index([tenant_id])
+  @@map("setores")
+  @@schema("public")
+}
+
+model ServidorSetor {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String   @db.Uuid
+  user_id    String   @db.Uuid
+  setor_id   String   @db.Uuid
+  cargo      String?  @db.VarChar(200)
+  principal  Boolean  @default(false)
+  ativo      Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  setor      Setor    @relation(fields: [setor_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, setor_id], map: "uq_servidor_setor")
+  @@index([tenant_id])
+  @@map("servidor_setores")
+  @@schema("public")
+}
+
+model ModuloSetorResponsavel {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String   @db.Uuid
+  modulo     String   @db.VarChar(50)
+  setor_id   String   @db.Uuid
+  ativo      Boolean  @default(true)
+  created_at DateTime @default(now()) @db.Timestamptz
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  setor      Setor    @relation(fields: [setor_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, modulo, setor_id], map: "uq_modulo_setor")
+  @@index([tenant_id])
+  @@map("modulo_setor_responsavel")
+  @@schema("public")
+}
+
+model Processo {
+  id              String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id       String         @db.Uuid
+  protocolo       String         @db.VarChar(50)
+  modulo          String         @db.VarChar(50)
+  status          ProcessoStatus @default(ABERTO)
+  titulo          String         @db.VarChar(500)
+  setor_id        String?        @db.Uuid
+  responsavel_id  String?        @db.Uuid
+  aberto_por_id   String?        @db.Uuid
+  concluido_at    DateTime?      @db.Timestamptz
+  created_at      DateTime       @default(now()) @db.Timestamptz
+  updated_at      DateTime       @updatedAt @db.Timestamptz
+  tenant          Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  setor           Setor?         @relation(fields: [setor_id], references: [id], onDelete: SetNull)
+  responsavel     User?          @relation("ProcessoResponsavel", fields: [responsavel_id], references: [id], onDelete: SetNull)
+  aberto_por      User?          @relation("ProcessoAbertoPor", fields: [aberto_por_id], references: [id], onDelete: SetNull)
+  tramitacoes     Tramitacao[]
+  anexos          Anexo[]
+  notificacoes    Notificacao[]
+
+  @@unique([tenant_id, protocolo], map: "uq_protocolo")
+  @@index([tenant_id], map: "idx_processos_tenant_id")
+  @@index([tenant_id, protocolo], map: "idx_processos_protocolo")
+  @@index([tenant_id, modulo], map: "idx_processos_modulo")
+  @@index([tenant_id, status], map: "idx_processos_status")
+  @@index([setor_id], map: "idx_processos_setor")
+  @@map("processos")
+  @@schema("public")
+}
+
+model Tramitacao {
+  id               String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id        String         @db.Uuid
+  processo_id      String         @db.Uuid
+  tipo             TramitacaoTipo
+  descricao        String         @db.Text
+  visivel_servidor Boolean        @default(true)
+  usuario_id       String?        @db.Uuid
+  metadata         Json           @default("{}")
+  created_at       DateTime       @default(now()) @db.Timestamptz
+  tenant           Tenant         @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  processo         Processo       @relation(fields: [processo_id], references: [id], onDelete: Cascade)
+  usuario          User?          @relation(fields: [usuario_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id], map: "idx_tramitacoes_tenant")
+  @@index([processo_id], map: "idx_tramitacoes_processo")
+  @@index([created_at(sort: Desc)], map: "idx_tramitacoes_created")
+  @@map("tramitacoes")
+  @@schema("public")
+}
+
+model Anexo {
+  id            String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String    @db.Uuid
+  processo_id   String?   @db.Uuid
+  uploader_id   String?   @db.Uuid
+  nome_original String    @db.VarChar(500)
+  storage_path  String    @db.VarChar(1000)
+  mime_type     String    @db.VarChar(100)
+  tamanho_bytes BigInt
+  confirmado    Boolean   @default(false)
+  created_at    DateTime  @default(now()) @db.Timestamptz
+  tenant        Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  processo      Processo? @relation(fields: [processo_id], references: [id], onDelete: Cascade)
+  uploader      User?     @relation("AnexoUploader", fields: [uploader_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id], map: "idx_anexos_tenant")
+  @@index([processo_id], map: "idx_anexos_processo")
+  @@map("anexos")
+  @@schema("public")
+}
+
+model Notificacao {
+  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id   String            @db.Uuid
+  user_id     String?           @db.Uuid
+  processo_id String?           @db.Uuid
+  canal       NotificacaoCanal
+  status      NotificacaoStatus @default(PENDENTE)
+  titulo      String            @db.VarChar(200)
+  corpo       String            @db.Text
+  tentativas  Int               @default(0)
+  lido_at     DateTime?         @db.Timestamptz
+  enviado_at  DateTime?         @db.Timestamptz
+  created_at  DateTime          @default(now()) @db.Timestamptz
+  tenant      Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user        User?             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  processo    Processo?         @relation(fields: [processo_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id], map: "idx_notif_tenant")
+  @@index([user_id], map: "idx_notif_user")
+  @@index([status], map: "idx_notif_pendente")
+  @@map("notificacoes")
+  @@schema("public")
+}
+
+model AuditLog {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String?   @db.Uuid
+  user_id        String?   @db.Uuid
+  acao           String    @db.VarChar(100)
+  entidade       String    @db.VarChar(100)
+  entidade_id    String?   @db.Uuid
+  payload_antes  Json?
+  payload_depois Json?
+  ip_address     String?   @db.Inet
+  created_at     DateTime  @default(now()) @db.Timestamptz
+  tenant         Tenant?   @relation(fields: [tenant_id], references: [id], onDelete: SetNull)
+  user           User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id], map: "idx_audit_tenant")
+  @@index([user_id], map: "idx_audit_user")
+  @@index([entidade, entidade_id], map: "idx_audit_entidade")
+  @@index([created_at(sort: Desc)], map: "idx_audit_created")
+  @@map("audit_logs")
+  @@schema("public")
+}
+
+model ProtocoloSequencia {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String   @db.Uuid
+  modulo     String   @db.VarChar(50)
+  ano        Int
+  ultimo_seq Int      @default(0)
+  updated_at DateTime @updatedAt @db.Timestamptz
+  tenant     Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@unique([tenant_id, modulo, ano], map: "uq_protocolo_seq")
+  @@map("protocolo_sequencias")
+  @@schema("public")
+}
+
+model PlatformFeature {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  sistema         String   @db.VarChar(50)
+  modulo          String   @db.VarChar(50)
+  funcionalidade  String   @db.VarChar(100)
+  descricao       String   @db.Text
+  painel_dev      Boolean  @default(false)
+  painel_servidor Boolean  @default(false)
+  permissao_chave String?  @db.VarChar(100)
+  status          String   @default("ativo") @db.VarChar(20)
+  sprint          String?  @db.VarChar(20)
+  criado_at       DateTime @default(now()) @db.Timestamptz
+  atualizado_at   DateTime @updatedAt @db.Timestamptz
+
+  @@unique([sistema, modulo, funcionalidade], map: "uq_platform_feature")
+  @@map("platform_features")
+  @@schema("public")
+}
+
+enum Sexo {
+  MASCULINO
+  FEMININO
+  NAO_INFORMADO
+
+  @@map("sexo")
+  @@schema("saude_base")
+}
+
+enum TipoUnidade {
+  UBS
+  USF
+  UPA
+  HOSPITAL
+  CLINICA
+  CAPS
+  OUTRO
+
+  @@map("tipo_unidade")
+  @@schema("saude_base")
+}
+
+model Paciente {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id            String    @db.Uuid
+  user_id              String?   @db.Uuid
+  nome                 String    @db.VarChar(200)
+  cpf                  String?   @db.VarChar(11)
+  cns                  String?   @db.VarChar(15)
+  data_nascimento      DateTime? @db.Date
+  sexo                 Sexo?
+  nome_mae             String?   @db.VarChar(200)
+  municipio_nascimento String?   @db.VarChar(200)
+  cep                  String?   @db.VarChar(8)
+  logradouro           String?   @db.VarChar(300)
+  numero               String?   @db.VarChar(20)
+  complemento          String?   @db.VarChar(100)
+  bairro               String?   @db.VarChar(100)
+  municipio            String?   @db.VarChar(200)
+  uf                   String?   @db.Char(2)
+  telefone             String?   @db.VarChar(20)
+  telefone_alternativo String?   @db.VarChar(20)
+  cadsus_sincronizado_at DateTime? @db.Timestamptz
+  cadsus_divergencia   Boolean   @default(false)
+  ativo                Boolean   @default(true)
+  created_at           DateTime  @default(now()) @db.Timestamptz
+  updated_at           DateTime  @updatedAt @db.Timestamptz
+  tenant               Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user                 User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@unique([tenant_id, cpf], map: "uq_paciente_tenant_cpf")
+  @@unique([tenant_id, cns], map: "uq_paciente_tenant_cns")
+  @@index([tenant_id], map: "idx_base_pacientes_tenant")
+  @@index([tenant_id, cpf], map: "idx_base_pacientes_cpf")
+  @@index([tenant_id, cns], map: "idx_base_pacientes_cns")
+  @@index([tenant_id, nome], map: "idx_base_pacientes_nome")
+  @@map("pacientes")
+  @@schema("saude_base")
+}
+
+model Unidade {
+  id         String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id  String      @db.Uuid
+  nome       String      @db.VarChar(200)
+  tipo       TipoUnidade
+  cnes       String?     @db.VarChar(7)
+  cep        String?     @db.VarChar(8)
+  logradouro String?     @db.VarChar(300)
+  municipio  String?     @db.VarChar(200)
+  uf         String?     @db.Char(2)
+  telefone   String?     @db.VarChar(20)
+  ativa      Boolean     @default(true)
+  created_at DateTime    @default(now()) @db.Timestamptz
+  updated_at DateTime    @updatedAt @db.Timestamptz
+  tenant     Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id], map: "idx_base_unidades_tenant")
+  @@map("unidades")
+  @@schema("saude_base")
+}

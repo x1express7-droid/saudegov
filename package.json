@@ -1,0 +1,33 @@
+{
+  "name": "saude-munic",
+  "private": true,
+  "packageManager": "npm@11.12.1",
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "modules/saude/*"
+  ],
+  "scripts": {
+    "dev": "turbo dev",
+    "dev:dev": "turbo dev --filter=@saude/app-painel-dev",
+    "dev:servidor": "turbo dev --filter=@saude/app-painel-servidor",
+    "build": "turbo build",
+    "lint": "turbo lint",
+    "type-check": "turbo type-check",
+    "db:migrate": "turbo db:migrate --filter=@saude/core-db",
+    "db:seed": "turbo db:seed --filter=@saude/core-db",
+    "db:studio": "cd packages/core-db && npx prisma studio"
+  },
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "eslint": "^10.4.0",
+    "prettier": "^3.8.3",
+    "turbo": "^2.5.0",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.59.4"
+  }
+}
