@@ -20,6 +20,8 @@ export type {
 
 export { stripCpf, validateCpf } from './cpf'
 export { stripCnpj, validateCnpj } from './cnpj'
+export { validarCNS } from './cns'
+export { validarCEP } from './cep'
 
 export {
   criarServidorSchema,

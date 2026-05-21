@@ -172,17 +172,17 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 1.3 — Cadastro de Paciente e CADSUS Stub
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] `packages/validators` — validadores CPF, CNS, CNPJ, CEP
-- [ ] `CadsusStub` implementado conforme `CADSUS.md`
-- [ ] Factory `getCadsusService` — stub vs real por tenant
-- [ ] Server Action `buscarPacientePorCns` — busca no CADSUS stub
-- [ ] Server Action `vincularPaciente` — grava em `saude_base.pacientes`
-- [ ] Tela de busca por CNS com preenchimento automático
-- [ ] Validação de divergência CPF ≠ CNS
-- [ ] Audit log de toda consulta ao CADSUS
+- [x] `packages/validators` — validadores CPF, CNS, CNPJ, CEP
+- [x] `CadsusStub` implementado conforme `CADSUS.md`
+- [x] Factory `getCadsusService` — stub vs real por tenant
+- [x] Server Action `buscarPacientePorCns` — busca no CADSUS stub
+- [x] Server Action `vincularPaciente` — grava em `saude_base.pacientes`
+- [x] Tela de busca por CNS com preenchimento automático
+- [x] Validação de divergência CPF ≠ CNS
+- [x] Audit log de toda consulta ao CADSUS
 
 **Critério de conclusão:** busca CNS retorna dados, paciente gravado no banco local.
 
@@ -290,7 +290,7 @@ FASE 4 → Módulo UBS
 | **Status** | Aberto |
 | **Origem** | Identificado no fechamento da Sprint 1.2; problema pré-existente desde Sprint 0.3 |
 | **Causa** | `@saude/core-auth` exporta `auth.config` e `get-tenant-context` (usam `next/headers`) no mesmo barrel; bundler puxa esses módulos para o client quando qualquer consumer importa `@saude/core-auth` via `@saude/ui` ou formulários |
-| **Impacto** | `next build` clássico falha nos dois apps; painel-servidor falha também com Turbopack |
+| **Impacto** | `next build` clássico falha nos dois apps; painel-servidor falha também com Turbopack. Confirmado em dev: PrismaClientValidationError no edge runtime bloqueia painel-servidor. Resolve antes do staging. |
 | **Resolução prevista** | Imports granulares em `core-auth` com subpaths ou `server-only`; resolver antes do primeiro deploy em staging |
 
 ---
@@ -333,7 +333,7 @@ FASE 4 → Módulo UBS
 | 0.6 | Configuração do município | ✅ Concluído |
 | 1.1 | Schema TFD e configurações | ✅ Concluído |
 | 1.2 | Gestão financeira TFD | ✅ Concluído |
-| 1.3 | Paciente e CADSUS stub | 📋 Planejado |
+| 1.3 | Paciente e CADSUS stub | ✅ Concluído |
 | 1.4 | Abertura de solicitação | 📋 Planejado |
 | 1.5 | Regulação e decisão | 📋 Planejado |
 | 1.6 | Agendamento de viagem | 📋 Planejado |

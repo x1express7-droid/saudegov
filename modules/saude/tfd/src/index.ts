@@ -58,6 +58,18 @@ export type {
   FiltrosExtratoInput,
 } from './validators/financeiro.schema'
 
+export {
+  buscarPacientePorCnsSchema,
+  vincularPacienteNovoSchema,
+  vincularPacienteExistenteSchema,
+} from './validators/paciente.schema'
+
+export type {
+  BuscarPacientePorCnsInput,
+  VincularPacienteNovoInput,
+  VincularPacienteExistenteInput,
+} from './validators/paciente.schema'
+
 export type {
   CriarEspecialidadeInput,
   AtualizarEspecialidadeInput,
@@ -95,6 +107,8 @@ export {
   criarSaldoTfd,
   buscarExtratoSaldoTfd,
 } from './actions/configuracao'
+
+export { buscarPacientePorCns, vincularPaciente } from './actions/paciente'
 
 export { getEspecialidadesTfd } from './queries/get-especialidades'
 export { getProcedimentosTfd } from './queries/get-procedimentos'

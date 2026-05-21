@@ -8,7 +8,8 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@saude/core-db": "*"
+    "@saude/core-db": "*",
+    "@saude/validators": "*"
   },
   "devDependencies": {
     "@types/node": "^20.19.41"
