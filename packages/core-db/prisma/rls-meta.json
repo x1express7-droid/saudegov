@@ -1,0 +1,136 @@
+{
+  "tables": [
+    {
+      "t": "acompanhantes",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "especialidades",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "itens_despesa",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "motoristas",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "movimentacoes_saldo",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "prestacoes_conta",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "prestadores",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "procedimentos",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "reservas_saldo",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "saldos",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "solicitacoes",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "veiculos",
+      "rls": true,
+      "force": false
+    },
+    {
+      "t": "viagens",
+      "rls": true,
+      "force": false
+    }
+  ],
+  "policies": [
+    {
+      "tablename": "acompanhantes",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "especialidades",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "itens_despesa",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "motoristas",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "movimentacoes_saldo",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "prestacoes_conta",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "prestadores",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "procedimentos",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "reservas_saldo",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "saldos",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "solicitacoes",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "veiculos",
+      "has_using": true,
+      "has_check": true
+    },
+    {
+      "tablename": "viagens",
+      "has_using": true,
+      "has_check": true
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+DELETE FROM saude_tfd.prestacoes_conta WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.itens_despesa WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.viagens WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.acompanhantes WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.movimentacoes_saldo WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.reservas_saldo WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.solicitacoes WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.saldos WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.motoristas WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.veiculos WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.prestadores WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.procedimentos WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM saude_tfd.especialidades WHERE id::text LIKE 'aaaaaaaa-aaaa-4aaa-8aaa-%' OR id::text LIKE 'bbbbbbbb-bbbb-4bbb-8bbb-%';
+DELETE FROM public.processos WHERE protocolo LIKE 'RLS-TEST-%';

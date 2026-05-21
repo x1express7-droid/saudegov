@@ -100,6 +100,19 @@ model Tenant {
   protocolo_sequencias ProtocoloSequencia[]
   pacientes            Paciente[]
   unidades             Unidade[]
+  tfd_especialidades   TfdEspecialidade[]
+  tfd_procedimentos    TfdProcedimento[]
+  tfd_prestadores      TfdPrestador[]
+  tfd_veiculos         TfdVeiculo[]
+  tfd_motoristas       TfdMotorista[]
+  tfd_saldos              TfdSaldo[]
+  tfd_reservas_saldo      TfdReservaSaldo[]
+  tfd_movimentacoes_saldo TfdMovimentacaoSaldo[]
+  tfd_solicitacoes        TfdSolicitacao[]
+  tfd_acompanhantes       TfdAcompanhante[]
+  tfd_viagens             TfdViagem[]
+  tfd_itens_despesa       TfdItemDespesa[]
+  tfd_prestacoes_conta    TfdPrestacaoConta[]
 
   @@map("tenants")
   @@schema("public")
@@ -136,6 +149,12 @@ model User {
   audit_logs                  AuditLog[]
   pacientes                   Paciente[]
   password_resets             PasswordReset[]
+  tfd_motoristas              TfdMotorista[]
+  tfd_movimentacoes_saldo     TfdMovimentacaoSaldo[]
+  tfd_solicitacoes_solicitante TfdSolicitacao[]        @relation("TfdSolicitante")
+  tfd_solicitacoes_decidido    TfdSolicitacao[]        @relation("TfdDecididoPor")
+  tfd_solicitacoes_cancelado   TfdSolicitacao[]        @relation("TfdCanceladoPor")
+  tfd_prestacoes_aprovadas     TfdPrestacaoConta[]     @relation("TfdPrestacaoAprovado")
 
   @@unique([tenant_id, email], map: "uq_users_tenant_email")
   @@unique([tenant_id, cpf], map: "uq_users_tenant_cpf")
@@ -282,6 +301,7 @@ model Processo {
   tramitacoes     Tramitacao[]
   anexos          Anexo[]
   notificacoes    Notificacao[]
+  tfd_solicitacoes TfdSolicitacao[]
 
   @@unique([tenant_id, protocolo], map: "uq_protocolo")
   @@index([tenant_id], map: "idx_processos_tenant_id")
@@ -328,6 +348,8 @@ model Anexo {
   tenant        Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   processo      Processo? @relation(fields: [processo_id], references: [id], onDelete: Cascade)
   uploader      User?     @relation("AnexoUploader", fields: [uploader_id], references: [id], onDelete: SetNull)
+  tfd_solicitacoes_laudo      TfdSolicitacao[] @relation("TfdLaudoAnexo")
+  tfd_itens_despesa_comprovante TfdItemDespesa[] @relation("TfdDespesaComprovante")
 
   @@index([tenant_id], map: "idx_anexos_tenant")
   @@index([processo_id], map: "idx_anexos_processo")
@@ -463,6 +485,7 @@ model Paciente {
   updated_at           DateTime  @updatedAt @db.Timestamptz
   tenant               Tenant    @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   user                 User?     @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  tfd_solicitacoes     TfdSolicitacao[]
 
   @@unique([tenant_id, cpf], map: "uq_paciente_tenant_cpf")
   @@unique([tenant_id, cns], map: "uq_paciente_tenant_cns")
@@ -488,9 +511,433 @@ model Unidade {
   ativa      Boolean     @default(true)
   created_at DateTime    @default(now()) @db.Timestamptz
   updated_at DateTime    @updatedAt @db.Timestamptz
-  tenant     Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  tenant           Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  tfd_solicitacoes TfdSolicitacao[]
 
   @@index([tenant_id], map: "idx_base_unidades_tenant")
   @@map("unidades")
   @@schema("saude_base")
+}
+
+model TfdEspecialidade {
+  id           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id    String           @db.Uuid
+  nome         String           @db.VarChar(200)
+  ativa        Boolean          @default(true)
+  created_at   DateTime         @default(now()) @db.Timestamptz
+  updated_at   DateTime         @updatedAt @db.Timestamptz
+  tenant         Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  procedimentos  TfdProcedimento[]
+  tfd_solicitacoes TfdSolicitacao[]
+
+  @@index([tenant_id], map: "idx_tfd_especialidades_tenant")
+  @@map("especialidades")
+  @@schema("saude_tfd")
+}
+
+model TfdProcedimento {
+  id               String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id        String           @db.Uuid
+  especialidade_id String           @db.Uuid
+  nome             String           @db.VarChar(200)
+  codigo_sigtap    String?          @db.VarChar(20)
+  ativo            Boolean          @default(true)
+  created_at       DateTime         @default(now()) @db.Timestamptz
+  updated_at       DateTime         @updatedAt @db.Timestamptz
+  tenant           Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  especialidade    TfdEspecialidade @relation(fields: [especialidade_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id], map: "idx_tfd_procedimentos_tenant")
+  @@map("procedimentos")
+  @@schema("saude_tfd")
+}
+
+model TfdPrestador {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String   @db.Uuid
+  nome           String   @db.VarChar(200)
+  cnpj           String?  @db.VarChar(14)
+  cnes           String?  @db.VarChar(7)
+  cidade         String   @db.VarChar(200)
+  estado         String   @db.Char(2)
+  telefone       String?  @db.VarChar(20)
+  especialidades Json     @default("[]")
+  ativo          Boolean  @default(true)
+  created_at     DateTime @default(now()) @db.Timestamptz
+  updated_at     DateTime @updatedAt @db.Timestamptz
+  tenant           Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  tfd_solicitacoes TfdSolicitacao[]
+
+  @@index([tenant_id], map: "idx_tfd_prestadores_tenant")
+  @@map("prestadores")
+  @@schema("saude_tfd")
+}
+
+model TfdVeiculo {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id              String   @db.Uuid
+  placa                  String   @db.VarChar(10)
+  modelo                 String   @db.VarChar(100)
+  capacidade_passageiros Int      @default(1)
+  ativo                  Boolean  @default(true)
+  created_at             DateTime @default(now()) @db.Timestamptz
+  updated_at             DateTime @updatedAt @db.Timestamptz
+  tenant                 Tenant      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  viagens                TfdViagem[]
+
+  @@unique([tenant_id, placa], map: "uq_veiculo_placa")
+  @@index([tenant_id], map: "idx_tfd_veiculos_tenant")
+  @@map("veiculos")
+  @@schema("saude_tfd")
+}
+
+model TfdMotorista {
+  id            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id     String   @db.Uuid
+  user_id       String   @db.Uuid
+  cnh           String   @db.VarChar(20)
+  cnh_categoria String   @db.VarChar(5)
+  cnh_validade  DateTime @db.Date
+  ativo         Boolean  @default(true)
+  created_at    DateTime @default(now()) @db.Timestamptz
+  updated_at    DateTime @updatedAt @db.Timestamptz
+  tenant        Tenant   @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  viagens       TfdViagem[]
+
+  @@unique([tenant_id, user_id], map: "uq_motorista_user")
+  @@index([tenant_id], map: "idx_tfd_motoristas_tenant")
+  @@map("motoristas")
+  @@schema("saude_tfd")
+}
+
+enum TfdFonteRecurso {
+  FEDERAL_FNS
+  ESTADUAL
+  MUNICIPAL_PROPRIO
+  EMENDA_PARLAMENTAR
+
+  @@map("fonte_recurso")
+  @@schema("saude_tfd")
+}
+
+enum TfdReservaStatus {
+  ATIVA
+  CONSUMIDA
+  LIBERADA
+
+  @@map("reserva_status")
+  @@schema("saude_tfd")
+}
+
+enum TfdMovimentacaoTipo {
+  CREDITO
+  RESERVA
+  CONSUMO
+  LIBERACAO
+  ESTORNO
+
+  @@map("movimentacao_tipo")
+  @@schema("saude_tfd")
+}
+
+model TfdSaldo {
+  id                 String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id          String                @db.Uuid
+  descricao          String                @db.Text
+  fonte              TfdFonteRecurso
+  valor_total        Decimal               @db.Decimal(12, 2)
+  competencia_inicio DateTime              @db.Date
+  competencia_fim    DateTime              @db.Date
+  ativo              Boolean               @default(true)
+  created_at         DateTime              @default(now()) @db.Timestamptz
+  updated_at         DateTime              @updatedAt @db.Timestamptz
+  tenant             Tenant                @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  reservas           TfdReservaSaldo[]
+  movimentacoes      TfdMovimentacaoSaldo[]
+  tfd_solicitacoes   TfdSolicitacao[]
+  prestacoes_conta   TfdPrestacaoConta[]
+
+  @@index([tenant_id], map: "idx_tfd_saldos_tenant")
+  @@map("saldos")
+  @@schema("saude_tfd")
+}
+
+model TfdReservaSaldo {
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id       String           @db.Uuid
+  saldo_id        String           @db.Uuid
+  solicitacao_id  String           @db.Uuid
+  valor_estimado  Decimal          @db.Decimal(12, 2)
+  status          TfdReservaStatus @default(ATIVA)
+  consumido_at    DateTime?        @db.Timestamptz
+  created_at      DateTime         @default(now()) @db.Timestamptz
+  updated_at      DateTime         @updatedAt @db.Timestamptz
+  tenant          Tenant           @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  saldo           TfdSaldo         @relation(fields: [saldo_id], references: [id])
+  solicitacao     TfdSolicitacao   @relation(fields: [solicitacao_id], references: [id])
+
+  @@index([tenant_id], map: "idx_tfd_reservas_saldo_tenant")
+  @@map("reservas_saldo")
+  @@schema("saude_tfd")
+}
+
+model TfdMovimentacaoSaldo {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String              @db.Uuid
+  saldo_id       String              @db.Uuid
+  tipo           TfdMovimentacaoTipo
+  valor          Decimal             @db.Decimal(12, 2)
+  solicitacao_id String?             @db.Uuid
+  descricao      String              @db.Text
+  usuario_id     String              @db.Uuid
+  created_at     DateTime            @default(now()) @db.Timestamptz
+  tenant         Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  saldo          TfdSaldo            @relation(fields: [saldo_id], references: [id])
+  usuario        User                @relation(fields: [usuario_id], references: [id])
+
+  @@index([tenant_id], map: "idx_tfd_movimentacoes_saldo_tenant")
+  @@map("movimentacoes_saldo")
+  @@schema("saude_tfd")
+}
+
+enum TfdStatusSolicitacao {
+  RASCUNHO
+  ENVIADO
+  EM_ANALISE
+  PENDENTE
+  APROVADO
+  NEGADO
+  AGENDADO
+  EM_VIAGEM
+  AGUARDANDO_PC
+  PC_EM_ANALISE
+  CONCLUIDO
+  CANCELADO
+
+  @@map("status_solicitacao")
+  @@schema("saude_tfd")
+}
+
+enum TfdTipoAtendimento {
+  CONSULTA
+  RETORNO
+  EXAME
+  CIRURGIA
+
+  @@map("tipo_atendimento")
+  @@schema("saude_tfd")
+}
+
+enum TfdUrgencia {
+  BAIXA
+  INTERMEDIARIA
+  GRAVE
+  MUITO_URGENTE
+
+  @@map("urgencia")
+  @@schema("saude_tfd")
+}
+
+enum TfdRelacaoAcompanhante {
+  CONJUGE
+  FILHO_A
+  PAI_MAE
+  RESPONSAVEL_LEGAL
+  CUIDADOR
+  OUTRO
+
+  @@map("relacao_acompanhante")
+  @@schema("saude_tfd")
+}
+
+model TfdSolicitacao {
+  id                      String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id               String               @db.Uuid
+  processo_id             String               @db.Uuid
+  paciente_id             String               @db.Uuid
+  solicitante_id          String               @db.Uuid
+  unidade_origem_id       String?              @db.Uuid
+  especialidade_id        String?              @db.Uuid
+  prestador_id            String?              @db.Uuid
+  procedimentos           Json                 @default("[]")
+  tipo_atendimento        TfdTipoAtendimento
+  solicitacao_origem_id   String?              @db.Uuid
+  urgencia                TfdUrgencia          @default(BAIXA)
+  status                  TfdStatusSolicitacao @default(RASCUNHO)
+  cid_principal           String?              @db.VarChar(10)
+  diagnostico             String?              @db.Text
+  laudo_anexo_id          String?              @db.Uuid
+  acompanhante_necessario Boolean              @default(false)
+  fundamentacao_decisao   String?              @db.Text
+  decidido_por_id         String?              @db.Uuid
+  decidido_at             DateTime?            @db.Timestamptz
+  saldo_id                String?              @db.Uuid
+  motivo_cancelamento     String?              @db.Text
+  cancelado_por_id        String?              @db.Uuid
+  cancelado_at            DateTime?            @db.Timestamptz
+  created_at              DateTime             @default(now()) @db.Timestamptz
+  updated_at              DateTime             @updatedAt @db.Timestamptz
+  tenant                  Tenant               @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  processo                Processo             @relation(fields: [processo_id], references: [id], onDelete: Cascade)
+  paciente                Paciente             @relation(fields: [paciente_id], references: [id])
+  solicitante             User                 @relation("TfdSolicitante", fields: [solicitante_id], references: [id])
+  unidade_origem          Unidade?             @relation(fields: [unidade_origem_id], references: [id], onDelete: SetNull)
+  especialidade           TfdEspecialidade?    @relation(fields: [especialidade_id], references: [id], onDelete: SetNull)
+  prestador               TfdPrestador?        @relation(fields: [prestador_id], references: [id], onDelete: SetNull)
+  solicitacao_origem      TfdSolicitacao?      @relation("TfdSolicitacaoOrigem", fields: [solicitacao_origem_id], references: [id], onDelete: SetNull)
+  solicitacoes_retorno    TfdSolicitacao[]     @relation("TfdSolicitacaoOrigem")
+  laudo_anexo             Anexo?               @relation("TfdLaudoAnexo", fields: [laudo_anexo_id], references: [id], onDelete: SetNull)
+  decidido_por            User?                @relation("TfdDecididoPor", fields: [decidido_por_id], references: [id], onDelete: SetNull)
+  saldo                   TfdSaldo?            @relation(fields: [saldo_id], references: [id], onDelete: SetNull)
+  cancelado_por           User?                @relation("TfdCanceladoPor", fields: [cancelado_por_id], references: [id], onDelete: SetNull)
+  reservas                TfdReservaSaldo[]
+  acompanhantes           TfdAcompanhante[]
+  viagens                 TfdViagem[]
+
+  @@index([tenant_id], map: "idx_tfd_sol_tenant")
+  @@index([processo_id], map: "idx_tfd_sol_processo")
+  @@index([paciente_id], map: "idx_tfd_sol_paciente")
+  @@index([tenant_id, status], map: "idx_tfd_sol_status")
+  @@index([tenant_id, urgencia], map: "idx_tfd_sol_urgencia")
+  @@index([solicitacao_origem_id], map: "idx_tfd_sol_origem")
+  @@map("solicitacoes")
+  @@schema("saude_tfd")
+}
+
+model TfdAcompanhante {
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id      String                 @db.Uuid
+  solicitacao_id String                 @db.Uuid
+  nome           String                 @db.VarChar(200)
+  cpf            String                 @db.VarChar(11)
+  relacao        TfdRelacaoAcompanhante
+  telefone       String?                @db.VarChar(20)
+  created_at     DateTime               @default(now()) @db.Timestamptz
+  updated_at     DateTime               @updatedAt @db.Timestamptz
+  tenant         Tenant                 @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  solicitacao    TfdSolicitacao         @relation(fields: [solicitacao_id], references: [id], onDelete: Cascade)
+  viagens        TfdViagem[]
+
+  @@index([tenant_id], map: "idx_tfd_acomp_tenant")
+  @@index([solicitacao_id], map: "idx_tfd_acomp_solicitacao")
+  @@map("acompanhantes")
+  @@schema("saude_tfd")
+}
+
+enum TfdViagemStatus {
+  AGENDADA
+  REALIZADA
+  CANCELADA
+
+  @@map("viagem_status")
+  @@schema("saude_tfd")
+}
+
+enum TfdTipoDespesa {
+  TRANSPORTE
+  ALIMENTACAO
+  HOSPEDAGEM
+  OUTRO
+
+  @@map("tipo_despesa")
+  @@schema("saude_tfd")
+}
+
+enum TfdResponsavelPagamento {
+  MUNICIPIO
+  PACIENTE_REEMBOLSO
+
+  @@map("responsavel_pagamento")
+  @@schema("saude_tfd")
+}
+
+enum TfdPrestacaoStatus {
+  PENDENTE
+  ENVIADA
+  APROVADA
+  REJEITADA
+
+  @@map("prestacao_status")
+  @@schema("saude_tfd")
+}
+
+model TfdViagem {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String          @db.Uuid
+  solicitacao_id        String          @db.Uuid
+  sequencia             Int             @default(1)
+  data_viagem           DateTime        @db.Date
+  hora_saida            DateTime?       @db.Time
+  veiculo_id            String?         @db.Uuid
+  motorista_id          String?         @db.Uuid
+  acompanhante_id       String?         @db.Uuid
+  observacoes           String?         @db.Text
+  status                TfdViagemStatus @default(AGENDADA)
+  retorno_registrado_at DateTime?       @db.Timestamptz
+  created_at            DateTime        @default(now()) @db.Timestamptz
+  updated_at            DateTime        @updatedAt @db.Timestamptz
+  tenant                Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  solicitacao           TfdSolicitacao  @relation(fields: [solicitacao_id], references: [id], onDelete: Cascade)
+  veiculo               TfdVeiculo?     @relation(fields: [veiculo_id], references: [id], onDelete: SetNull)
+  motorista             TfdMotorista?   @relation(fields: [motorista_id], references: [id], onDelete: SetNull)
+  acompanhante          TfdAcompanhante? @relation(fields: [acompanhante_id], references: [id], onDelete: SetNull)
+  itens_despesa         TfdItemDespesa[]
+  prestacao_conta       TfdPrestacaoConta?
+
+  @@index([tenant_id], map: "idx_tfd_viagens_tenant")
+  @@index([solicitacao_id], map: "idx_tfd_viagens_solicitacao")
+  @@index([tenant_id, data_viagem], map: "idx_tfd_viagens_data")
+  @@index([motorista_id], map: "idx_tfd_viagens_motorista")
+  @@index([tenant_id, status], map: "idx_tfd_viagens_status")
+  @@map("viagens")
+  @@schema("saude_tfd")
+}
+
+model TfdItemDespesa {
+  id                    String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String                  @db.Uuid
+  viagem_id             String                  @db.Uuid
+  tipo                  TfdTipoDespesa
+  descricao             String?                 @db.VarChar(300)
+  valor                 Decimal                 @db.Decimal(10, 2)
+  comprovante_anexo_id  String?                 @db.Uuid
+  responsavel_pagamento TfdResponsavelPagamento @default(MUNICIPIO)
+  created_at            DateTime                @default(now()) @db.Timestamptz
+  updated_at            DateTime                @updatedAt @db.Timestamptz
+  tenant                Tenant                  @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  viagem                TfdViagem               @relation(fields: [viagem_id], references: [id], onDelete: Cascade)
+  comprovante_anexo     Anexo?                  @relation("TfdDespesaComprovante", fields: [comprovante_anexo_id], references: [id], onDelete: SetNull)
+
+  @@index([tenant_id], map: "idx_tfd_itens_despesa_tenant")
+  @@index([viagem_id], map: "idx_tfd_despesas_viagem")
+  @@map("itens_despesa")
+  @@schema("saude_tfd")
+}
+
+model TfdPrestacaoConta {
+  id                  String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id           String             @db.Uuid
+  viagem_id           String             @unique @db.Uuid
+  saldo_id            String?            @db.Uuid
+  status              TfdPrestacaoStatus @default(PENDENTE)
+  comprovantes_vistos Json               @default("[]")
+  aprovado_por_id     String?            @db.Uuid
+  aprovado_at         DateTime?          @db.Timestamptz
+  observacoes_gestor  String?            @db.Text
+  prazo_envio_at      DateTime           @db.Timestamptz
+  created_at          DateTime           @default(now()) @db.Timestamptz
+  updated_at          DateTime           @updatedAt @db.Timestamptz
+  tenant              Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  viagem              TfdViagem          @relation(fields: [viagem_id], references: [id], onDelete: Cascade)
+  saldo               TfdSaldo?          @relation(fields: [saldo_id], references: [id], onDelete: SetNull)
+  aprovado_por        User?              @relation("TfdPrestacaoAprovado", fields: [aprovado_por_id], references: [id], onDelete: SetNull)
+
+  @@unique([tenant_id, viagem_id], map: "uq_prestacao_viagem")
+  @@index([tenant_id], map: "idx_tfd_prestacoes_conta_tenant")
+  @@index([viagem_id], map: "idx_tfd_prestacoes_viagem")
+  @@index([tenant_id, status], map: "idx_tfd_prestacoes_status")
+  @@index([prazo_envio_at], map: "idx_tfd_prestacoes_prazo")
+  @@map("prestacoes_conta")
+  @@schema("saude_tfd")
 }

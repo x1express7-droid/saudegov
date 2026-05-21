@@ -1,5 +1,6 @@
 import { PrismaClient, type UserRole } from '@prisma/client'
 import { hash } from 'bcryptjs'
+import { seedSprint11TfdPlatformFeatures } from './seeds/sprint-1-1-platform-features'
 
 const prisma = new PrismaClient()
 
@@ -604,6 +605,11 @@ async function main() {
   const organogramaFeaturesCount = await seedPlatformFeaturesSprint06Organograma()
   console.log(
     `\n📌 platform_features (Sprint 0.6 organograma): ${organogramaFeaturesCount} entradas inseridas/atualizadas.`
+  )
+
+  const sprint11TfdFeaturesCount = await seedSprint11TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 1.1 TFD): ${sprint11TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
   )
 
   console.log('✅ Seed concluído.')

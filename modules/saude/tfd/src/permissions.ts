@@ -18,6 +18,7 @@ export const TFD_PERMISSIONS = {
   EXPORTAR_RELATORIO: 'saude.tfd.exportar_relatorio',
   CONFIGURAR: 'saude.tfd.configurar',
   CONFIGURAR_ESPECIALIDADES: 'saude.tfd.configurar_especialidades',
+  CONFIGURAR_PROCEDIMENTOS: 'saude.tfd.configurar_procedimentos',
   CONFIGURAR_PRESTADORES: 'saude.tfd.configurar_prestadores',
 } as const
 
@@ -127,7 +128,13 @@ export const TFD_PERMISSION_DEFINITIONS: readonly TfdPermissionDefinition[] = [
   {
     key: TFD_PERMISSIONS.CONFIGURAR_ESPECIALIDADES,
     label: 'Configurar especialidades',
-    descricao: 'CRUD de especialidades e procedimentos (ADMIN).',
+    descricao: 'CRUD de especialidades médicas (ADMIN).',
+    minRole: 'ADMIN',
+  },
+  {
+    key: TFD_PERMISSIONS.CONFIGURAR_PROCEDIMENTOS,
+    label: 'Configurar procedimentos',
+    descricao: 'CRUD de procedimentos vinculados a especialidades (ADMIN).',
     minRole: 'ADMIN',
   },
   {

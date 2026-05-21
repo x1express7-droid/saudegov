@@ -133,21 +133,21 @@ FASE 4 → Módulo UBS
 ## 3. FASE 1 — MVP TFD (Fluxo Completo)
 
 ### Sprint 1.1 — Schema TFD e Configurações
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Migration: `saude_tfd` — especialidades, procedimentos, prestadores
-- [ ] Migration: veiculos, motoristas
-- [ ] Migration: saldos, reservas_saldo, movimentacoes_saldo
-- [ ] Migration: solicitacoes, acompanhantes
-- [ ] Migration: viagens, itens_despesa, prestacoes_conta
-- [ ] RLS em todas as tabelas do módulo TFD
-- [ ] CRUD especialidades (Admin)
-- [ ] CRUD procedimentos (Admin)
-- [ ] CRUD prestadores externos (Admin)
-- [ ] CRUD veículos (Admin/Gestor)
-- [ ] CRUD motoristas com alerta CNH vencendo (Admin/Gestor)
-- [ ] `platform_features` populado com funcionalidades da sprint
+- [x] Migration: `saude_tfd` — especialidades, procedimentos, prestadores
+- [x] Migration: veiculos, motoristas
+- [x] Migration: saldos, reservas_saldo, movimentacoes_saldo
+- [x] Migration: solicitacoes, acompanhantes
+- [x] Migration: viagens, itens_despesa, prestacoes_conta
+- [x] RLS em todas as tabelas do módulo TFD
+- [x] CRUD especialidades (Admin)
+- [x] CRUD procedimentos (Admin)
+- [x] CRUD prestadores externos (Admin)
+- [x] CRUD veículos (Admin/Gestor)
+- [x] CRUD motoristas com alerta CNH vencendo (Admin/Gestor)
+- [x] `platform_features` populado com funcionalidades da sprint
 
 **Critério de conclusão:** Admin configura TFD completo (especialidades, prestadores, frota).
 
@@ -313,7 +313,7 @@ FASE 4 → Módulo UBS
 | 0.4 | Painel Dev — municípios | ✅ Concluído |
 | 0.5 | UI base e design system | ✅ Concluído |
 | 0.6 | Configuração do município | ✅ Concluído |
-| 1.1 | Schema TFD e configurações | 📋 Planejado |
+| 1.1 | Schema TFD e configurações | ✅ Concluído |
 | 1.2 | Gestão financeira TFD | 📋 Planejado |
 | 1.3 | Paciente e CADSUS stub | 📋 Planejado |
 | 1.4 | Abertura de solicitação | 📋 Planejado |

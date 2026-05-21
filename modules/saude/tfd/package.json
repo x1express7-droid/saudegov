@@ -8,6 +8,13 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@saude/core-auth": "*"
+    "@saude/core-auth": "*",
+    "@saude/core-db": "*",
+    "@saude/core-documents": "*",
+    "@saude/validators": "*",
+    "zod": "^3.25.76"
+  },
+  "peerDependencies": {
+    "next": ">=15"
   }
 }
