@@ -6,5 +6,11 @@
   "types": "./src/index.ts",
   "scripts": {
     "type-check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@saude/core-db": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.41"
   }
 }

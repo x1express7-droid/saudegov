@@ -15,6 +15,9 @@ export default async function ServidorLayout({
   const municipalityName =
     tenant.theme.municipalityName ?? tenant.theme.municipality_name ?? 'Município'
 
+  const showTfdConfigNav =
+    session.user.role === 'GESTOR' || session.user.role === 'ADMIN'
+
   return (
     <AppShell
       pathname={pathname}
@@ -22,6 +25,7 @@ export default async function ServidorLayout({
       municipalityName={municipalityName}
       userName={session.user.name}
       logoUrl={tenant.theme.logoUrl ?? tenant.theme.logo_url}
+      showTfdConfigNav={showTfdConfigNav}
     >
       {children}
     </AppShell>

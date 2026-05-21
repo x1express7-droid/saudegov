@@ -6,7 +6,7 @@ export async function getEspecialidadesTfd(
   filtros: TfdListagemFiltros = {}
 ): Promise<TfdPaginatedResult<TfdEspecialidadeListItem>> {
   await assertModuleActive('saude', 'tfd')
-  const session = await requireTenantRole('ADMIN')
+  const session = await requireTenantRole('SERVIDOR')
 
   const tenantId = session.user.tenantId!
   const page = filtros.page ?? 1

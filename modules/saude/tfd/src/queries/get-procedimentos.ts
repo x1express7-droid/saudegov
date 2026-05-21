@@ -10,7 +10,7 @@ export async function getProcedimentosTfd(
   filtros: GetProcedimentosFiltros = {}
 ): Promise<TfdPaginatedResult<TfdProcedimentoListItem>> {
   await assertModuleActive('saude', 'tfd')
-  const session = await requireTenantRole('ADMIN')
+  const session = await requireTenantRole('SERVIDOR')
 
   const tenantId = session.user.tenantId!
   const page = filtros.page ?? 1

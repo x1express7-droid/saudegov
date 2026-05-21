@@ -23,6 +23,7 @@ export default async function AdminLayout({
       userName={session.user.name}
       logoUrl={tenant.theme.logoUrl ?? tenant.theme.logo_url}
       showAdminNav
+      showTfdConfigNav
     >
       {children}
     </AppShell>

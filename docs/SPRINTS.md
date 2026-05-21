@@ -189,19 +189,19 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 1.4 — Abertura de Solicitação TFD
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Formulário de nova solicitação (multi-step ou seções)
-- [ ] Server Action `abrirSolicitacaoTfd` — cria RASCUNHO
-- [ ] Validação: RETORNO exige `solicitacaoOrigemId`
-- [ ] Validação: CPF acompanhante ≠ CPF paciente
-- [ ] Upload de laudo médico (PDF/JPEG/PNG, 10MB)
-- [ ] Server Action `enviarSolicitacaoTfd` — RASCUNHO → ENVIADO
-- [ ] Geração de protocolo `2025-SAUDE-TFD-000001`
-- [ ] Notificação para gestor + servidores do setor
-- [ ] Notificação extra para `MUITO_URGENTE`
-- [ ] Listagem de solicitações com filtros e paginação
+- [x] Formulário de nova solicitação (multi-step ou seções)
+- [x] Server Action `abrirSolicitacaoTfd` — cria RASCUNHO
+- [x] Validação: RETORNO exige `solicitacaoOrigemId`
+- [x] Validação: CPF acompanhante ≠ CPF paciente
+- [x] Upload de laudo médico (PDF/JPEG/PNG, 10MB)
+- [x] Server Action `enviarSolicitacaoTfd` — RASCUNHO → ENVIADO
+- [x] Geração de protocolo `2025-SAUDE-TFD-000001`
+- [x] Notificação para gestor + servidores do setor
+- [x] Notificação extra para `MUITO_URGENTE`
+- [x] Listagem de solicitações com filtros e paginação
 
 **Critério de conclusão:** fluxo completo de abertura → envio → aparece na fila.
 
@@ -334,7 +334,7 @@ FASE 4 → Módulo UBS
 | 1.1 | Schema TFD e configurações | ✅ Concluído |
 | 1.2 | Gestão financeira TFD | ✅ Concluído |
 | 1.3 | Paciente e CADSUS stub | ✅ Concluído |
-| 1.4 | Abertura de solicitação | 📋 Planejado |
+| 1.4 | Abertura de solicitação | ✅ Concluído |
 | 1.5 | Regulação e decisão | 📋 Planejado |
 | 1.6 | Agendamento de viagem | 📋 Planejado |
 | 1.7 | Prestação de contas | 📋 Planejado |

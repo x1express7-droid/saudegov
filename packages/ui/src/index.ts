@@ -49,7 +49,11 @@ export { Select } from './components/select'
 export type { SelectOption, SelectProps } from './components/select'
 
 export { Sidebar } from './components/sidebar'
-export type { SidebarNavItem, SidebarProps } from './components/sidebar'
+export type {
+  SidebarNavChildItem,
+  SidebarNavItem,
+  SidebarProps,
+} from './components/sidebar'
 
 export { Spinner } from './components/spinner'
 export type { SpinnerProps } from './components/spinner'

@@ -27,7 +27,24 @@ export type {
   TfdFonteRecursoValor,
   SaldoListItem,
   ExtratoMovimentacaoItem,
+  TfdSolicitacaoListItem,
+  TfdSolicitacaoOrigemRetornoItem,
+  AbrirSolicitacaoOutput,
+  EnviarSolicitacaoOutput,
 } from './types/tfd.types'
+
+export {
+  abrirSolicitacaoSchema,
+  enviarSolicitacaoSchema,
+} from './validators/solicitacao.schema'
+
+export type {
+  AbrirSolicitacaoInput,
+  EnviarSolicitacaoInput,
+  TfdTipoAtendimento,
+  TfdUrgencia,
+  TfdRelacaoAcompanhante,
+} from './validators/solicitacao.schema'
 
 export {
   criarEspecialidadeSchema,
@@ -109,6 +126,7 @@ export {
 } from './actions/configuracao'
 
 export { buscarPacientePorCns, vincularPaciente } from './actions/paciente'
+export { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from './actions/solicitacao'
 
 export { getEspecialidadesTfd } from './queries/get-especialidades'
 export { getProcedimentosTfd } from './queries/get-procedimentos'
@@ -124,6 +142,10 @@ export { getSaldosTfd, getSaldoListItemById } from './queries/get-saldos'
 export type { GetSaldosFiltros } from './queries/get-saldos'
 export { getExtratoSaldo, ExtratoSaldoError } from './queries/get-extrato'
 export type { GetExtratoSaldoResult } from './queries/get-extrato'
+export { getSolicitacoesTfd } from './queries/get-solicitacoes'
+export type { GetSolicitacoesFiltros } from './queries/get-solicitacoes'
+export { getSolicitacoesOrigemRetornoTfd } from './queries/get-solicitacoes-origem-retorno'
+export type { GetSolicitacoesOrigemRetornoInput } from './queries/get-solicitacoes-origem-retorno'
 export { isCnhVencida, isCnhVencendoEmBreve } from './utils/prazos'
 export { calcSaldoDisponivel } from './utils/saldo'
 export type { CalcSaldoDisponivelInput, CalcSaldoDisponivelResult } from './utils/saldo'

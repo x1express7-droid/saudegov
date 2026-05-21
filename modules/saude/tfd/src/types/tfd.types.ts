@@ -169,3 +169,46 @@ export interface ExtratoMovimentacaoItem {
   usuarioNome: string
   criadoEm: string
 }
+
+// --- Solicitações TFD (Sprint 1.4) ---
+
+/** Item de listagem — sem CID, diagnóstico, CPF ou CNS. @see docs/API_CONTRACTS.md §7.1 */
+export interface TfdSolicitacaoListItem {
+  id: string
+  protocolo: string
+  status: string
+  urgencia: string
+  especialidade: string
+  prestador: {
+    nome: string
+    cidade: string
+    estado: string
+  }
+  paciente: {
+    nome: string
+  }
+  tipoAtendimento: string
+  criadoEm: string
+}
+
+/** Retorno de sucesso de `abrirSolicitacaoTfd`. */
+export interface AbrirSolicitacaoOutput {
+  solicitacaoId: string
+  protocolo: string
+}
+
+/** Sucesso de `enviarSolicitacaoTfd` sem payload (`ActionResponse<void>`). */
+export type EnviarSolicitacaoOutput = undefined
+
+/** Opção de solicitação anterior para vínculo de RETORNO — sem dados sensíveis. */
+export interface TfdSolicitacaoOrigemRetornoItem {
+  id: string
+  protocolo: string
+  especialidade: string
+  prestador: {
+    nome: string
+    cidade: string
+    estado: string
+  }
+  concluidoEm: string
+}

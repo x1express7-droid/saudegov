@@ -11,6 +11,7 @@
     "@saude/core-auth": "*",
     "@saude/core-db": "*",
     "@saude/core-documents": "*",
+    "@saude/core-notifications": "*",
     "@saude/validators": "*",
     "zod": "^3.25.76"
   },

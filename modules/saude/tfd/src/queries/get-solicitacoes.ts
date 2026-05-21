@@ -1,0 +1,115 @@
+import { assertModuleActive, requireTenantRole } from '@saude/core-auth'
+import { getPrismaForTenant } from '@saude/core-db'
+import type { TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
+
+import type { TfdSolicitacaoListItem } from '../types/tfd.types'
+
+const MAX_PER_PAGE = 100
+const DEFAULT_PER_PAGE = 20
+
+export interface GetSolicitacoesFiltros {
+  status?: TfdStatusSolicitacao
+  urgencia?: TfdUrgencia
+  /** Busca parcial em `processo.protocolo` (case-insensitive). */
+  protocolo?: string
+  page?: number
+  perPage?: number
+}
+
+type SolicitacaoListRow = {
+  id: string
+  status: TfdStatusSolicitacao
+  urgencia: TfdUrgencia
+  tipo_atendimento: string
+  created_at: Date
+  paciente: { nome: string }
+  especialidade: { nome: string } | null
+  prestador: { nome: string; cidade: string; estado: string } | null
+  processo: { protocolo: string }
+}
+
+function mapToListItem(row: SolicitacaoListRow): TfdSolicitacaoListItem {
+  return {
+    id: row.id,
+    protocolo: row.processo.protocolo,
+    status: row.status,
+    urgencia: row.urgencia,
+    especialidade: row.especialidade?.nome ?? '—',
+    prestador: {
+      nome: row.prestador?.nome ?? '—',
+      cidade: row.prestador?.cidade ?? '—',
+      estado: row.prestador?.estado ?? '—',
+    },
+    paciente: {
+      nome: row.paciente.nome,
+    },
+    tipoAtendimento: row.tipo_atendimento,
+    criadoEm: row.created_at.toISOString(),
+  }
+}
+
+const solicitacaoListSelect = {
+  id: true,
+  status: true,
+  urgencia: true,
+  tipo_atendimento: true,
+  created_at: true,
+  paciente: { select: { nome: true } },
+  especialidade: { select: { nome: true } },
+  prestador: { select: { nome: true, cidade: true, estado: true } },
+  processo: { select: { protocolo: true } },
+} as const
+
+export async function getSolicitacoesTfd(
+  filtros: GetSolicitacoesFiltros = {}
+): Promise<{ items: TfdSolicitacaoListItem[]; total: number }> {
+  await assertModuleActive('saude', 'tfd')
+  const session = await requireTenantRole('SERVIDOR')
+
+  const tenantId = session.user.tenantId!
+  const page = Math.max(1, filtros.page ?? 1)
+  const perPage = Math.min(MAX_PER_PAGE, Math.max(1, filtros.perPage ?? DEFAULT_PER_PAGE))
+
+  if (session.user.role === 'SERVIDOR' && !session.user.setorId) {
+    return { items: [], total: 0 }
+  }
+
+  const db = await getPrismaForTenant(tenantId)
+
+  const protocoloBusca = filtros.protocolo?.trim()
+
+  const processoWhere = {
+    ...(session.user.role === 'SERVIDOR' ? { setor_id: session.user.setorId! } : {}),
+    ...(protocoloBusca
+      ? {
+          protocolo: {
+            contains: protocoloBusca,
+            mode: 'insensitive' as const,
+          },
+        }
+      : {}),
+  }
+
+  const whereClause = {
+    tenant_id: tenantId,
+    ...(Object.keys(processoWhere).length > 0 ? { processo: processoWhere } : {}),
+    ...(filtros.status ? { status: filtros.status } : {}),
+    ...(filtros.urgencia ? { urgencia: filtros.urgencia } : {}),
+  }
+
+  const [rows, total] = await Promise.all([
+    db.tfdSolicitacao.findMany({
+      where: whereClause,
+      select: solicitacaoListSelect,
+      orderBy: { created_at: 'desc' },
+      skip: (page - 1) * perPage,
+      take: perPage,
+    }),
+    db.tfdSolicitacao.count({ where: whereClause }),
+  ])
+
+  return {
+    items: rows.map(mapToListItem),
+    total,
+  }
+}
