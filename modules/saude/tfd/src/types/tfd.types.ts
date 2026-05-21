@@ -200,6 +200,48 @@ export interface AbrirSolicitacaoOutput {
 /** Sucesso de `enviarSolicitacaoTfd` sem payload (`ActionResponse<void>`). */
 export type EnviarSolicitacaoOutput = undefined
 
+/** Detalhe de solicitação TFD — campos clínicos opcionais (permissão analisar_laudo). */
+export interface TfdSolicitacaoDetalhe {
+  id: string
+  protocolo: string
+  status: string
+  urgencia: string
+  tipoAtendimento: string
+  createdAt: string
+  updatedAt: string
+  especialidade: { id: string; nome: string } | null
+  procedimentos: Array<{ id: string; nome: string }>
+  prestador: { id: string; nome: string; cidade: string; estado: string } | null
+  paciente: {
+    id: string
+    nome: string
+    dataNascimento: string | null
+    cns: string | null
+  }
+  acompanhante: { nome: string; relacao: string } | null
+  solicitante: { id: string; nome: string }
+  tramitacoes: Array<{
+    tipo: string
+    observacao: string
+    createdAt: string
+    usuario: { nome: string | null }
+  }>
+  laudoAnexoId: string | null
+  solicitacaoOrigemId: string | null
+  reservaSaldo: { id: string; valor: number; status: string } | null
+  cidPrincipal?: string | null
+  diagnostico?: string | null
+  observacoesClinicas?: string | null
+}
+
+/** Alerta operacional — complemento pendente há mais de 30 dias (gestor). */
+export interface AlertaPendente30Dias {
+  id: string
+  protocolo: string
+  paciente: { nome: string }
+  complementoSolicitadoEm: string
+}
+
 /** Opção de solicitação anterior para vínculo de RETORNO — sem dados sensíveis. */
 export interface TfdSolicitacaoOrigemRetornoItem {
   id: string

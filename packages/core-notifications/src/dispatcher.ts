@@ -1,8 +1,13 @@
 import type { PrismaClient, UserRole } from '@prisma/client'
 import { getPrismaForTenant } from '@saude/core-db'
 
+import { buildAnaliseTfdIniciadaMessage } from './templates/analise-tfd-iniciada'
+import { buildComplementoTfdEnviadoMessage } from './templates/complemento-tfd-enviado'
+import { buildComplementoTfdSolicitadoMessage } from './templates/complemento-tfd-solicitado'
+import { buildSolicitacaoTfdAprovadaMessage } from './templates/solicitacao-tfd-aprovada'
 import { buildSolicitacaoTfdEnviadaMessage } from './templates/solicitacao-tfd-enviada'
 import { buildSolicitacaoTfdMuitoUrgenteMessage } from './templates/solicitacao-tfd-muito-urgente'
+import { buildSolicitacaoTfdNegadaMessage } from './templates/solicitacao-tfd-negada'
 import {
   NOTIFICATION_EVENTS,
   type DispararNotificacaoInput,
@@ -19,6 +24,16 @@ function buildMessage(
       return buildSolicitacaoTfdEnviadaMessage(input.context)
     case NOTIFICATION_EVENTS.SOLICITACAO_TFD_MUITO_URGENTE:
       return buildSolicitacaoTfdMuitoUrgenteMessage(input.context)
+    case NOTIFICATION_EVENTS.ANALISE_TFD_INICIADA:
+      return buildAnaliseTfdIniciadaMessage(input.context)
+    case NOTIFICATION_EVENTS.COMPLEMENTO_TFD_SOLICITADO:
+      return buildComplementoTfdSolicitadoMessage(input.context)
+    case NOTIFICATION_EVENTS.COMPLEMENTO_TFD_ENVIADO:
+      return buildComplementoTfdEnviadoMessage(input.context)
+    case NOTIFICATION_EVENTS.SOLICITACAO_TFD_APROVADA:
+      return buildSolicitacaoTfdAprovadaMessage(input.context)
+    case NOTIFICATION_EVENTS.SOLICITACAO_TFD_NEGADA:
+      return buildSolicitacaoTfdNegadaMessage(input.context)
     default: {
       const _exhaustive: never = evento
       throw new Error(`Evento de notificação não suportado: ${String(_exhaustive)}`)
@@ -74,6 +89,30 @@ async function resolverDestinatariosSetorModulo(
   return [...userIds]
 }
 
+async function resolverDestinatarios(
+  db: PrismaClient,
+  input: DispararNotificacaoInput
+): Promise<string[]> {
+  const excludeSet = new Set(input.excludeUserIds ?? [])
+
+  if (input.recipientUserIds && input.recipientUserIds.length > 0) {
+    const unique = new Set<string>()
+    for (const userId of input.recipientUserIds) {
+      if (!excludeSet.has(userId)) {
+        unique.add(userId)
+      }
+    }
+    return [...unique]
+  }
+
+  return resolverDestinatariosSetorModulo(
+    db,
+    input.tenantId,
+    input.modulo,
+    input.excludeUserIds ?? []
+  )
+}
+
 /**
  * Dispara notificações in-app para os destinatários do evento.
  * Best-effort: falhas são logadas e não propagadas (após commit da transação principal).
@@ -82,12 +121,7 @@ export async function dispararNotificacao(input: DispararNotificacaoInput): Prom
   try {
     const db = await getPrismaForTenant(input.tenantId)
     const { titulo, mensagem } = buildMessage(input.evento, input)
-    const destinatarios = await resolverDestinatariosSetorModulo(
-      db,
-      input.tenantId,
-      input.modulo,
-      input.excludeUserIds ?? []
-    )
+    const destinatarios = await resolverDestinatarios(db, input)
 
     if (destinatarios.length === 0) {
       return

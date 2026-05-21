@@ -7,6 +7,7 @@ export { registrarTramitacao, type RegistrarTramitacaoInput } from './tramitacao
 export {
   solicitarUrlUpload,
   confirmarUpload,
+  gerarUrlDownloadAnexo,
   validarUrlAssinada,
   resolveLocalAnexoPath,
   StorageValidationError,
@@ -19,6 +20,8 @@ export {
   type SolicitarUrlUploadOutput,
   type ConfirmarUploadInput,
   type ConfirmarUploadOutput,
+  type GerarUrlDownloadAnexoInput,
+  type GerarUrlDownloadAnexoOutput,
 } from './storage'
 
 export {

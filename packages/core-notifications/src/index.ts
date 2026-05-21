@@ -12,3 +12,5 @@ export { dispararNotificacao } from './dispatcher'
 
 export { buildSolicitacaoTfdEnviadaMessage } from './templates/solicitacao-tfd-enviada'
 export { buildSolicitacaoTfdMuitoUrgenteMessage } from './templates/solicitacao-tfd-muito-urgente'
+export { buildSolicitacaoTfdAprovadaMessage } from './templates/solicitacao-tfd-aprovada'
+export { buildSolicitacaoTfdNegadaMessage } from './templates/solicitacao-tfd-negada'

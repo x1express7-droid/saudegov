@@ -28,6 +28,8 @@ export type {
   SaldoListItem,
   ExtratoMovimentacaoItem,
   TfdSolicitacaoListItem,
+  TfdSolicitacaoDetalhe,
+  AlertaPendente30Dias,
   TfdSolicitacaoOrigemRetornoItem,
   AbrirSolicitacaoOutput,
   EnviarSolicitacaoOutput,
@@ -38,6 +40,14 @@ export {
   enviarSolicitacaoSchema,
 } from './validators/solicitacao.schema'
 
+export {
+  iniciarAnaliseSchema,
+  solicitarComplementoSchema,
+  enviarComplementoSchema,
+} from './validators/regulacao.schema'
+
+export { decidirSolicitacaoSchema } from './validators/decisao.schema'
+
 export type {
   AbrirSolicitacaoInput,
   EnviarSolicitacaoInput,
@@ -45,6 +55,14 @@ export type {
   TfdUrgencia,
   TfdRelacaoAcompanhante,
 } from './validators/solicitacao.schema'
+
+export type {
+  IniciarAnaliseInput,
+  SolicitarComplementoInput,
+  EnviarComplementoInput,
+} from './validators/regulacao.schema'
+
+export type { DecidirSolicitacaoInput } from './validators/decisao.schema'
 
 export {
   criarEspecialidadeSchema,
@@ -127,6 +145,12 @@ export {
 
 export { buscarPacientePorCns, vincularPaciente } from './actions/paciente'
 export { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from './actions/solicitacao'
+export {
+  iniciarAnaliseTfd,
+  solicitarComplementoTfd,
+  enviarComplementoTfd,
+} from './actions/regulacao'
+export { decidirSolicitacaoTfd } from './actions/decisao'
 
 export { getEspecialidadesTfd } from './queries/get-especialidades'
 export { getProcedimentosTfd } from './queries/get-procedimentos'
@@ -144,6 +168,8 @@ export { getExtratoSaldo, ExtratoSaldoError } from './queries/get-extrato'
 export type { GetExtratoSaldoResult } from './queries/get-extrato'
 export { getSolicitacoesTfd } from './queries/get-solicitacoes'
 export type { GetSolicitacoesFiltros } from './queries/get-solicitacoes'
+export { getSolicitacaoTfd } from './queries/get-solicitacao'
+export { getAlertasPendente30Dias } from './queries/get-alertas-regulacao'
 export { getSolicitacoesOrigemRetornoTfd } from './queries/get-solicitacoes-origem-retorno'
 export type { GetSolicitacoesOrigemRetornoInput } from './queries/get-solicitacoes-origem-retorno'
 export { isCnhVencida, isCnhVencendoEmBreve } from './utils/prazos'

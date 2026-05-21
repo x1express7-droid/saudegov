@@ -208,22 +208,26 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 1.5 — Regulação e Decisão
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Server Action `iniciarAnaliseTfd` — ENVIADO → EM_ANALISE
-- [ ] Tela de detalhe com dados clínicos (permissão `analisar_laudo`)
-- [ ] URL pré-assinada 15min para visualização do laudo
-- [ ] Server Action `solicitarComplementoTfd` — EM_ANALISE → PENDENTE
-- [ ] Server Action `decidirSolicitacaoTfd` — APROVADO/NEGADO
-- [ ] Verificação atômica de saldo na aprovação (SELECT FOR UPDATE)
-- [ ] Criação automática de `reserva_saldo` na aprovação
-- [ ] Registro de `movimentacao_saldo` tipo RESERVA
-- [ ] Notificações de decisão com fundamentação
-- [ ] Alerta PENDENTE há 30 dias no dashboard
-- [ ] Audit log de toda decisão
+- [x] Server Action `iniciarAnaliseTfd` — ENVIADO → EM_ANALISE
+- [x] Tela de detalhe com dados clínicos (permissão `analisar_laudo`)
+- [x] URL pré-assinada 15min para visualização do laudo
+- [x] Server Action `solicitarComplementoTfd` — EM_ANALISE → PENDENTE
+- [x] Server Action `decidirSolicitacaoTfd` — APROVADO/NEGADO
+- [x] Verificação atômica de saldo na aprovação (SELECT FOR UPDATE)
+- [x] Criação automática de `reserva_saldo` na aprovação
+- [x] Registro de `movimentacao_saldo` tipo RESERVA
+- [x] Notificações de decisão com fundamentação
+- [x] Alerta PENDENTE há 30 dias no dashboard
+- [x] Audit log de toda decisão
 
 **Critério de conclusão:** aprovação/negativa funciona, saldo reservado automaticamente.
+
+> **Nota:** alerta de 30 dias implementado na fila `/saude/tfd` (não no dashboard geral).
+> Dashboard completo está previsto para Sprint 1.8. `enviarComplementoTfd` incluído
+> nesta sprint por necessidade de ciclo testável do fluxo PENDENTE.
 
 ---
 
@@ -293,6 +297,28 @@ FASE 4 → Módulo UBS
 | **Impacto** | `next build` clássico falha nos dois apps; painel-servidor falha também com Turbopack. Confirmado em dev: PrismaClientValidationError no edge runtime bloqueia painel-servidor. Resolve antes do staging. |
 | **Resolução prevista** | Imports granulares em `core-auth` com subpaths ou `server-only`; resolver antes do primeiro deploy em staging |
 
+### DT-002 — Documentação do alerta PENDENTE 30 dias diverge do código
+
+| Campo | Descrição |
+|-------|-----------|
+| **Identificador** | `DT-002` |
+| **Status** | Aberto |
+| **Origem** | Fechamento Sprint 1.5 |
+| **Causa** | `docs/SPRINTS.md` descreve alerta de 30 dias como "no dashboard"; implementado na fila `/saude/tfd` por decisão de escopo da sprint. Documentação diverge do código. |
+| **Impacto** | Baixo — apenas documentação. Nenhum impacto funcional. |
+| **Resolução prevista** | Atualizar `SPRINTS.md` e `BUSINESS_RULES.md` na abertura da Sprint 1.8 quando o dashboard for implementado. |
+
+### DT-003 — Prisma Client local desatualizado após migrations da sprint
+
+| Campo | Descrição |
+|-------|-----------|
+| **Identificador** | `DT-003` |
+| **Status** | Aberto |
+| **Origem** | Fechamento Sprint 1.5 |
+| **Causa** | Prisma Client em `packages/core-db` pode estar desatualizado após migrations da sprint (delegate `tfdSolicitacao` ausente localmente em alguns ambientes). |
+| **Impacto** | Scripts locais e smoke RLS usam SQL raw como contorno. Build e type-check não afetados (`skipLibCheck`). Pode causar erros em dev após `git pull` sem `db:generate`. |
+| **Resolução prevista** | Adicionar `npm run db:generate` ao onboarding e ao CI antes do próximo deploy em staging. Resolver junto com `DT-001`. |
+
 ---
 
 ## 4. FASE 2 — Relatórios e Exportação
@@ -335,7 +361,7 @@ FASE 4 → Módulo UBS
 | 1.2 | Gestão financeira TFD | ✅ Concluído |
 | 1.3 | Paciente e CADSUS stub | ✅ Concluído |
 | 1.4 | Abertura de solicitação | ✅ Concluído |
-| 1.5 | Regulação e decisão | 📋 Planejado |
+| 1.5 | Regulação e decisão | ✅ Concluído |
 | 1.6 | Agendamento de viagem | 📋 Planejado |
 | 1.7 | Prestação de contas | 📋 Planejado |
 | 1.8 | Dashboard e cancelamento | 📋 Planejado |

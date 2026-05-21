@@ -1,9 +1,15 @@
 import {
   assertModuleActive,
   getTenantContext,
+  hasRole,
   requireTenantRole,
 } from '@saude/core-auth'
-import { getSolicitacoesTfd, TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
+import {
+  getAlertasPendente30Dias,
+  getSolicitacoesTfd,
+  TFD_PERMISSIONS,
+  type AlertaPendente30Dias,
+} from '@saude/mod-saude-tfd'
 import type { TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
 import { Alert, Button, PageHeader, PermissionGate } from '@saude/ui'
 import type { Metadata } from 'next'
@@ -11,6 +17,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
+import { AlertaPendentes } from './components/alerta-pendentes'
 import { SolicitacaoFiltros } from './components/solicitacao-filtros'
 import { SolicitacaoLista } from './components/solicitacao-lista'
 
@@ -95,6 +102,15 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
   const protocoloEnviado = params.enviado?.trim()
   const protocoloRascunho = params.rascunho?.trim()
 
+  let alertasPendente30Dias: AlertaPendente30Dias[] = []
+  if (hasRole(session, 'GESTOR')) {
+    try {
+      alertasPendente30Dias = await getAlertasPendente30Dias()
+    } catch {
+      alertasPendente30Dias = []
+    }
+  }
+
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
@@ -124,6 +140,8 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
           localizá-lo na fila e concluir o envio quando o laudo estiver pronto.
         </Alert>
       ) : null}
+
+      <AlertaPendentes alertas={alertasPendente30Dias} />
 
       <Suspense
         fallback={

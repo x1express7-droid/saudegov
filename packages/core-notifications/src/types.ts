@@ -2,6 +2,11 @@
 export const NOTIFICATION_EVENTS = {
   SOLICITACAO_TFD_ENVIADA: 'SOLICITACAO_TFD_ENVIADA',
   SOLICITACAO_TFD_MUITO_URGENTE: 'SOLICITACAO_TFD_MUITO_URGENTE',
+  ANALISE_TFD_INICIADA: 'ANALISE_TFD_INICIADA',
+  COMPLEMENTO_TFD_SOLICITADO: 'COMPLEMENTO_TFD_SOLICITADO',
+  COMPLEMENTO_TFD_ENVIADO: 'COMPLEMENTO_TFD_ENVIADO',
+  SOLICITACAO_TFD_APROVADA: 'SOLICITACAO_TFD_APROVADA',
+  SOLICITACAO_TFD_NEGADA: 'SOLICITACAO_TFD_NEGADA',
 } as const
 
 export type NotificationEvent =
@@ -36,4 +41,6 @@ export interface DispararNotificacaoInput {
   context: SolicitacaoTfdNotificationContext
   /** Usuários a omitir (ex.: quem disparou a ação). */
   excludeUserIds?: string[]
+  /** Destinatários explícitos; se omitido, resolve o setor do módulo. */
+  recipientUserIds?: string[]
 }

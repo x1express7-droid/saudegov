@@ -85,6 +85,17 @@ export interface ConfirmarUploadOutput {
   expiresAt: Date
 }
 
+export interface GerarUrlDownloadAnexoInput {
+  tenantId: string
+  anexoId: string
+  downloadExpiresInMinutes?: number
+}
+
+export interface GerarUrlDownloadAnexoOutput {
+  url: string
+  expiresAt: Date
+}
+
 function getStorageProvider(): StorageProvider {
   const raw = process.env.STORAGE_PROVIDER?.trim().toLowerCase()
   if (raw === 'r2' || raw === 's3' || raw === 'local') {
@@ -368,6 +379,45 @@ export async function confirmarUpload(
   )
 
   return { downloadUrl: url, expiresAt }
+}
+
+/**
+ * Gera URL pré-assinada de download para anexo já confirmado no storage.
+ * Não altera o registro do anexo.
+ */
+export async function gerarUrlDownloadAnexo(
+  input: GerarUrlDownloadAnexoInput,
+  db: StorageDbClient
+): Promise<GerarUrlDownloadAnexoOutput> {
+  const downloadExpiresInMinutes =
+    input.downloadExpiresInMinutes ?? DEFAULT_DOWNLOAD_EXPIRES_MINUTES
+
+  const anexo = await db.anexo.findFirst({
+    where: {
+      id: input.anexoId,
+      tenant_id: input.tenantId,
+    },
+    select: { id: true, confirmado: true },
+  })
+
+  if (!anexo) {
+    throw new StorageNotFoundError('Anexo não encontrado.')
+  }
+
+  if (!anexo.confirmado) {
+    throw new StorageValidationError(
+      'Arquivo ainda não confirmado no storage. Conclua o upload antes de visualizar.'
+    )
+  }
+
+  const { url, expiresAt } = buildSignedUrl(
+    'download',
+    input.tenantId,
+    anexo.id,
+    downloadExpiresInMinutes
+  )
+
+  return { url, expiresAt }
 }
 
 /** Valida assinatura e expiração de URLs geradas por este módulo (uso em rotas de API). */

@@ -2,6 +2,7 @@ import { PrismaClient, type UserRole } from '../node_modules/.prisma/client'
 import { hash } from 'bcryptjs'
 import { seedSprint11TfdPlatformFeatures } from './seeds/sprint-1-1-platform-features'
 import { seedSprint12TfdPlatformFeatures } from './seeds/sprint-1-2-platform-features'
+import { seedSprint15TfdPlatformFeatures } from './seeds/sprint-1-5-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 
 const prisma = new PrismaClient()
@@ -622,6 +623,11 @@ async function main() {
   const sprint12TfdFeaturesCount = await seedSprint12TfdPlatformFeatures()
   console.log(
     `\n📌 platform_features (Sprint 1.2 TFD): ${sprint12TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint15TfdFeaturesCount = await seedSprint15TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 1.5 TFD): ${sprint15TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
   )
 
   await seedTfdSaldoExemplo(prisma, campograndems.id, gestorCampograndems.id)
