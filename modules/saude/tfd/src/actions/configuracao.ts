@@ -22,6 +22,9 @@ import {
   criarMotoristaSchema,
   desativarMotoristaSchema,
 } from '../validators/configuracao.schema'
+import { criarSaldoSchema } from '../validators/financeiro.schema'
+import { ExtratoSaldoError, getExtratoSaldo } from '../queries/get-extrato'
+import type { GetExtratoSaldoResult } from '../queries/get-extrato'
 import { TFD_PERMISSIONS } from '../permissions'
 import type { PrismaClient } from '@saude/core-db'
 
@@ -31,11 +34,16 @@ const PROCEDIMENTOS_PATH = '/saude/tfd/configuracoes/procedimentos'
 const PRESTADORES_PATH = '/saude/tfd/configuracoes/prestadores'
 const VEICULOS_PATH = '/saude/tfd/configuracoes/veiculos'
 const MOTORISTAS_PATH = '/saude/tfd/configuracoes/motoristas'
+const SALDOS_PATH = '/saude/tfd/configuracoes/saldos'
 
 const SERVIDOR_ROLES_MOTORISTA = ['GESTOR', 'SERVIDOR'] as const
 const MOTORISTA_DUPLICADO_MSG = 'Servidor já cadastrado como motorista neste município.'
 
 function parseCnhValidade(value: string): Date {
+  return new Date(`${value}T12:00:00.000Z`)
+}
+
+function parseCompetenciaDate(value: string): Date {
   return new Date(`${value}T12:00:00.000Z`)
 }
 
@@ -1434,6 +1442,129 @@ export async function desativarMotoristaTfd(
     return {
       success: false,
       error: 'Não foi possível desativar o motorista. Tente novamente.',
+    }
+  }
+}
+
+// --- Saldos financeiros ---
+
+export async function criarSaldoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<{ saldoId: string }>> {
+  // BLOCO 1: Verificar módulo ativo
+  await assertModuleActive('saude', 'tfd')
+
+  // BLOCO 2: Verificar autenticação e papel mínimo
+  const session = await requireTenantRole('GESTOR')
+
+  // BLOCO 3: Verificar permissão granular
+  await requirePermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO)
+
+  // BLOCO 4: Validar input com Zod
+  const parsed = criarSaldoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  const tenantId = session.user.tenantId!
+
+  // BLOCO 5: Lógica de negócio
+  try {
+    const db = await getPrismaForTenant(tenantId)
+
+    const saldo = await db.$transaction(async (tx) => {
+      const created = await tx.tfdSaldo.create({
+        data: {
+          tenant_id: tenantId,
+          descricao: data.descricao,
+          fonte: data.fonte,
+          valor_total: data.valorTotal,
+          competencia_inicio: parseCompetenciaDate(data.competenciaInicio),
+          competencia_fim: parseCompetenciaDate(data.competenciaFim),
+          ativo: true,
+        },
+        select: {
+          id: true,
+          descricao: true,
+          fonte: true,
+          valor_total: true,
+          competencia_inicio: true,
+          competencia_fim: true,
+        },
+      })
+
+      await tx.tfdMovimentacaoSaldo.create({
+        data: {
+          tenant_id: tenantId,
+          saldo_id: created.id,
+          tipo: 'CREDITO',
+          valor: data.valorTotal,
+          descricao: data.descricao,
+          usuario_id: session.user.id,
+        },
+      })
+
+      return created
+    })
+
+    // BLOCO 6: Auditoria
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'SALDO_CADASTRADO',
+      entidade: 'saude_tfd_saldos',
+      entidadeId: saldo.id,
+      payloadDepois: {
+        descricao: saldo.descricao,
+        fonte: saldo.fonte,
+        valorTotal: Number(saldo.valor_total),
+        competenciaInicio: saldo.competencia_inicio.toISOString().slice(0, 10),
+        competenciaFim: saldo.competencia_fim.toISOString().slice(0, 10),
+      },
+    })
+
+    // BLOCO 7: Notificações — fora do escopo desta sprint
+
+    // BLOCO 8: Revalidar cache
+    revalidatePath(SALDOS_PATH)
+
+    // BLOCO 9: Retorno de sucesso
+    return { success: true, data: { saldoId: saldo.id } }
+  } catch (error) {
+    // BLOCO 10: Tratamento de erro
+    console.error('[criarSaldoTfd] Erro:', {
+      tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível cadastrar o saldo financeiro. Tente novamente.',
+    }
+  }
+}
+
+/** Encapsula `getExtratoSaldo` para uso em Client Components (Server Action). */
+export async function buscarExtratoSaldoTfd(
+  rawFiltros: unknown
+): Promise<ActionResponse<GetExtratoSaldoResult>> {
+  try {
+    const data = await getExtratoSaldo(rawFiltros)
+    return { success: true, data }
+  } catch (error) {
+    if (error instanceof ExtratoSaldoError) {
+      return { success: false, error: error.message }
+    }
+    console.error('[buscarExtratoSaldoTfd] Erro:', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível carregar o extrato. Tente novamente.',
     }
   }
 }

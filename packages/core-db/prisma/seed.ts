@@ -1,6 +1,8 @@
-import { PrismaClient, type UserRole } from '@prisma/client'
+import { PrismaClient, type UserRole } from '../node_modules/.prisma/client'
 import { hash } from 'bcryptjs'
 import { seedSprint11TfdPlatformFeatures } from './seeds/sprint-1-1-platform-features'
+import { seedSprint12TfdPlatformFeatures } from './seeds/sprint-1-2-platform-features'
+import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 
 const prisma = new PrismaClient()
 
@@ -554,12 +556,17 @@ async function main() {
     passwordHash,
   })
 
-  await upsertUser({
+  const gestorCampograndems = await upsertUser({
     tenantId: campograndems.id,
     email: 'gestor@campograndems.saudemunic.com.br',
     role: 'GESTOR',
     name: 'Gestor Campo Grande',
     passwordHash,
+    permissions: {
+      'saude.tfd.gerenciar_saldo': true,
+      'saude.tfd.gerenciar_frota': true,
+      'saude.tfd.decidir_solicitacao': true,
+    },
   })
 
   await upsertUser({
@@ -610,6 +617,16 @@ async function main() {
   const sprint11TfdFeaturesCount = await seedSprint11TfdPlatformFeatures()
   console.log(
     `\n📌 platform_features (Sprint 1.1 TFD): ${sprint11TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint12TfdFeaturesCount = await seedSprint12TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 1.2 TFD): ${sprint12TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  await seedTfdSaldoExemplo(prisma, campograndems.id, gestorCampograndems.id)
+  console.log(
+    `\n💰 Saldo TFD de exemplo: R$ 50.000,00 (MUNICIPAL_PROPRIO, exercício ${new Date().getFullYear()}) + CREDITO.`
   )
 
   console.log('✅ Seed concluído.')

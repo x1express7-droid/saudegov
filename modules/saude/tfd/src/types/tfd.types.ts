@@ -134,3 +134,38 @@ export interface TfdMotoristaOutput {
   createdAt: string
   updatedAt: string
 }
+
+// --- Saldos financeiros ---
+
+export type TfdFonteRecursoValor =
+  | 'FEDERAL_FNS'
+  | 'ESTADUAL'
+  | 'MUNICIPAL_PROPRIO'
+  | 'EMENDA_PARLAMENTAR'
+
+/** Item de listagem de saldos — campos derivados via `calcSaldoDisponivel`. */
+export interface SaldoListItem {
+  id: string
+  descricao: string
+  fonte: TfdFonteRecursoValor
+  valorTotal: number
+  valorReservado: number
+  valorUtilizado: number
+  valorDisponivel: number
+  percentualDisponivel: number
+  alertaBaixo: boolean
+  competenciaInicio: string
+  competenciaFim: string
+  ativo: boolean
+  createdAt: string
+}
+
+/** Linha do extrato de movimentações de um saldo. @see docs/API_CONTRACTS.md §7.4 */
+export interface ExtratoMovimentacaoItem {
+  tipo: string
+  valor: number
+  descricao: string
+  protocolo: string | null
+  usuarioNome: string
+  criadoEm: string
+}

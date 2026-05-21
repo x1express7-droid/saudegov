@@ -24,6 +24,9 @@ export type {
   TfdMotoristaOutput,
   TfdListagemFiltros,
   TfdPaginatedResult,
+  TfdFonteRecursoValor,
+  SaldoListItem,
+  ExtratoMovimentacaoItem,
 } from './types/tfd.types'
 
 export {
@@ -43,6 +46,17 @@ export {
   atualizarMotoristaSchema,
   desativarMotoristaSchema,
 } from './validators/configuracao.schema'
+
+export {
+  criarSaldoObjectSchema,
+  criarSaldoSchema,
+  filtrosExtratoSchema,
+} from './validators/financeiro.schema'
+
+export type {
+  CriarSaldoInput,
+  FiltrosExtratoInput,
+} from './validators/financeiro.schema'
 
 export type {
   CriarEspecialidadeInput,
@@ -78,6 +92,8 @@ export {
   criarMotoristaTfd,
   atualizarMotoristaTfd,
   desativarMotoristaTfd,
+  criarSaldoTfd,
+  buscarExtratoSaldoTfd,
 } from './actions/configuracao'
 
 export { getEspecialidadesTfd } from './queries/get-especialidades'
@@ -90,4 +106,10 @@ export {
   getServidoresMotoristaOptionsTfd,
 } from './queries/get-servidores-motorista-options'
 export type { TfdServidorMotoristaOption } from './queries/get-servidores-motorista-options'
+export { getSaldosTfd, getSaldoListItemById } from './queries/get-saldos'
+export type { GetSaldosFiltros } from './queries/get-saldos'
+export { getExtratoSaldo, ExtratoSaldoError } from './queries/get-extrato'
+export type { GetExtratoSaldoResult } from './queries/get-extrato'
 export { isCnhVencida, isCnhVencendoEmBreve } from './utils/prazos'
+export { calcSaldoDisponivel } from './utils/saldo'
+export type { CalcSaldoDisponivelInput, CalcSaldoDisponivelResult } from './utils/saldo'

@@ -272,7 +272,26 @@ interface DataTableProps<T> {
 - Coluna de urgência sempre usa `UrgenciaBadge`
 - Linhas com urgência `MUITO_URGENTE`: borda esquerda vermelha
 - Linhas com prazo de PC vencendo em 48h: fundo amarelo claro
+- Linhas com `highlightWarning: true` no objeto da linha: fundo `var(--color-warning-light)` (ex.: saldo com alerta abaixo de 20%)
 - Click em linha abre detalhe — nunca abrir em nova aba por padrão
+
+### 7.4 Formatação e listas — Saldos TFD (Sprint 1.2)
+
+**Utilitários por app** (`saldos-ui.ts` / `tfd-saldos-ui.ts` — não centralizar em `packages/ui`):
+
+| Função / mapa | Uso |
+|---|---|
+| `formatBrl(value)` | Valores monetários: `R$ 50.000,00` via `Intl.NumberFormat('pt-BR', …)` |
+| `formatCompetenciaBr(inicio, fim)` | Período `dd/mm/aaaa — dd/mm/aaaa` a partir de ISO `AAAA-MM-DD` |
+| `formatDateTimeBr(iso)` | Data/hora no extrato em pt-BR |
+| `FONTE_LABELS` | Fonte de recurso em português na tabela |
+| `MOVIMENTACAO_LABELS` | Tipo de movimentação (CREDITO → Crédito, RESERVA → Reserva, etc.) |
+
+**EmptyState contextual:** quando a listagem está vazia (`items.length === 0`), renderizar `EmptyState` com título e descrição específicos do domínio — não usar apenas o `DataTable` vazio (descrição genérica “cadastre um novo registro”).
+
+**Alertas de saldo baixo:** combinar três camadas — `highlightWarning` na linha, badge “Saldo baixo” na coluna descrição e `Alert variant="warning"` no topo da página quando existir saldo ativo com `alertaBaixo`.
+
+**Extrato (Dialog):** resumo em grid (Total, Reservado, Utilizado, Disponível); conteúdo rolável com `max-h-[min(70vh,36rem)] overflow-y-auto`.
 
 ---
 

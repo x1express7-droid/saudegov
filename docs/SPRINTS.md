@@ -154,17 +154,20 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 1.2 — Gestão Financeira do TFD
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Cadastro de saldo financeiro (fonte, período, valor)
-- [ ] Cálculo de saldo disponível (total - reservado - consumido)
-- [ ] Listagem de saldos com status visual (alerta < 20%)
-- [ ] Extrato de movimentações por saldo
-- [ ] Registro automático de CREDITO ao criar saldo
-- [ ] Tela de saldo financeiro no Painel Dev (visão SUPERADMIN)
+- [x] Cadastro de saldo financeiro (fonte, período, valor)
+- [x] Cálculo de saldo disponível (total - reservado - consumido)
+- [x] Listagem de saldos com status visual (alerta < 20%)
+- [x] Extrato de movimentações por saldo
+- [x] Registro automático de CREDITO ao criar saldo
+- [x] Tela de saldo financeiro no Painel Dev (visão SUPERADMIN)
+- [x] Revisão UX/UI (labels para gestor, BRL/competência pt-BR, EmptyState contextual, alertas visuais)
 
 **Critério de conclusão:** saldo cadastrado, cálculo correto, extrato visível.
+
+**Débito técnico:** ver `DT-001` na seção Débitos Técnicos.
 
 ---
 
@@ -277,6 +280,21 @@ FASE 4 → Módulo UBS
 
 ---
 
+## Débitos Técnicos
+
+### DT-001 — Build de produção quebra sem Turbopack — `core-auth` barrel exporta módulos server-only
+
+| Campo | Descrição |
+|-------|-----------|
+| **Identificador** | `DT-001` |
+| **Status** | Aberto |
+| **Origem** | Identificado no fechamento da Sprint 1.2; problema pré-existente desde Sprint 0.3 |
+| **Causa** | `@saude/core-auth` exporta `auth.config` e `get-tenant-context` (usam `next/headers`) no mesmo barrel; bundler puxa esses módulos para o client quando qualquer consumer importa `@saude/core-auth` via `@saude/ui` ou formulários |
+| **Impacto** | `next build` clássico falha nos dois apps; painel-servidor falha também com Turbopack |
+| **Resolução prevista** | Imports granulares em `core-auth` com subpaths ou `server-only`; resolver antes do primeiro deploy em staging |
+
+---
+
 ## 4. FASE 2 — Relatórios e Exportação
 
 ### Sprint 2.1 — Relatórios Completos TFD
@@ -314,7 +332,7 @@ FASE 4 → Módulo UBS
 | 0.5 | UI base e design system | ✅ Concluído |
 | 0.6 | Configuração do município | ✅ Concluído |
 | 1.1 | Schema TFD e configurações | ✅ Concluído |
-| 1.2 | Gestão financeira TFD | 📋 Planejado |
+| 1.2 | Gestão financeira TFD | ✅ Concluído |
 | 1.3 | Paciente e CADSUS stub | 📋 Planejado |
 | 1.4 | Abertura de solicitação | 📋 Planejado |
 | 1.5 | Regulação e decisão | 📋 Planejado |

@@ -497,7 +497,8 @@ Output: ActionResponse<PaginatedResult<{
   tipo: string; valor: number; descricao: string
   protocolo: string | null; usuarioNome: string; criadoEm: string
 }>>
-// Registra EXPORT em audit_logs
+// Visualização paginada na UI — sem registro em audit_logs nesta sprint
+// Audit EXPORT: apenas na exportação CSV do extrato (Sprint 2.1)
 ```
 
 ---

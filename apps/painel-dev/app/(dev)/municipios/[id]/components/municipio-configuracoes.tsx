@@ -1,10 +1,12 @@
 'use client'
 
+import type { SaldoListItem } from '@saude/mod-saude-tfd'
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { alterarModulo } from '../../../../../lib/actions/alterar-modulo'
 import { alterarStatusMunicipio } from '../../../../../lib/actions/alterar-status-municipio'
 import type { MunicipioDetalhe } from '../../../../../lib/queries/get-municipio'
+import { TfdSaldoLista } from './tfd-saldo-lista'
 
 const MODULOS_DISPONIVEIS = [
   { key: 'tfd', label: 'TFD — Tratamento Fora de Domicílio' },
@@ -20,8 +22,11 @@ type ModuloKey = (typeof MODULOS_DISPONIVEIS)[number]['key']
 
 type FeedbackState = 'idle' | 'saving' | 'saved' | 'error'
 
+type MunicipioTab = 'configuracao' | 'tfd-saldos'
+
 interface MunicipioConfiguracoesProps {
   municipio: MunicipioDetalhe
+  saldosTfd: SaldoListItem[] | null
 }
 
 function formatDisplayDomain(municipio: MunicipioDetalhe): string {
@@ -42,13 +47,20 @@ function getModuloAtivo(municipio: MunicipioDetalhe, modulo: ModuloKey): boolean
   return municipio.modules.saude?.[modulo] === true
 }
 
-export function MunicipioConfiguracoes({ municipio: initialMunicipio }: MunicipioConfiguracoesProps) {
+export function MunicipioConfiguracoes({
+  municipio: initialMunicipio,
+  saldosTfd,
+}: MunicipioConfiguracoesProps) {
   const [municipio, setMunicipio] = useState(initialMunicipio)
+  const [activeTab, setActiveTab] = useState<MunicipioTab>('configuracao')
   const [moduloFeedback, setModuloFeedback] = useState<Partial<Record<ModuloKey, FeedbackState>>>({})
   const [statusFeedback, setStatusFeedback] = useState<FeedbackState>('idle')
   const [statusError, setStatusError] = useState<string | null>(null)
   const [showSuspendDialog, setShowSuspendDialog] = useState(false)
   const [isPending, startTransition] = useTransition()
+
+  const tfdAtivo = municipio.modules.saude?.tfd === true
+  const saldosVisiveis = tfdAtivo && saldosTfd !== null
 
   function handleModuloToggle(modulo: ModuloKey, ativo: boolean) {
     setModuloFeedback((prev) => ({ ...prev, [modulo]: 'saving' }))
@@ -75,6 +87,9 @@ export function MunicipioConfiguracoes({ municipio: initialMunicipio }: Municipi
           },
         },
       }))
+      if (modulo === 'tfd' && !ativo && activeTab === 'tfd-saldos') {
+        setActiveTab('configuracao')
+      }
       setModuloFeedback((prev) => ({ ...prev, [modulo]: 'saved' }))
 
       window.setTimeout(() => {
@@ -124,7 +139,7 @@ export function MunicipioConfiguracoes({ municipio: initialMunicipio }: Municipi
   }
 
   return (
-    <div className="mx-auto flex max-w-3xl flex-col gap-8">
+    <div className="mx-auto flex max-w-5xl flex-col gap-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <Link
@@ -146,6 +161,49 @@ export function MunicipioConfiguracoes({ municipio: initialMunicipio }: Municipi
         </span>
       </div>
 
+      {saldosVisiveis ? (
+        <nav
+          aria-label="Seções do município"
+          className="flex flex-wrap gap-2 border-b border-neutral-200 dark:border-neutral-800"
+        >
+          <button
+            type="button"
+            onClick={() => setActiveTab('configuracao')}
+            className={
+              activeTab === 'configuracao'
+                ? 'border-b-2 border-neutral-900 px-3 py-2 text-sm font-semibold text-neutral-900 dark:border-neutral-100 dark:text-neutral-100'
+                : 'border-b-2 border-transparent px-3 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'
+            }
+          >
+            Configuração
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('tfd-saldos')}
+            className={
+              activeTab === 'tfd-saldos'
+                ? 'border-b-2 border-neutral-900 px-3 py-2 text-sm font-semibold text-neutral-900 dark:border-neutral-100 dark:text-neutral-100'
+                : 'border-b-2 border-transparent px-3 py-2 text-sm font-medium text-neutral-600 hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-neutral-100'
+            }
+          >
+            TFD — Saldos
+          </button>
+        </nav>
+      ) : null}
+
+      {activeTab === 'tfd-saldos' && saldosVisiveis ? (
+        <section className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
+          <h2 className="text-lg font-medium">TFD — Saldos financeiros</h2>
+          <TfdSaldoLista
+            tenantId={municipio.id}
+            municipioNome={municipio.nome}
+            items={saldosTfd}
+          />
+        </section>
+      ) : null}
+
+      {activeTab === 'configuracao' ? (
+        <>
       <section className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
         <h2 className="text-lg font-medium">Informações</h2>
         <dl className="grid gap-3 text-sm sm:grid-cols-2">
@@ -177,6 +235,12 @@ export function MunicipioConfiguracoes({ municipio: initialMunicipio }: Municipi
         <p className="text-sm text-neutral-600 dark:text-neutral-400">
           Ative ou desative módulos do sistema de saúde para este município.
         </p>
+        {!tfdAtivo ? (
+          <p className="rounded-md border border-dashed border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-600 dark:border-neutral-700 dark:bg-neutral-900/40 dark:text-neutral-400">
+            O módulo TFD está desativado. Ative-o para visualizar os saldos financeiros deste
+            município na aba <strong>TFD — Saldos</strong>.
+          </p>
+        ) : null}
         <ul className="flex flex-col gap-3">
           {MODULOS_DISPONIVEIS.map(({ key, label }) => (
             <li
@@ -274,6 +338,8 @@ export function MunicipioConfiguracoes({ municipio: initialMunicipio }: Municipi
           </button>
         )}
       </section>
+        </>
+      ) : null}
     </div>
   )
 }

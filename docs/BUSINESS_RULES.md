@@ -241,8 +241,7 @@ CANCELADO (motivo obrigatório)
 **Cadastro de saldo:**
 - Todo saldo tem: descrição, fonte de recurso, valor total, período de competência
 - Fontes permitidas: FEDERAL_FNS, ESTADUAL, MUNICIPAL_PROPRIO, EMENDA_PARLAMENTAR
-- Um saldo pode ser associado a procedimentos específicos (campo JSONB)
-- Um saldo pode ser associado a especialidades específicas (campo JSONB)
+- Associação a procedimentos ou especialidades específicas: **adiado** (decisão C1 — não implementado na Sprint 1.2)
 
 **Cálculo do saldo disponível:**
 ```

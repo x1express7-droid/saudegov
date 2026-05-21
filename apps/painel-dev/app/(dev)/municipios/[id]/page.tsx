@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { requireSuperAdmin } from '@saude/core-auth'
 import { getMunicipio } from '../../../../lib/queries/get-municipio'
+import { getSaldosTfdByTenant } from '../../../../lib/queries/tfd-saldos'
 import { MunicipioConfiguracoes } from './components/municipio-configuracoes'
 
 interface MunicipioConfigPageProps {
@@ -17,5 +18,9 @@ export default async function MunicipioConfigPage({ params }: MunicipioConfigPag
     notFound()
   }
 
-  return <MunicipioConfiguracoes municipio={municipio} />
+  const saldosTfd = municipio.modules.saude?.tfd
+    ? await getSaldosTfdByTenant(municipio.id)
+    : null
+
+  return <MunicipioConfiguracoes municipio={municipio} saldosTfd={saldosTfd} />
 }
