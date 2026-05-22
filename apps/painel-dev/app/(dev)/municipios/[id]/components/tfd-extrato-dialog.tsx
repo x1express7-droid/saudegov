@@ -42,18 +42,20 @@ export function TfdExtratoDialog({
       return
     }
     setPage(1)
-  }, [open, saldo?.id])
+  }, [open, saldo])
 
   useEffect(() => {
     if (!open || !saldo) {
       return
     }
 
+    const saldoId = saldo.id
+
     startTransition(async () => {
       setError(null)
       const response = await buscarExtratoSaldoTenant({
         tenantId,
-        saldoId: saldo.id,
+        saldoId,
         page,
         perPage,
       })
@@ -70,7 +72,7 @@ export function TfdExtratoDialog({
       setTotal(response.data.total)
       setResumoSaldo(response.data.saldo)
     })
-  }, [open, saldo?.id, page, tenantId])
+  }, [open, saldo, page, tenantId])
 
   const columns = useMemo<ColumnDef<ExtratoMovimentacaoItem>[]>(
     () => [
