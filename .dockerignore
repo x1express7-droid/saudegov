@@ -1,0 +1,45 @@
+# Dependencies and build artifacts
+node_modules
+**/node_modules
+.next
+**/.next
+.turbo
+**/.turbo
+dist
+**/dist
+*.tsbuildinfo
+
+# Git and IDE
+.git
+.gitignore
+.cursor
+.vscode
+.idea
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local data and backups
+.data
+**/.data
+packages/core-db/*.dump
+packages/core-db/backup-*
+
+# Docs and misc (not needed for build)
+docs
+**/*.md
+!apps/**/README.md
+
+# Tests and coverage
+coverage
+**/__tests__
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# OS
+.DS_Store
+Thumbs.db
