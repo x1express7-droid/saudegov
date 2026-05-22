@@ -1,4 +1,4 @@
-import { PrismaClient, type UserRole } from '../node_modules/.prisma/client'
+import { PrismaClient, type UserRole } from '@prisma/client'
 import { hash } from 'bcryptjs'
 import { seedSprint11TfdPlatformFeatures } from './seeds/sprint-1-1-platform-features'
 import { seedSprint12TfdPlatformFeatures } from './seeds/sprint-1-2-platform-features'

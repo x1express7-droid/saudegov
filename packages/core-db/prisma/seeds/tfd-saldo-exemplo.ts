@@ -1,4 +1,4 @@
-import type { PrismaClient } from '../../node_modules/.prisma/client'
+import type { PrismaClient } from '@prisma/client'
 
 /** IDs fixos para upsert idempotente do saldo de exemplo (tenant campograndems). */
 export const TFD_SALDO_SEED_IDS = {

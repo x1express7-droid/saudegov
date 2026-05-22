@@ -5,7 +5,7 @@
   "compilerOptions": {
     "paths": {
       "@/*": ["./*"],
-      "@prisma/client": ["../../packages/core-db/node_modules/.prisma/client"]
+      "@prisma/client": ["../../node_modules/.prisma/client"]
     },
     "plugins": [{ "name": "next" }],
     "jsx": "preserve",
