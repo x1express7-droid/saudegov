@@ -5,6 +5,7 @@ import { seedSprint12TfdPlatformFeatures } from './seeds/sprint-1-2-platform-fea
 import { seedSprint15TfdPlatformFeatures } from './seeds/sprint-1-5-platform-features'
 import { seedSprint16TfdPlatformFeatures } from './seeds/sprint-1-6-platform-features'
 import { seedSprint17TfdPlatformFeatures } from './seeds/sprint-1-7-platform-features'
+import { seedSprint18TfdPlatformFeatures } from './seeds/sprint-1-8-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 
 const prisma = new PrismaClient()
@@ -532,7 +533,7 @@ async function main() {
   await prisma.user.upsert({
     where: { id: SUPERADMIN_ID },
     update: {
-      email: 'superadmin@saudemunic.com.br',
+      email: 'dev@x1express.com.br',
       role: 'SUPERADMIN',
       name: 'Super Admin',
       password_hash: passwordHash,
@@ -542,7 +543,7 @@ async function main() {
     create: {
       id: SUPERADMIN_ID,
       tenant_id: null,
-      email: 'superadmin@saudemunic.com.br',
+      email: 'dev@x1express.com.br',
       role: 'SUPERADMIN',
       name: 'Super Admin',
       password_hash: passwordHash,
@@ -642,6 +643,11 @@ async function main() {
     `\n📌 platform_features (Sprint 1.7 TFD): ${sprint17TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
   )
 
+  const sprint18TfdFeaturesCount = await seedSprint18TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 1.8 TFD): ${sprint18TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
   await seedTfdSaldoExemplo(prisma, campograndems.id, gestorCampograndems.id)
   console.log(
     `\n💰 Saldo TFD de exemplo: R$ 50.000,00 (MUNICIPAL_PROPRIO, exercício ${new Date().getFullYear()}) + CREDITO.`
@@ -649,7 +655,7 @@ async function main() {
 
   console.log('✅ Seed concluído.')
   console.log('\n📋 Credenciais de desenvolvimento (senha: senha123):')
-  console.log('SUPERADMIN: superadmin@saudemunic.com.br')
+  console.log('SUPERADMIN: dev@x1express.com.br')
   console.log('Campo Grande — ADMIN:   admin@campograndems.saudemunic.com.br')
   console.log('Campo Grande — GESTOR:  gestor@campograndems.saudemunic.com.br')
   console.log('Campo Grande — SERVIDOR: servidor@campograndems.saudemunic.com.br')

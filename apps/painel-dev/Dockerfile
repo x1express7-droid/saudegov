@@ -37,7 +37,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/prisma ./packages/core-db/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/node_modules/.prisma ./packages/core-db/node_modules/.prisma
 
 USER nextjs
 EXPOSE 3000
