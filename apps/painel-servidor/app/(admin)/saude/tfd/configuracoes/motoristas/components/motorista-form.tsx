@@ -1,12 +1,7 @@
 'use client'
 
-import {
-  atualizarMotoristaTfd,
-  criarMotoristaSchema,
-  criarMotoristaTfd,
-  type TfdMotoristaListItem,
-  type TfdServidorMotoristaOption,
-} from '@saude/mod-saude-tfd'
+import { criarMotoristaSchema, type TfdMotoristaListItem, type TfdServidorMotoristaOption } from '@saude/mod-saude-tfd/client'
+import { atualizarMotoristaTfd, criarMotoristaTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Button,
   Dialog,

@@ -1,11 +1,7 @@
 'use client'
 
-import {
-  atualizarPrestadorTfd,
-  criarPrestadorSchema,
-  criarPrestadorTfd,
-  type TfdPrestadorListItem,
-} from '@saude/mod-saude-tfd'
+import { criarPrestadorSchema, type TfdPrestadorListItem } from '@saude/mod-saude-tfd/client'
+import { atualizarPrestadorTfd, criarPrestadorTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Button,
   Dialog,

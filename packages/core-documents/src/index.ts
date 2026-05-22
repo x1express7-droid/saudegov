@@ -1,3 +1,5 @@
+import 'server-only'
+
 export { createAuditLog, type CreateAuditLogInput } from './audit'
 
 export { gerarProtocolo, type PrismaTransactionClient } from './protocol'
@@ -14,8 +16,6 @@ export {
   StorageConfigError,
   StorageNotFoundError,
   type StorageDbClient,
-  type StorageMimeType,
-  type StorageProvider,
   type SolicitarUrlUploadInput,
   type SolicitarUrlUploadOutput,
   type ConfirmarUploadInput,
@@ -23,6 +23,8 @@ export {
   type GerarUrlDownloadAnexoInput,
   type GerarUrlDownloadAnexoOutput,
 } from './storage'
+
+export type { StorageMimeType, StorageProvider } from './storage.types'
 
 export {
   getCadsusService,

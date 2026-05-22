@@ -1,11 +1,7 @@
 'use client'
 
-import {
-  atualizarProcedimentoTfd,
-  criarProcedimentoSchema,
-  criarProcedimentoTfd,
-  type TfdProcedimentoListItem,
-} from '@saude/mod-saude-tfd'
+import { criarProcedimentoSchema, type TfdProcedimentoListItem } from '@saude/mod-saude-tfd/client'
+import { atualizarProcedimentoTfd, criarProcedimentoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Button,
   Dialog,

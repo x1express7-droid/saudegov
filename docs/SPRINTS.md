@@ -295,11 +295,11 @@ FASE 4 → Módulo UBS
 | Campo | Descrição |
 |-------|-----------|
 | **Identificador** | `DT-001` |
-| **Status** | Aberto |
+| **Status** | Resolvido |
 | **Origem** | Identificado no fechamento da Sprint 1.2; problema pré-existente desde Sprint 0.3 |
 | **Causa** | `@saude/core-auth` exporta `auth.config` e `get-tenant-context` (usam `next/headers`) no mesmo barrel; bundler puxa esses módulos para o client quando qualquer consumer importa `@saude/core-auth` via `@saude/ui` ou formulários |
 | **Impacto** | `next build` clássico falha nos dois apps; painel-servidor falha também com Turbopack. Confirmado em dev: PrismaClientValidationError no edge runtime bloqueia painel-servidor. Resolve antes do staging. |
-| **Resolução prevista** | Imports granulares em `core-auth` com subpaths ou `server-only`; resolver antes do primeiro deploy em staging |
+| **Resolução** | Subpaths server/client criados em `@saude/core-auth`, `@saude/core-documents` e `@saude/mod-saude-tfd`. Build clássico passa sem Turbopack. Resolvido no encerramento da Sprint 1.7. |
 
 ### DT-002 — Documentação do alerta PENDENTE 30 dias diverge do código
 

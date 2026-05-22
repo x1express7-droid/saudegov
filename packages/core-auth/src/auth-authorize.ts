@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { headers } from 'next/headers'
 import { getPrismaForTenant } from '@saude/core-db'
 import { verifyPassword } from './crypto'

@@ -1,15 +1,7 @@
 'use client'
 
-import {
-  abrirSolicitacaoSchema,
-  abrirSolicitacaoTfd,
-  enviarSolicitacaoTfd,
-  type AbrirSolicitacaoInput,
-  type TfdEspecialidadeListItem,
-  type TfdPrestadorListItem,
-  type TfdProcedimentoListItem,
-  type TfdSolicitacaoOrigemRetornoItem,
-} from '@saude/mod-saude-tfd'
+import { abrirSolicitacaoSchema, type AbrirSolicitacaoInput, type TfdEspecialidadeListItem, type TfdPrestadorListItem, type TfdProcedimentoListItem, type TfdSolicitacaoOrigemRetornoItem } from '@saude/mod-saude-tfd/client'
+import { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/solicitacao'
 import {
   Alert,
   Button,

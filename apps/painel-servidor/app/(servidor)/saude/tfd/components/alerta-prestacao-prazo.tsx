@@ -1,6 +1,6 @@
 'use client'
 
-import type { AlertaPrestacaoPrazo } from '@saude/mod-saude-tfd'
+import { AlertaPrestacaoPrazo } from '@saude/mod-saude-tfd/client'
 import { Alert } from '@saude/ui'
 import Link from 'next/link'
 

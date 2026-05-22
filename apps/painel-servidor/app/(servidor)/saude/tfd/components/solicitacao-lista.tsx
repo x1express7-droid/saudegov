@@ -1,6 +1,6 @@
 'use client'
 
-import type { TfdSolicitacaoListItem } from '@saude/mod-saude-tfd'
+import { TfdSolicitacaoListItem } from '@saude/mod-saude-tfd/client'
 import {
   DataTable,
   ProtocoloBadge,

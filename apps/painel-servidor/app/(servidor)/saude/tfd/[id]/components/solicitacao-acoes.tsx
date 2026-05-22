@@ -1,17 +1,10 @@
 'use client'
 
+import { TFD_PERMISSIONS, type SaldoListItem, type TfdSolicitacaoDetalhe, type TfdVeiculoAgendamentoItem, type TfdViagemSolicitacaoItem } from '@saude/mod-saude-tfd/client'
+import { decidirSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/decisao'
+import { enviarComplementoTfd, iniciarAnaliseTfd, solicitarComplementoTfd } from '@saude/mod-saude-tfd/actions/regulacao'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
-import {
-  decidirSolicitacaoTfd,
-  enviarComplementoTfd,
-  iniciarAnaliseTfd,
-  solicitarComplementoTfd,
-  TFD_PERMISSIONS,
-  type SaldoListItem,
-  type TfdSolicitacaoDetalhe,
-  type TfdVeiculoAgendamentoItem,
-  type TfdViagemSolicitacaoItem,
-} from '@saude/mod-saude-tfd'
+
 import {
   Button,
   Card,

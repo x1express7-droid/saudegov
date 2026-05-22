@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { createHmac, randomUUID, timingSafeEqual } from 'crypto'
 import { access, mkdir } from 'fs/promises'
 import path from 'path'
@@ -10,9 +12,8 @@ import type { PrismaTransactionClient } from './protocol'
 /** Cliente Prisma tenant-aware (transação ou instância). */
 export type StorageDbClient = PrismaTransactionClient | PrismaClient
 
-export type StorageMimeType = 'application/pdf' | 'image/jpeg' | 'image/png'
-
-export type StorageProvider = 'local' | 'r2' | 's3'
+export type { StorageMimeType, StorageProvider } from './storage.types'
+import type { StorageMimeType, StorageProvider } from './storage.types'
 
 const ALLOWED_MIME_TYPES: readonly StorageMimeType[] = [
   'application/pdf',

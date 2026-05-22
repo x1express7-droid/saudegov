@@ -1,7 +1,7 @@
 'use server'
 
 import type { ActionResponse } from '@saude/validators'
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import {
   ExtratoSaldoTenantError,
   getExtratoSaldoByTenant,

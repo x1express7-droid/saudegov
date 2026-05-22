@@ -2,7 +2,7 @@
 
 import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
-import { redefinirSenha } from '@saude/core-auth'
+import { redefinirSenha } from '@saude/core-auth/password-reset'
 
 interface RedefinirSenhaFormProps {
   token: string

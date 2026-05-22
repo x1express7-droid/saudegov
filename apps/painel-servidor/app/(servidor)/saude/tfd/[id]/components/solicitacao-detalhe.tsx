@@ -1,10 +1,8 @@
 'use client'
 
+import { TfdSolicitacaoDetalhe, TfdViagemSolicitacaoItem } from '@saude/mod-saude-tfd/client'
 import type { ReactNode } from 'react'
-import type {
-  TfdSolicitacaoDetalhe,
-  TfdViagemSolicitacaoItem,
-} from '@saude/mod-saude-tfd'
+
 import { Button, Card, CardHeader, Spinner, TFD_URGENCIA_CONFIG } from '@saude/ui'
 import Link from 'next/link'
 import { useState, useTransition } from 'react'

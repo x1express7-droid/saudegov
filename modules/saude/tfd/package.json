@@ -4,6 +4,18 @@
   "private": true,
   "main": "./src/index.ts",
   "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./permissions": "./src/permissions.ts",
+    "./actions/configuracao": "./src/actions/configuracao.ts",
+    "./actions/paciente": "./src/actions/paciente.ts",
+    "./actions/solicitacao": "./src/actions/solicitacao.ts",
+    "./actions/regulacao": "./src/actions/regulacao.ts",
+    "./actions/decisao": "./src/actions/decisao.ts",
+    "./actions/financeiro": "./src/actions/financeiro.ts",
+    "./actions/viagem": "./src/actions/viagem.ts"
+  },
   "scripts": {
     "type-check": "tsc --noEmit"
   },

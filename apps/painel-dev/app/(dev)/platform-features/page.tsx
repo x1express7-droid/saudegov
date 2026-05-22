@@ -1,4 +1,4 @@
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import { getPlatformFeatures } from '../../../lib/queries/get-platform-features'
 import { PlatformFeatureLista } from './components/platform-feature-lista'
 

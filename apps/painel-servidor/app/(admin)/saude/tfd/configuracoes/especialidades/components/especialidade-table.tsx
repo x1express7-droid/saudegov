@@ -1,10 +1,9 @@
 'use client'
 
+import { desativarEspecialidadeTfd } from '@saude/mod-saude-tfd/actions/configuracao'
+import { TfdEspecialidadeListItem } from '@saude/mod-saude-tfd/client'
 import { DeactivateDialog } from '../../../../../configuracoes/organograma/components/deactivate-dialog'
-import {
-  desativarEspecialidadeTfd,
-} from '@saude/mod-saude-tfd'
-import type { TfdEspecialidadeListItem } from '@saude/mod-saude-tfd'
+
 import {
   Badge,
   Button,

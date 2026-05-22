@@ -1,6 +1,6 @@
 'use client'
 
-import type { TfdPrestacaoListItem } from '@saude/mod-saude-tfd'
+import { TfdPrestacaoListItem } from '@saude/mod-saude-tfd/client'
 import {
   Badge,
   DataTable,

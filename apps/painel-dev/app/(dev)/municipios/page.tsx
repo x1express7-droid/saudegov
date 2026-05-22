@@ -1,4 +1,4 @@
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import { getMunicipios } from '../../../lib/queries/get-municipios'
 import { MunicipioLista } from './components/municipio-lista'
 

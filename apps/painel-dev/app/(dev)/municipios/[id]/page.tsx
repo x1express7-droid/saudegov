@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import { getMunicipio } from '../../../../lib/queries/get-municipio'
 import { getSaldosTfdByTenant } from '../../../../lib/queries/tfd-saldos'
 import { MunicipioConfiguracoes } from './components/municipio-configuracoes'

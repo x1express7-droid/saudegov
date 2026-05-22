@@ -3,7 +3,7 @@ import {
   getTenantContext,
   hasRole,
   requireTenantRole,
-} from '@saude/core-auth'
+} from '@saude/core-auth/server'
 import {
   getAlertasLembreteViagemTfd,
   getAlertasPendente30Dias,

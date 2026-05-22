@@ -1,6 +1,6 @@
 'use client'
 
-import { TFD_PERMISSIONS, type SaldoListItem } from '@saude/mod-saude-tfd'
+import { TFD_PERMISSIONS, type SaldoListItem } from '@saude/mod-saude-tfd/client'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   Alert,

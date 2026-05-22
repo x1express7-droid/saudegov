@@ -1,4 +1,4 @@
-import { requireTenantRole } from '@saude/core-auth'
+import { requireTenantRole } from '@saude/core-auth/server'
 import { getTenantContext } from '@saude/core-auth/get-tenant-context'
 import { themeToCssVarsStyle } from '../../lib/theme-to-css-vars'
 import { headers } from 'next/headers'

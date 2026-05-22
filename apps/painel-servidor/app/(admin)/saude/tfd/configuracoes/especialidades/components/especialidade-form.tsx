@@ -1,11 +1,7 @@
 'use client'
 
-import {
-  atualizarEspecialidadeTfd,
-  criarEspecialidadeTfd,
-  criarEspecialidadeSchema,
-  type TfdEspecialidadeListItem,
-} from '@saude/mod-saude-tfd'
+import { criarEspecialidadeSchema, type TfdEspecialidadeListItem } from '@saude/mod-saude-tfd/client'
+import { atualizarEspecialidadeTfd, criarEspecialidadeTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Button,
   Dialog,

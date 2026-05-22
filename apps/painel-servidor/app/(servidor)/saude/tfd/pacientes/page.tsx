@@ -1,4 +1,4 @@
-import { getTenantContext, requireTenantRole } from '@saude/core-auth'
+import { getTenantContext, requireTenantRole } from '@saude/core-auth/server'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 

@@ -1,4 +1,4 @@
-import { assertModuleActive, getTenantContext } from '@saude/core-auth'
+import { assertModuleActive, getTenantContext } from '@saude/core-auth/server'
 import {
   getMotoristasTfd,
   getServidoresMotoristaOptionsTfd,

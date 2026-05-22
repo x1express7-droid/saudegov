@@ -1,4 +1,4 @@
-import { assertModuleActive, getTenantContext } from '@saude/core-auth'
+import { assertModuleActive, getTenantContext } from '@saude/core-auth/server'
 import { getEspecialidadesTfd } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import { notFound } from 'next/navigation'

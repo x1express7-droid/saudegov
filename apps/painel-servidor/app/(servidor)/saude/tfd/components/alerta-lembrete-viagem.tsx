@@ -1,6 +1,6 @@
 'use client'
 
-import type { AlertaLembreteViagemFalhou } from '@saude/mod-saude-tfd'
+import { AlertaLembreteViagemFalhou } from '@saude/mod-saude-tfd/client'
 import { Alert } from '@saude/ui'
 import Link from 'next/link'
 

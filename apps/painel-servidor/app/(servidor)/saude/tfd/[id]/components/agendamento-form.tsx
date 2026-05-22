@@ -1,11 +1,7 @@
 'use client'
 
-import {
-  criarAgendamentoTfd,
-  listarMotoristasAgendamentoTfd,
-  type TfdMotoristaAgendamentoItem,
-  type TfdVeiculoAgendamentoItem,
-} from '@saude/mod-saude-tfd'
+import { type TfdMotoristaAgendamentoItem, type TfdVeiculoAgendamentoItem } from '@saude/mod-saude-tfd/client'
+import { criarAgendamentoTfd, listarMotoristasAgendamentoTfd } from '@saude/mod-saude-tfd/actions/viagem'
 import { Button, Input, Select, Spinner, Textarea } from '@saude/ui'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'

@@ -1,12 +1,9 @@
 'use client'
 
+import { TFD_PERMISSIONS, type TfdViagemSolicitacaoItem } from '@saude/mod-saude-tfd/client'
+import { decidirPrestacaoContas, registrarVisualizacaoComprovante } from '@saude/mod-saude-tfd/actions/financeiro'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
-import {
-  decidirPrestacaoContas,
-  registrarVisualizacaoComprovante,
-  TFD_PERMISSIONS,
-  type TfdViagemSolicitacaoItem,
-} from '@saude/mod-saude-tfd'
+
 import { Alert, Badge, Button, Spinner, Textarea } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'

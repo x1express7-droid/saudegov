@@ -1,11 +1,7 @@
 'use client'
 
-import {
-  atualizarVeiculoTfd,
-  criarVeiculoSchema,
-  criarVeiculoTfd,
-  type TfdVeiculoListItem,
-} from '@saude/mod-saude-tfd'
+import { criarVeiculoSchema, type TfdVeiculoListItem } from '@saude/mod-saude-tfd/client'
+import { atualizarVeiculoTfd, criarVeiculoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Button,
   Dialog,

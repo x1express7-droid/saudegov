@@ -1,4 +1,4 @@
-import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import { TFD_PERMISSIONS } from '../permissions'
 import { isCnhVencendoEmBreve, isCnhVencida } from '../utils/prazos'

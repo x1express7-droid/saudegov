@@ -1,6 +1,6 @@
 'use client'
 
-import type { TfdAgendamentoListItem } from '@saude/mod-saude-tfd'
+import { TfdAgendamentoListItem } from '@saude/mod-saude-tfd/client'
 import {
   DataTable,
   EmptyState,

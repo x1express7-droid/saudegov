@@ -1,9 +1,6 @@
 'use client'
 
-import type {
-  AbrirSolicitacaoInput,
-  TfdSolicitacaoOrigemRetornoItem,
-} from '@saude/mod-saude-tfd'
+import { AbrirSolicitacaoInput, TfdSolicitacaoOrigemRetornoItem } from '@saude/mod-saude-tfd/client'
 import { Select } from '@saude/ui'
 import type { Control, FieldErrors } from 'react-hook-form'
 import { Controller } from 'react-hook-form'

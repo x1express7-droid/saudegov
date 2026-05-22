@@ -1,4 +1,4 @@
-import { maskCPF, requireTenantRole, requirePermission } from '@saude/core-auth'
+import { maskCPF, requireTenantRole, requirePermission } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import { CONFIG_PERMISSIONS } from '../permissions'
 import type { ServidorListItem, ServidorRole, ServidorSetorVinculo } from '../types/servidores.types'

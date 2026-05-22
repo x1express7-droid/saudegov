@@ -6,7 +6,7 @@ import {
   assertModuleActive,
   requirePermission,
   requireTenantRole,
-} from '@saude/core-auth'
+} from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import {
   createAuditLog,

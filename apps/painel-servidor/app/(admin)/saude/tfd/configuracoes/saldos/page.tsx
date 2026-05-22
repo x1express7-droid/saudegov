@@ -1,4 +1,4 @@
-import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
 import { getSaldosTfd } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import { notFound } from 'next/navigation'

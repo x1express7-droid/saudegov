@@ -1,3 +1,5 @@
+import 'server-only'
+
 export {
   TFD_PERMISSIONS,
   TFD_PERMISSION_DEFINITIONS,

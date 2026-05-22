@@ -1,4 +1,4 @@
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import { getAuditLogs } from '../../../lib/queries/get-audit-logs'
 import { AuditLogLista } from './components/audit-log-lista'
 

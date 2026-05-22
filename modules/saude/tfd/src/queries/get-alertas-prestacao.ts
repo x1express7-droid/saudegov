@@ -1,5 +1,5 @@
 import { addHours } from 'date-fns'
-import { assertModuleActive, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 
 import type { AlertaPrestacaoMotivo, AlertaPrestacaoPrazo } from '../types/tfd.types'

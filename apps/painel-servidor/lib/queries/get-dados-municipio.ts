@@ -1,4 +1,4 @@
-import { requireTenantRole, requirePermission } from '@saude/core-auth'
+import { requireTenantRole, requirePermission } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import { CONFIG_PERMISSIONS } from '../permissions'
 import {

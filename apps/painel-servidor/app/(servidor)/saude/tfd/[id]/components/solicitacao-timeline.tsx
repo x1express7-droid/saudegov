@@ -1,6 +1,6 @@
 'use client'
 
-import type { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd'
+import { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd/client'
 import { TramitacaoTimeline, type TramitacaoItem } from '@saude/ui'
 import { useMemo } from 'react'
 

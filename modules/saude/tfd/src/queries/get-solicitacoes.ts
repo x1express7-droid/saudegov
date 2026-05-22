@@ -1,4 +1,4 @@
-import { assertModuleActive, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import type { TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
 

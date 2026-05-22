@@ -1,5 +1,5 @@
 import Link from 'next/link'
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 
 const navItems = [
   { href: '/municipios', label: 'Municípios' },

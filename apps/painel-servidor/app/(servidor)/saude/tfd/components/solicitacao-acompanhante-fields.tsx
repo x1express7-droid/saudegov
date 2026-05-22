@@ -1,6 +1,6 @@
 'use client'
 
-import type { AbrirSolicitacaoInput } from '@saude/mod-saude-tfd'
+import { AbrirSolicitacaoInput } from '@saude/mod-saude-tfd/client'
 import { Input, Select } from '@saude/ui'
 import { stripCpf, validateCpf } from '@saude/validators'
 import { useState } from 'react'

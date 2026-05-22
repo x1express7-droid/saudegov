@@ -1,4 +1,4 @@
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import { getPrismaAdmin } from '@saude/core-db'
 import type { PrismaClient } from '@saude/core-db'
 import { calcSaldoDisponivel } from '@saude/mod-saude-tfd'

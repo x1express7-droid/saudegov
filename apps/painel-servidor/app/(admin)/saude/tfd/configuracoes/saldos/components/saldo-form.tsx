@@ -1,6 +1,7 @@
 'use client'
 
-import { criarSaldoObjectSchema, criarSaldoTfd } from '@saude/mod-saude-tfd'
+import { criarSaldoObjectSchema } from '@saude/mod-saude-tfd/client'
+import { criarSaldoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import { z } from 'zod'
 import {
   Alert,

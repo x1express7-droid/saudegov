@@ -1,3 +1,5 @@
+import 'server-only'
+
 import { headers } from 'next/headers'
 import type { TenantContext } from './tenant-resolver'
 

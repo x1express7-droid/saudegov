@@ -1,4 +1,4 @@
-import type { AlertaPendente30Dias } from '@saude/mod-saude-tfd'
+import type { AlertaPendente30Dias } from '@saude/mod-saude-tfd/client'
 import { Alert } from '@saude/ui'
 import Link from 'next/link'
 

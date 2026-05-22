@@ -1,6 +1,6 @@
 'use server'
 
-import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import {
   confirmarUpload,
@@ -10,9 +10,9 @@ import {
   StorageValidationError,
   type ConfirmarUploadOutput,
   type SolicitarUrlUploadOutput,
-  type StorageMimeType,
-} from '@saude/core-documents'
-import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
+} from '@saude/core-documents/storage'
+import type { StorageMimeType } from '@saude/core-documents/storage-types'
+import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import type { ActionResponse } from '@saude/validators'
 import { z } from 'zod'
 

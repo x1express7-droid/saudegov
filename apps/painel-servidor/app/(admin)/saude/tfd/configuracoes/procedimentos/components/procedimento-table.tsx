@@ -1,10 +1,9 @@
 'use client'
 
+import { type TfdProcedimentoListItem } from '@saude/mod-saude-tfd/client'
+import { desativarProcedimentoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import { DeactivateDialog } from '../../../../../configuracoes/organograma/components/deactivate-dialog'
-import {
-  desativarProcedimentoTfd,
-  type TfdProcedimentoListItem,
-} from '@saude/mod-saude-tfd'
+
 import {
   Badge,
   Button,

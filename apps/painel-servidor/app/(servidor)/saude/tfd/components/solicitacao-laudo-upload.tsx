@@ -4,7 +4,7 @@ import {
   confirmarUploadAction,
   solicitarUrlUploadAction,
 } from '@/lib/actions/upload-anexo'
-import type { StorageMimeType } from '@saude/core-documents'
+import type { StorageMimeType } from '@saude/core-documents/storage-types'
 import { Alert, FileUpload, Spinner } from '@saude/ui'
 import { useCallback, useId, useState } from 'react'
 

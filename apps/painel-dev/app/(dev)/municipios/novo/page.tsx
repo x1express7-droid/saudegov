@@ -1,4 +1,4 @@
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import { MunicipioForm } from './components/municipio-form'
 
 export default async function NovoMunicipioPage() {

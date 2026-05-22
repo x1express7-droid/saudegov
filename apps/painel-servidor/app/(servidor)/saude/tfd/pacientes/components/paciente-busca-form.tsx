@@ -1,6 +1,6 @@
 'use client'
 
-import { buscarPacientePorCns, vincularPaciente } from '@saude/mod-saude-tfd'
+import { buscarPacientePorCns, vincularPaciente } from '@saude/mod-saude-tfd/actions/paciente'
 import { Alert, Badge, Button, Card, Input, PageHeader } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'

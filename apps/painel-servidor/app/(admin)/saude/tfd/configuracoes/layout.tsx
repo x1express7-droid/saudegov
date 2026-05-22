@@ -3,8 +3,8 @@ import {
   getTenantContext,
   hasPermission,
   requireTenantRole,
-} from '@saude/core-auth'
-import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
+} from '@saude/core-auth/server'
+import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import { cn } from '@saude/ui'
 import { headers } from 'next/headers'
 import Link from 'next/link'

@@ -3,7 +3,7 @@ import {
   getTenantContext,
   hasPermission,
   requireTenantRole,
-} from '@saude/core-auth'
+} from '@saude/core-auth/server'
 import {
   getSaldosTfd,
   getSolicitacaoTfd,

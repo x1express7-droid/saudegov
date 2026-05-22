@@ -1,10 +1,7 @@
 'use client'
 
-import {
-  buscarExtratoSaldoTfd,
-  type ExtratoMovimentacaoItem,
-  type SaldoListItem,
-} from '@saude/mod-saude-tfd'
+import { type ExtratoMovimentacaoItem, type SaldoListItem } from '@saude/mod-saude-tfd/client'
+import { buscarExtratoSaldoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Badge,
   Button,

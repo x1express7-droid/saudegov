@@ -1,11 +1,9 @@
 'use client'
 
+import { TFD_PERMISSIONS, type TfdViagemSolicitacaoItem } from '@saude/mod-saude-tfd/client'
+import { enviarPrestacaoContas } from '@saude/mod-saude-tfd/actions/financeiro'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
-import {
-  enviarPrestacaoContas,
-  TFD_PERMISSIONS,
-  type TfdViagemSolicitacaoItem,
-} from '@saude/mod-saude-tfd'
+
 import { Alert, Button, Select, Spinner } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'

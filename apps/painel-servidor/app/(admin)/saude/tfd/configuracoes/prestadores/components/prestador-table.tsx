@@ -1,7 +1,9 @@
 'use client'
 
+import { type TfdPrestadorListItem } from '@saude/mod-saude-tfd/client'
+import { desativarPrestadorTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import { DeactivateDialog } from '../../../../../configuracoes/organograma/components/deactivate-dialog'
-import { desativarPrestadorTfd, type TfdPrestadorListItem } from '@saude/mod-saude-tfd'
+
 import {
   Badge,
   Button,

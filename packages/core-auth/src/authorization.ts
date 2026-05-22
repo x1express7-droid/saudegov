@@ -1,3 +1,5 @@
+import 'server-only'
+
 // [PENDENTE — Sprint 0.6] Redirecionar usuários com must_change_password após login
 // para fluxo de troca de senha obrigatória (painel-servidor). Login em auth.config.ts
 // ainda não consulta esse campo.

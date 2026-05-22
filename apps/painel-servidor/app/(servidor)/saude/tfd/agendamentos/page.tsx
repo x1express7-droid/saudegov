@@ -1,4 +1,4 @@
-import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
 import { getAgendamentosTfd } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'

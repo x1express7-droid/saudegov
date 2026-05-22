@@ -1,4 +1,4 @@
-import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
 import { getPrestacoesTfd } from '@saude/mod-saude-tfd'
 import type { TfdPrestacaoStatus } from '@prisma/client'
 import { PageHeader } from '@saude/ui'

@@ -1,11 +1,9 @@
 'use client'
 
+import { type TfdMotoristaListItem, type TfdServidorMotoristaOption } from '@saude/mod-saude-tfd/client'
+import { desativarMotoristaTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import { DeactivateDialog } from '../../../../../configuracoes/organograma/components/deactivate-dialog'
-import {
-  desativarMotoristaTfd,
-  type TfdMotoristaListItem,
-  type TfdServidorMotoristaOption,
-} from '@saude/mod-saude-tfd'
+
 import {
   Badge,
   Button,

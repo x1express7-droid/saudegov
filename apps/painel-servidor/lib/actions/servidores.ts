@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { hashPassword, requireTenantRole, requirePermission } from '@saude/core-auth'
+import { hashPassword, requireTenantRole, requirePermission } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import { createAuditLog } from '@saude/core-documents'
 import type { ActionResponse } from '@saude/validators'

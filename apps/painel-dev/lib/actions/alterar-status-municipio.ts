@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
-import { requireSuperAdmin } from '@saude/core-auth'
+import { requireSuperAdmin } from '@saude/core-auth/server'
 import { createAuditLog } from '@saude/core-documents'
 import { getPrismaAdmin } from '@saude/core-db'
 import type { ActionResponse } from '@saude/validators'

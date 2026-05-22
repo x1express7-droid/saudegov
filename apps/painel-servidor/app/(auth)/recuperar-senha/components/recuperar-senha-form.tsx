@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { solicitarRecuperacaoSenha } from '@saude/core-auth'
+import { solicitarRecuperacaoSenha } from '@saude/core-auth/password-reset'
 
 const SUCCESS_MESSAGE =
   'Se o e-mail estiver cadastrado, você receberá instruções para redefinir sua senha.'

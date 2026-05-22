@@ -8,7 +8,7 @@ import {
   registrarDominioCustomizado,
   removerRegistroDns,
   requireSuperAdmin,
-} from '@saude/core-auth'
+} from '@saude/core-auth/server'
 import {
   getPrismaAdmin,
   SECRETARIA_SAUDE_NOME,

@@ -1,6 +1,6 @@
 'use server'
 
-import { assertModuleActive, maskCPF, requirePermission, requireTenantRole } from '@saude/core-auth'
+import { assertModuleActive, maskCPF, requirePermission, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import { createAuditLog, getCadsusService } from '@saude/core-documents'
 import type { ActionResponse } from '@saude/validators'
