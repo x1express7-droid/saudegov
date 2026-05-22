@@ -13,7 +13,11 @@ FROM base AS builder
 ENV NODE_ENV=development
 COPY . .
 RUN npm install
-RUN cd packages/core-db && npx prisma generate
+# schema: packages/core-db/prisma/schema.prisma → output em packages/core-db/node_modules/.prisma/client
+# npm workspaces hoist @prisma/client na raiz; copiar o client gerado para node_modules/.prisma da raiz
+RUN npx prisma generate --schema=packages/core-db/prisma/schema.prisma \
+  && mkdir -p node_modules/.prisma \
+  && cp -r packages/core-db/node_modules/.prisma/client node_modules/.prisma/client
 RUN npx turbo build --filter=@saude/app-painel-dev
 ENV NODE_ENV=production
 
@@ -30,6 +34,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/painel-dev/.next/static ./ap
 COPY --from=builder --chown=nextjs:nodejs /app/apps/painel-dev/public ./apps/painel-dev/public
 
 # Prisma query engine (externalized via serverExternalPackages)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/node_modules/.prisma ./packages/core-db/node_modules/.prisma
 
 USER nextjs
