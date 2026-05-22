@@ -1,7 +1,7 @@
 import 'server-only'
 
 import { headers } from 'next/headers'
-import { getPrismaForTenant } from '@saude/core-db'
+import { getPrismaAdmin, getPrismaForTenant } from '@saude/core-db'
 import { verifyPassword } from './crypto'
 import type { UserRole } from './types/session'
 
@@ -212,6 +212,110 @@ export async function authorizeCredentials(
     name: user.name,
     email: user.email,
     setorId: principalSetor?.setor_id,
+    permissions: parsePermissions(user.permissions),
+  }
+}
+
+async function recordSuperAdminLoginFailed(userId: string | null): Promise<void> {
+  try {
+    const db = getPrismaAdmin()
+    await db.auditLog.create({
+      data: {
+        tenant_id: null,
+        user_id: userId,
+        acao: 'LOGIN_FAILED',
+        entidade: 'users',
+        entidade_id: userId,
+        payload_depois: { motivo: 'credenciais_invalidas', contexto: 'painel_dev' },
+      },
+    })
+  } catch (error) {
+    console.error('[auth] Falha ao registrar audit LOGIN_FAILED (superadmin):', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+  }
+}
+
+/** Painel Dev — SUPERADMIN sem tenant (tenant_id null, getPrismaAdmin). */
+export async function authorizeSuperAdminCredentials(
+  credentials: Partial<Record<'email' | 'password', unknown>>
+): Promise<AuthorizeUser | null> {
+  if (!isValidCredentials(credentials)) {
+    return null
+  }
+
+  const email = credentials.email.trim().toLowerCase()
+  const rateLimitKey = `superadmin:${email}`
+
+  if (isRateLimited(rateLimitKey)) {
+    await recordSuperAdminLoginFailed(null)
+    return null
+  }
+
+  const db = getPrismaAdmin()
+
+  const user = await db.user.findFirst({
+    where: {
+      email,
+      role: 'SUPERADMIN',
+      tenant_id: null,
+      deleted_at: null,
+    },
+    select: {
+      id: true,
+      tenant_id: true,
+      role: true,
+      name: true,
+      email: true,
+      password_hash: true,
+      permissions: true,
+      active: true,
+    },
+  })
+
+  if (!user || !user.active || user.role !== 'SUPERADMIN') {
+    recordFailedAttempt(rateLimitKey)
+    await recordSuperAdminLoginFailed(user?.id ?? null)
+    return null
+  }
+
+  if (!user.password_hash) {
+    recordFailedAttempt(rateLimitKey)
+    await recordSuperAdminLoginFailed(user.id)
+    return null
+  }
+
+  const passwordValid = await verifyPassword(credentials.password, user.password_hash)
+  if (!passwordValid) {
+    recordFailedAttempt(rateLimitKey)
+    await recordSuperAdminLoginFailed(user.id)
+    return null
+  }
+
+  clearFailedAttempts(rateLimitKey)
+
+  await db.user.update({
+    where: { id: user.id },
+    data: { last_login_at: new Date() },
+  })
+
+  await db.auditLog.create({
+    data: {
+      tenant_id: null,
+      user_id: user.id,
+      acao: 'LOGIN',
+      entidade: 'users',
+      entidade_id: user.id,
+      payload_depois: { contexto: 'painel_dev' },
+    },
+  })
+
+  return {
+    id: user.id,
+    tenantId: null,
+    role: 'SUPERADMIN',
+    name: user.name,
+    email: user.email,
     permissions: parsePermissions(user.permissions),
   }
 }

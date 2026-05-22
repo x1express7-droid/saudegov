@@ -11,6 +11,7 @@
     "./edge": "./src/edge.ts",
     "./get-tenant-context": "./src/get-tenant-context.ts",
     "./auth-node": "./src/auth.node.ts",
+    "./auth-node-painel-dev": "./src/auth-node-painel-dev.ts",
     "./password-reset": "./src/password-reset.ts",
     "./permissions": "./src/permissions.ts",
     "./types/session": "./src/types/session.ts"
