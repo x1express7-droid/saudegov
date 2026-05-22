@@ -33,6 +33,12 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/painel-dev/public ./apps/pai
 # Prisma query engine (externalized via serverExternalPackages)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
+# Copia o prisma CLI e schema para rodar migrations no startup
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.bin/prisma ./node_modules/.bin/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/prisma ./packages/core-db/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/node_modules/.prisma ./packages/core-db/node_modules/.prisma
+
 USER nextjs
 EXPOSE 3000
-CMD ["node", "apps/painel-dev/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=packages/core-db/prisma/schema.prisma && node apps/painel-dev/server.js"]
