@@ -30,6 +30,10 @@ export async function middleware(req: NextRequest) {
   }
 
   if (!tenant) {
+    tenant = resolveDevTenantFromEnv()
+  }
+
+  if (!tenant) {
     return NextResponse.rewrite(new URL('/404', req.url))
   }
 

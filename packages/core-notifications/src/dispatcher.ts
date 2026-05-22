@@ -27,6 +27,7 @@ import { buildLembreteViagem48hMessage } from './templates/lembrete-viagem-48h'
 import { buildPrestacaoAprovadaMessage } from './templates/prestacao-aprovada'
 import { buildPrestacaoEnviadaMessage } from './templates/prestacao-enviada'
 import { buildPrestacaoRejeitadaMessage } from './templates/prestacao-rejeitada'
+import { buildProcessoCanceladoMessage } from './templates/processo-cancelado'
 import {
   NOTIFICATION_EVENTS,
   type DispararNotificacaoInput,
@@ -87,6 +88,8 @@ function buildMessage(
       return buildPrestacaoAprovadaMessage(input.context as PrestacaoDecisaoNotificationContext)
     case NOTIFICATION_EVENTS.PRESTACAO_REJEITADA:
       return buildPrestacaoRejeitadaMessage(input.context as PrestacaoRejeitadaNotificationContext)
+    case NOTIFICATION_EVENTS.PROCESSO_CANCELADO:
+      return buildProcessoCanceladoMessage(solicitacaoContext)
     default: {
       const _exhaustive: never = evento
       throw new Error(`Evento de notificação não suportado: ${String(_exhaustive)}`)

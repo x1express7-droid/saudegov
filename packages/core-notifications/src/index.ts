@@ -24,3 +24,4 @@ export { buildLembretePrestacao48hMessage } from './templates/lembrete-prestacao
 export { buildPrestacaoEnviadaMessage } from './templates/prestacao-enviada'
 export { buildPrestacaoAprovadaMessage } from './templates/prestacao-aprovada'
 export { buildPrestacaoRejeitadaMessage } from './templates/prestacao-rejeitada'
+export { buildProcessoCanceladoMessage } from './templates/processo-cancelado'

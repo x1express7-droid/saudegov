@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { Prisma } from '@prisma/client'
 import {
   assertModuleActive,
   requirePermission,
@@ -21,7 +22,12 @@ import { TFD_PERMISSIONS } from '../permissions'
 import type { AbrirSolicitacaoOutput, EnviarSolicitacaoOutput } from '../types/tfd.types'
 import { cpfsAcompanhanteEDiferenteDoPaciente } from '../validators/cpf-acompanhante'
 import {
+  mensagemStatusNaoCancelavel,
+  TFD_STATUS_BLOQUEIA_CANCELAMENTO,
+} from '../utils/cancelamento'
+import {
   abrirSolicitacaoSchema,
+  cancelarSolicitacaoSchema,
   enviarSolicitacaoSchema,
 } from '../validators/solicitacao.schema'
 
@@ -58,6 +64,41 @@ class SolicitacaoBusinessError extends Error {
     super(message)
     this.name = 'SolicitacaoBusinessError'
   }
+}
+
+type ReservaLockedRow = {
+  id: string
+  saldo_id: string
+  valor_estimado: Prisma.Decimal
+}
+
+function revalidateSolicitacaoPaths(solicitacaoId: string): void {
+  revalidatePath('/saude/tfd')
+  revalidatePath(`/saude/tfd/${solicitacaoId}`)
+  revalidatePath('/saude/tfd/dashboard')
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+async function lockReservaAtivaForUpdate(
+  tx: PrismaTransactionClient,
+  tenantId: string,
+  solicitacaoId: string
+): Promise<ReservaLockedRow | null> {
+  const rows = await tx.$queryRaw<ReservaLockedRow[]>(
+    Prisma.sql`
+      SELECT id, saldo_id, valor_estimado
+      FROM saude_tfd.reservas_saldo
+      WHERE solicitacao_id = ${solicitacaoId}::uuid
+        AND tenant_id = ${tenantId}::uuid
+        AND status = 'ATIVA'
+      FOR UPDATE
+    `
+  )
+
+  return rows[0] ?? null
 }
 
 function parsePrestadorEspecialidades(value: unknown): string[] {
@@ -529,6 +570,183 @@ export async function enviarSolicitacaoTfd(
     return {
       success: false,
       error: 'Não foi possível enviar a solicitação. Tente novamente.',
+    }
+  }
+}
+
+export async function cancelarSolicitacaoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('GESTOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.CANCELAR_PROCESSO)
+
+  const parsed = cancelarSolicitacaoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const solicitacao = await db.tfdSolicitacao.findFirst({
+      where: {
+        id: data.solicitacaoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        solicitante_id: true,
+        processo_id: true,
+        urgencia: true,
+        especialidade: {
+          select: { nome: true },
+        },
+        processo: {
+          select: { protocolo: true },
+        },
+      },
+    })
+
+    if (!solicitacao) {
+      return { success: false, error: 'Solicitação não encontrada.' }
+    }
+
+    if (
+      TFD_STATUS_BLOQUEIA_CANCELAMENTO.includes(
+        solicitacao.status as (typeof TFD_STATUS_BLOQUEIA_CANCELAMENTO)[number]
+      )
+    ) {
+      return { success: false, error: mensagemStatusNaoCancelavel(solicitacao.status) }
+    }
+
+    if (solicitacao.status === 'CANCELADO' || solicitacao.status === 'NEGADO') {
+      return { success: false, error: mensagemStatusNaoCancelavel(solicitacao.status) }
+    }
+
+    const protocolo = solicitacao.processo.protocolo
+    const especialidadeNome = solicitacao.especialidade?.nome ?? 'Não informada'
+    const canceladoAt = new Date()
+    const motivo = data.motivo.trim()
+
+    const resultado = await db.$transaction(async (tx) => {
+      const reservaLocked = await lockReservaAtivaForUpdate(tx, tenantId, solicitacao.id)
+
+      await tx.tfdSolicitacao.update({
+        where: { id: solicitacao.id },
+        data: {
+          status: 'CANCELADO',
+          motivo_cancelamento: motivo,
+          cancelado_por_id: session.user.id,
+          cancelado_at: canceladoAt,
+        },
+      })
+
+      await tx.processo.update({
+        where: { id: solicitacao.processo_id },
+        data: { status: 'CANCELADO' },
+      })
+
+      if (reservaLocked) {
+        const valorLiberado = roundMoney(Number(reservaLocked.valor_estimado))
+
+        await tx.tfdReservaSaldo.update({
+          where: { id: reservaLocked.id },
+          data: { status: 'LIBERADA' },
+        })
+
+        await tx.tfdMovimentacaoSaldo.create({
+          data: {
+            tenant_id: tenantId,
+            saldo_id: reservaLocked.saldo_id,
+            tipo: 'LIBERACAO',
+            valor: valorLiberado,
+            solicitacao_id: solicitacao.id,
+            descricao: 'Liberação — cancelamento da solicitação TFD',
+            usuario_id: session.user.id,
+          },
+        })
+      }
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: solicitacao.processo_id,
+          tipo: 'CANCELAMENTO',
+          descricao: `Solicitação cancelada. Motivo: ${motivo}`,
+          usuarioId: session.user.id,
+          metadata: {
+            statusAnterior: solicitacao.status,
+            reservaLiberada: reservaLocked !== null,
+          },
+        },
+        tx
+      )
+
+      return {
+        solicitacaoId: solicitacao.id,
+        processoId: solicitacao.processo_id,
+        statusAnterior: solicitacao.status,
+        solicitanteId: solicitacao.solicitante_id,
+        reservaLiberada: reservaLocked !== null,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_solicitacao',
+      entidadeId: resultado.solicitacaoId,
+      payloadAntes: { status: resultado.statusAnterior },
+      payloadDepois: {
+        status: 'CANCELADO',
+        processoStatus: 'CANCELADO',
+        protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        reservaLiberada: resultado.reservaLiberada,
+      },
+    })
+
+    await dispararNotificacao({
+      tenantId,
+      evento: NOTIFICATION_EVENTS.PROCESSO_CANCELADO,
+      modulo: MODULO_TFD,
+      processoId: resultado.processoId,
+      context: {
+        protocolo,
+        especialidade: especialidadeNome,
+        urgencia: solicitacao.urgencia,
+      },
+      recipientUserIds: [resultado.solicitanteId],
+      excludeUserIds: [session.user.id],
+    })
+
+    revalidateSolicitacaoPaths(resultado.solicitacaoId)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof SolicitacaoBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[cancelarSolicitacaoTfd] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível cancelar a solicitação. Tente novamente.',
     }
   }
 }

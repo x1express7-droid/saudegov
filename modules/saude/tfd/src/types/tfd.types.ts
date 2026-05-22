@@ -372,3 +372,110 @@ export interface TfdSolicitacaoOrigemRetornoItem {
   }
   concluidoEm: string
 }
+
+// --- Sprint 1.8: Dashboard TFD ---
+
+/** Saldo resumido no dashboard do gestor. @see docs/API_CONTRACTS.md §7.3 */
+export interface TfdDashboardSaldoItem {
+  id: string
+  descricao: string
+  fonte: TfdFonteRecursoValor
+  valorTotal: number
+  valorReservado: number
+  valorUtilizado: number
+  valorDisponivel: number
+  alertaBaixo: boolean
+}
+
+/** KPIs e agregados do dashboard TFD. @see docs/API_CONTRACTS.md §7.3 */
+export interface TfdDashboardOutput {
+  totalSolicitacoes: number
+  porStatus: Record<string, number>
+  porUrgencia: Record<string, number>
+  tempoMedioAprovacaoDias: number
+  prestacoesPendentes: number
+  viagensProximos7Dias: number
+  saldos: TfdDashboardSaldoItem[]
+}
+
+/** Alerta operacional — solicitação MUITO_URGENTE em andamento (dashboard). */
+export interface TfdAlertaUrgente {
+  solicitacaoId: string
+  protocolo: string
+  status: string
+  urgencia: string
+  especialidade: string
+  paciente: { nome: string }
+  criadoEm: string
+}
+
+/** Alerta operacional — saldo com disponível abaixo de 20% do total (dashboard). */
+export interface TfdAlertaSaldoBaixo {
+  saldoId: string
+  descricao: string
+  fonte: TfdFonteRecursoValor
+  valorTotal: number
+  valorDisponivel: number
+  percentualDisponivel: number
+}
+
+/** Alerta operacional — prestação de contas vencendo ou vencida (dashboard). */
+export interface TfdAlertaPC {
+  prestacaoId: string
+  motivo: AlertaPrestacaoMotivo
+  prazoEnvioAt: string
+  sequenciaViagem: number
+  solicitacao: {
+    id: string
+    protocolo: string
+  }
+}
+
+// --- Sprint 1.8: Relatórios ---
+
+/** Filtros do relatório por competência (mês/ano). @see relatorioCompetenciaSchema */
+export interface RelatorioCompetenciaInput {
+  mes: number
+  ano: number
+}
+
+/** Filtros do relatório por paciente. @see relatorioPacienteSchema */
+export interface RelatorioPacienteInput {
+  pacienteId: string
+}
+
+/** Dados agregados — relatório por competência (sem dados clínicos). */
+export interface RelatorioCompetenciaData {
+  mes: number
+  ano: number
+  porStatus: Record<string, number>
+  valorTotalReservado: number
+  valorTotalConsumido: number
+  itens: RelatorioCompetenciaItem[]
+}
+
+export interface RelatorioCompetenciaItem {
+  protocolo: string
+  status: string
+  valorReservado: number
+  valorConsumido: number
+}
+
+/** Dados — relatório histórico por paciente (sem dados clínicos). */
+export interface RelatorioPacienteData {
+  paciente: { id: string; nome: string }
+  itens: RelatorioPacienteItem[]
+}
+
+export interface RelatorioPacienteItem {
+  protocolo: string
+  especialidade: string
+  status: string
+  criadoEm: string
+  decididoEm: string | null
+}
+
+export interface PacienteRelatorioBuscaItem {
+  id: string
+  nome: string
+}

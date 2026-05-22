@@ -7,16 +7,20 @@
   "exports": {
     ".": "./src/index.ts",
     "./storage": "./src/storage.ts",
-    "./storage-types": "./src/storage.types.ts"
+    "./storage-types": "./src/storage.types.ts",
+    "./pdf": "./src/pdf/gerador-pdf-relatorio.ts",
+    "./export-storage": "./src/export-storage.ts"
   },
   "scripts": {
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
     "@saude/core-db": "*",
-    "@saude/validators": "*"
+    "@saude/validators": "*",
+    "pdfkit": "^0.18.0"
   },
   "devDependencies": {
-    "@types/node": "^20.19.41"
+    "@types/node": "^20.19.41",
+    "@types/pdfkit": "^0.17.6"
   }
 }

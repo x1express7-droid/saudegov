@@ -96,7 +96,7 @@ A plataforma expõe **2 aplicações Next.js** dentro de um monorepo Turborepo.
 São apps separados porque têm propósitos completamente diferentes.
 
 ### 4.1 Painel Dev (`apps/painel-dev`)
-- **Acesso:** `admin.saudemunic.com.br` (domínio fixo, só do desenvolvedor)
+- **Acesso:** domínio fixo do Painel Dev (ex.: `admin.plataforma.exemplo` — ver `ADMIN_DOMAIN`)
 - **Quem usa:** SUPERADMIN
 - **Protegido por:** IP allowlist + autenticação forte
 - **Função:**
@@ -110,7 +110,7 @@ São apps separados porque têm propósitos completamente diferentes.
   - Gerenciar registro de funcionalidades (`platform_features`)
 
 ### 4.2 Painel Servidor (`apps/painel-servidor`)
-- **Acesso:** `municipio.saudemunic.com.br` ou `municipio.gov.br`
+- **Acesso:** `{slug}.<dominio-base-da-plataforma>` ou domínio `.gov.br` do município
 - **Quem usa:** ADMIN, GESTOR, SERVIDOR do município
 - **Protegido por:** autenticação + papel mínimo por rota + módulo ativo
 - **Função:**
@@ -175,13 +175,18 @@ São apps separados porque têm propósitos completamente diferentes.
 Ao cadastrar um município no Painel Dev, o sistema oferece duas opções:
 
 ### Opção A — Subdomínio automático da plataforma
+
+O domínio base é o da **sua implantação** (Cloudflare + VPS/Coolify), não um domínio fixo do repositório.
+
 ```
-campograndems.saudemunic.com.br
-altamirapa.saudemunic.com.br
+campograndems.<dominio-base>
+altamirapa.<dominio-base>
 ```
-- Criado automaticamente via API do Cloudflare ao salvar o município
-- Zero configuração manual — o desenvolvedor não toca na VPS
-- SSL wildcard `*.saudemunic.com.br` gerenciado pelo Cloudflare
+
+Exemplo ilustrativo: `campograndems.plataforma.exemplo`.
+
+- Criado automaticamente via API do Cloudflare ao salvar o município (quando configurado)
+- SSL wildcard `*.<dominio-base>` na zona DNS da plataforma
 
 ### Opção B — Domínio próprio do município (.gov.br)
 ```
@@ -327,7 +332,7 @@ saude-munic/
 ## 11. Fluxo de uma Requisição
 
 ```
-1. Requisição chega em campograndems.saudemunic.com.br/saude/tfd
+1. Requisição chega em `campograndems.<dominio-base>/saude/tfd`
 2. Cloudflare → Vercel → Next.js Middleware
 3. Tenant Resolver: resolve tenant_id pelo domínio (consulta ao banco)
 4. Verifica módulo ativo para o município → 404 se inativo

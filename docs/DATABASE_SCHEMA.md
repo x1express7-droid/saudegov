@@ -56,7 +56,7 @@ CREATE TABLE public.tenants (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   slug            VARCHAR(100) UNIQUE NOT NULL,   -- 'campo-grande-ms'
   name            VARCHAR(200) NOT NULL,           -- 'Prefeitura de Campo Grande'
-  domain          VARCHAR(255) UNIQUE NOT NULL,    -- 'campograndems.saudemunic.com.br'
+  domain          VARCHAR(255) UNIQUE NOT NULL,    -- ex.: 'campograndems.plataforma.exemplo'
   domain_custom   VARCHAR(255) UNIQUE,             -- 'saude.campogrande.ms.gov.br'
   cloudflare_zone_id VARCHAR(100),                 -- ID da zona no Cloudflare
   cloudflare_record_id VARCHAR(100),               -- ID do registro DNS criado

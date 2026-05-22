@@ -359,6 +359,7 @@ import { getTfdSolicitacao } from '@saude/mod-saude-tfd' // PROIBIDO em package
     "build": "turbo build",
     "lint": "turbo lint",
     "type-check": "turbo type-check",
+    "db:generate": "turbo db:generate --filter=@saude/core-db",
     "db:migrate": "turbo db:migrate --filter=@saude/core-db",
     "db:studio": "cd packages/core-db && npx prisma studio"
   },

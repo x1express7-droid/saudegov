@@ -33,3 +33,27 @@ export {
 } from './cadsus'
 
 export type { CadsusResult, CadsusService } from './cadsus'
+
+export {
+  gerarPdfRelatorio,
+  type GerarPdfRelatorioInput,
+  type PdfRelatorioRodape,
+  type PdfTabelaColuna,
+} from './pdf/gerador-pdf-relatorio'
+
+export {
+  salvarExportTemporarioPdf,
+  gerarUrlDownloadExportTemporario,
+  validarUrlAssinadaExport,
+  resolveLocalExportPath,
+  EXPORT_URL_EXPIRES_MINUTES,
+  ExportStorageConfigError,
+  type SalvarExportTemporarioOutput,
+  type GerarUrlDownloadExportOutput,
+} from './export-storage'
+
+export {
+  assertTenantExportRateLimit,
+  EXPORT_RATE_LIMIT_PER_TENANT_HOUR,
+  ExportRateLimitError,
+} from './export-rate-limit'

@@ -38,12 +38,15 @@ export interface SidebarProps {
   showAdminNav?: boolean
   /** Exibe o subitem Configurações TFD (ADMIN/GESTOR). */
   showTfdConfigNav?: boolean
+  /** Exibe o subitem Dashboard TFD (GESTOR+ com ver_dashboard). */
+  showTfdDashboardNav?: boolean
 }
 
 function buildNavItems(
   modules: Record<string, Record<string, boolean>>,
   showAdminNav: boolean,
-  showTfdConfigNav: boolean
+  showTfdConfigNav: boolean,
+  showTfdDashboardNav: boolean
 ): SidebarNavItem[] {
   const items: SidebarNavItem[] = [
     {
@@ -56,6 +59,9 @@ function buildNavItems(
   if (modules.saude?.tfd) {
     const tfdChildren: SidebarNavChildItem[] = [
       { label: 'Fila', href: '/saude/tfd' },
+      ...(showTfdDashboardNav
+        ? [{ label: 'Dashboard', href: '/saude/tfd/dashboard' }]
+        : []),
       { label: 'Agendamentos', href: '/saude/tfd/agendamentos' },
       { label: 'Nova solicitação', href: '/saude/tfd/nova' },
       { label: 'Pacientes', href: '/saude/tfd/pacientes' },
@@ -130,6 +136,9 @@ function childIcon(href: string): ReactNode {
   if (href === '/saude/tfd') {
     return <List className="size-4 shrink-0" aria-hidden="true" />
   }
+  if (href === '/saude/tfd/dashboard') {
+    return <LayoutDashboard className="size-4 shrink-0" aria-hidden="true" />
+  }
   if (href === '/saude/tfd/agendamentos') {
     return <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
   }
@@ -153,8 +162,9 @@ export function Sidebar({
   onNavigate,
   showAdminNav = false,
   showTfdConfigNav = false,
+  showTfdDashboardNav = false,
 }: SidebarProps) {
-  const items = buildNavItems(modules, showAdminNav, showTfdConfigNav)
+  const items = buildNavItems(modules, showAdminNav, showTfdConfigNav, showTfdDashboardNav)
 
   return (
     <nav

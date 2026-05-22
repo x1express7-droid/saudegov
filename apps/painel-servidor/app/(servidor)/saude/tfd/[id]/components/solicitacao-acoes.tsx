@@ -3,6 +3,7 @@
 import { TFD_PERMISSIONS, type SaldoListItem, type TfdSolicitacaoDetalhe, type TfdVeiculoAgendamentoItem, type TfdViagemSolicitacaoItem } from '@saude/mod-saude-tfd/client'
 import { decidirSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/decisao'
 import { enviarComplementoTfd, iniciarAnaliseTfd, solicitarComplementoTfd } from '@saude/mod-saude-tfd/actions/regulacao'
+import { isStatusCancelavelTfd } from '@saude/mod-saude-tfd/utils/cancelamento'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 
 import {
@@ -19,6 +20,7 @@ import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
 import { AgendamentoForm } from './agendamento-form'
+import { CancelarSolicitacaoDialog } from './cancelar-solicitacao-dialog'
 import { DespesaForm } from './despesa-form'
 import { PrestacaoAnalisePainel } from './prestacao-analise-painel'
 import { RetornoViagemAcao } from './retorno-viagem-acao'
@@ -181,13 +183,15 @@ export function SolicitacaoAcoes({
         viagem.prestacao?.status === 'PENDENTE' || viagem.prestacao?.status === 'REJEITADA'
     )
   const showAnalisePrestacao = solicitacao.status === 'PC_EM_ANALISE'
+  const showCancelar = isStatusCancelavelTfd(solicitacao.status)
 
   const hasAnyAction =
     hasRegulacaoAction ||
     showAgendamentoForm ||
     showRetorno ||
     showDespesa ||
-    showAnalisePrestacao
+    showAnalisePrestacao ||
+    showCancelar
 
   return (
     <Card header={<CardHeader>Ações</CardHeader>} className="lg:sticky lg:top-[var(--space-4)]">
@@ -443,6 +447,17 @@ export function SolicitacaoAcoes({
             solicitacaoStatus={solicitacao.status}
             viagens={viagens}
           />
+        ) : null}
+
+        {showCancelar ? (
+          <PermissionGate session={session} permission={TFD_PERMISSIONS.CANCELAR_PROCESSO}>
+            <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
+              <CancelarSolicitacaoDialog
+                solicitacaoId={solicitacao.id}
+                protocolo={solicitacao.protocolo}
+              />
+            </div>
+          </PermissionGate>
         ) : null}
 
         {serverError ? <ServerError message={serverError} /> : null}

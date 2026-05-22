@@ -20,6 +20,13 @@ const SENSITIVE_KEYS = new Set([
 
 const ACOES_FILTRO = [
   { value: '', label: 'Todas as ações' },
+  { value: 'CREATE', label: 'CREATE' },
+  { value: 'UPDATE', label: 'UPDATE' },
+  { value: 'DELETE', label: 'DELETE' },
+  { value: 'EXPORT', label: 'EXPORT' },
+  { value: 'STATUS_ALTERADO', label: 'STATUS_ALTERADO' },
+  { value: 'CANCELADO', label: 'CANCELADO' },
+  { value: 'READ_SENSITIVE', label: 'READ_SENSITIVE' },
   { value: 'TENANT_CRIADO', label: 'TENANT_CRIADO' },
   { value: 'TENANT_SUSPENSO', label: 'TENANT_SUSPENSO' },
   { value: 'TENANT_REATIVADO', label: 'TENANT_REATIVADO' },
@@ -27,13 +34,21 @@ const ACOES_FILTRO = [
   { value: 'LOGIN', label: 'LOGIN' },
   { value: 'LOGIN_FAILED', label: 'LOGIN_FAILED' },
   { value: 'PASSWORD_RESET_REQUESTED', label: 'PASSWORD_RESET_REQUESTED' },
-  { value: 'READ_SENSITIVE', label: 'READ_SENSITIVE' },
+] as const
+
+const MODULOS_FILTRO = [
+  { value: '', label: 'Todos os módulos' },
+  { value: 'tfd', label: 'TFD (saude_tfd)' },
 ] as const
 
 export interface AuditLogListaFiltros {
   tenantId: string
   entidade: string
   acao: string
+  dataInicio: string
+  dataFim: string
+  userId: string
+  modulo: string
   page: number
   perPage: number
 }
@@ -126,6 +141,18 @@ function buildQueryString(
   if (next.acao.trim()) {
     params.set('acao', next.acao.trim())
   }
+  if (next.dataInicio.trim()) {
+    params.set('dataInicio', next.dataInicio.trim())
+  }
+  if (next.dataFim.trim()) {
+    params.set('dataFim', next.dataFim.trim())
+  }
+  if (next.userId.trim()) {
+    params.set('userId', next.userId.trim())
+  }
+  if (next.modulo.trim()) {
+    params.set('modulo', next.modulo.trim())
+  }
   if (next.page > 1) {
     params.set('page', String(next.page))
   }
@@ -141,6 +168,7 @@ export function AuditLogLista({ items, total, tenantSlugMap, filtros }: AuditLog
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
   const [tenantIdInput, setTenantIdInput] = useState(filtros.tenantId)
   const [entidadeInput, setEntidadeInput] = useState(filtros.entidade)
+  const [userIdInput, setUserIdInput] = useState(filtros.userId)
 
   const totalPages = Math.max(1, Math.ceil(total / filtros.perPage))
   const hasPrev = filtros.page > 1
@@ -159,20 +187,31 @@ export function AuditLogLista({ items, total, tenantSlugMap, filtros }: AuditLog
   useEffect(() => {
     setTenantIdInput(filtros.tenantId)
     setEntidadeInput(filtros.entidade)
-  }, [filtros.tenantId, filtros.entidade])
+    setUserIdInput(filtros.userId)
+  }, [filtros.tenantId, filtros.entidade, filtros.userId])
 
   useEffect(() => {
     const timeout = window.setTimeout(() => {
       const currentTenant = searchParams.get('tenantId') ?? ''
       const currentEntidade = searchParams.get('entidade') ?? ''
-      if (tenantIdInput.trim() === currentTenant && entidadeInput.trim() === currentEntidade) {
+      const currentUserId = searchParams.get('userId') ?? ''
+      if (
+        tenantIdInput.trim() === currentTenant &&
+        entidadeInput.trim() === currentEntidade &&
+        userIdInput.trim() === currentUserId
+      ) {
         return
       }
-      navigate({ tenantId: tenantIdInput, entidade: entidadeInput, page: 1 })
+      navigate({
+        tenantId: tenantIdInput,
+        entidade: entidadeInput,
+        userId: userIdInput,
+        page: 1,
+      })
     }, 300)
 
     return () => window.clearTimeout(timeout)
-  }, [tenantIdInput, entidadeInput, navigate, searchParams])
+  }, [tenantIdInput, entidadeInput, userIdInput, navigate, searchParams])
 
   function toggleExpanded(id: string) {
     setExpandedIds((prev) => {
@@ -211,14 +250,60 @@ export function AuditLogLista({ items, total, tenantSlugMap, filtros }: AuditLog
           </select>
         </label>
 
+        <label className="flex min-w-[160px] flex-col gap-1 text-sm">
+          Módulo
+          <select
+            value={filtros.modulo}
+            onChange={(e) => navigate({ modulo: e.target.value, page: 1 })}
+            className="rounded border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+          >
+            {MODULOS_FILTRO.map((opt) => (
+              <option key={opt.value || 'todos'} value={opt.value}>
+                {opt.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label className="flex min-w-[150px] flex-col gap-1 text-sm">
+          Data início
+          <input
+            type="date"
+            value={filtros.dataInicio}
+            onChange={(e) => navigate({ dataInicio: e.target.value, page: 1 })}
+            className="rounded border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+        </label>
+
+        <label className="flex min-w-[150px] flex-col gap-1 text-sm">
+          Data fim
+          <input
+            type="date"
+            value={filtros.dataFim}
+            onChange={(e) => navigate({ dataFim: e.target.value, page: 1 })}
+            className="rounded border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+        </label>
+
         <label className="flex min-w-[180px] flex-1 flex-col gap-1 text-sm">
           Entidade
           <input
             type="text"
             value={entidadeInput}
             onChange={(e) => setEntidadeInput(e.target.value)}
-            placeholder="Ex.: tenants, users"
+            placeholder="Ex.: saude_tfd_solicitacao"
             className="rounded border border-neutral-300 px-3 py-2 dark:border-neutral-700 dark:bg-neutral-900"
+          />
+        </label>
+
+        <label className="flex min-w-[220px] flex-1 flex-col gap-1 text-sm">
+          ID do usuário
+          <input
+            type="text"
+            value={userIdInput}
+            onChange={(e) => setUserIdInput(e.target.value)}
+            placeholder="UUID do usuário"
+            className="rounded border border-neutral-300 px-3 py-2 font-mono text-xs dark:border-neutral-700 dark:bg-neutral-900"
           />
         </label>
 

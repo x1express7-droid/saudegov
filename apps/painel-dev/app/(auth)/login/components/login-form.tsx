@@ -1,48 +1,22 @@
 'use client'
 
-import { useState, useTransition } from 'react'
-import { signIn } from '@saude/core-auth/client'
-
-const GENERIC_ERROR = 'E-mail ou senha inválidos.'
+import { useAuthCsrfToken } from '@saude/core-auth/client'
+import { useState } from 'react'
 
 export function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
-
-  function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError(null)
-
-    startTransition(async () => {
-      try {
-        const result = await signIn('credentials', {
-          email,
-          password,
-          redirect: false,
-          redirectTo: '/dashboard',
-        })
-
-        if (result?.error) {
-          setError(GENERIC_ERROR)
-          return
-        }
-
-        window.location.href = '/dashboard'
-      } catch {
-        setError(GENERIC_ERROR)
-      }
-    })
-  }
+  const csrfToken = useAuthCsrfToken()
+  const canSubmit = Boolean(csrfToken)
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
-      {error && (
-        <p role="alert" className="text-sm text-red-600">
-          {error}
-        </p>
-      )}
+    <form
+      method="post"
+      action="/api/auth/callback/credentials"
+      className="flex w-full max-w-sm flex-col gap-4"
+    >
+      <input type="hidden" name="csrfToken" value={csrfToken} />
+      <input type="hidden" name="callbackUrl" value="/dashboard" />
 
       <label className="flex flex-col gap-1 text-sm">
         E-mail
@@ -53,7 +27,7 @@ export function LoginForm() {
           required
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          disabled={isPending}
+          disabled={!canSubmit}
           className="rounded border border-neutral-300 px-3 py-2 text-base"
         />
       </label>
@@ -67,17 +41,17 @@ export function LoginForm() {
           required
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          disabled={isPending}
+          disabled={!canSubmit}
           className="rounded border border-neutral-300 px-3 py-2 text-base"
         />
       </label>
 
       <button
         type="submit"
-        disabled={isPending}
+        disabled={!canSubmit}
         className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
       >
-        {isPending ? 'Entrando...' : 'Entrar'}
+        {canSubmit ? 'Entrar' : 'Carregando...'}
       </button>
     </form>
   )

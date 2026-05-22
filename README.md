@@ -18,6 +18,14 @@ Configure variáveis de ambiente conforme `.env.example` (quando disponível) e 
 
 ```bash
 npm run db:migrate
+npm run db:generate
+```
+
+Após um `git pull` que traga **migrations novas** em `packages/core-db/prisma/migrations`, regenere o Prisma Client antes de subir o servidor ou rodar scripts locais:
+
+```bash
+npm run db:migrate   # se ainda não aplicou as migrations no banco local
+npm run db:generate  # obrigatório — evita delegates ausentes (ex.: tfdSolicitacao)
 ```
 
 ## Desenvolvimento
@@ -30,6 +38,8 @@ npm run db:migrate
 | `npm run build` | Build de todos os workspaces |
 | `npm run lint` | ESLint em todo o monorepo |
 | `npm run type-check` | TypeScript em todo o monorepo |
+| `npm run db:generate` | Gera o Prisma Client (`@saude/core-db`) |
+| `npm run db:migrate` | Migrations de desenvolvimento |
 | `npm run db:studio` | Prisma Studio (`packages/core-db`) |
 
 Documentação completa da estrutura: [`docs/MONOREPO.md`](docs/MONOREPO.md).

@@ -7,6 +7,10 @@ interface AuditLogsPageProps {
     tenantId?: string
     entidade?: string
     acao?: string
+    dataInicio?: string
+    dataFim?: string
+    userId?: string
+    modulo?: string
     page?: string
   }>
 }
@@ -26,10 +30,22 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
   const page = parsePage(params.page)
   const perPage = 50
 
+  const tenantId = params.tenantId?.trim() || undefined
+  const entidade = params.entidade?.trim() || undefined
+  const acao = params.acao?.trim() || undefined
+  const dataInicio = params.dataInicio?.trim() || undefined
+  const dataFim = params.dataFim?.trim() || undefined
+  const userId = params.userId?.trim() || undefined
+  const modulo = params.modulo?.trim() || undefined
+
   const { items, total, tenantSlugMap } = await getAuditLogs({
-    tenantId: params.tenantId?.trim() || undefined,
-    entidade: params.entidade?.trim() || undefined,
-    acao: params.acao?.trim() || undefined,
+    tenantId,
+    entidade,
+    acao,
+    dataInicio,
+    dataFim,
+    userId,
+    modulo,
     page,
     perPage,
   })
@@ -40,9 +56,13 @@ export default async function AuditLogsPage({ searchParams }: AuditLogsPageProps
       total={total}
       tenantSlugMap={tenantSlugMap}
       filtros={{
-        tenantId: params.tenantId?.trim() ?? '',
-        entidade: params.entidade?.trim() ?? '',
-        acao: params.acao?.trim() ?? '',
+        tenantId: tenantId ?? '',
+        entidade: entidade ?? '',
+        acao: acao ?? '',
+        dataInicio: dataInicio ?? '',
+        dataFim: dataFim ?? '',
+        userId: userId ?? '',
+        modulo: modulo ?? '',
         page,
         perPage,
       }}

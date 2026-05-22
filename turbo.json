@@ -2,14 +2,17 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
+      "dependsOn": ["@saude/core-db#db:generate", "^build"],
       "outputs": [".next/**", "!.next/cache/**", "dist/**"]
     },
     "lint": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["@saude/core-db#db:generate", "^build"]
     },
     "type-check": {
-      "dependsOn": ["^build"]
+      "dependsOn": ["@saude/core-db#db:generate", "^build"]
+    },
+    "db:generate": {
+      "cache": false
     },
     "dev": {
       "cache": false,

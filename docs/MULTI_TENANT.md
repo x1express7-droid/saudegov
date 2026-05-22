@@ -34,11 +34,13 @@ O tenant é identificado pelo **domínio da requisição**. Cada município tem 
 próprio domínio configurado:
 
 ```
-campograndems.saudemunic.com.br   → município: Campo Grande/MS
-altamirapa.saudemunic.com.br      → município: Altamira/PA
-saude.campogrande.ms.gov.br       → município: Campo Grande (domínio próprio)
-admin.saudemunic.com.br           → Painel Dev (não é tenant)
+campograndems.<dominio-base>   → município: Campo Grande/MS (subdomínio da plataforma)
+altamirapa.<dominio-base>      → município: Altamira/PA
+saude.campogrande.ms.gov.br    → município: Campo Grande (domínio próprio)
+admin.<dominio-base>           → Painel Dev (não é tenant; ver ADMIN_DOMAIN)
 ```
+
+> `<dominio-base>` é o domínio raiz configurado na implantação (ex.: zona Cloudflare apontando para a VPS). Não há domínio padrão embutido no projeto.
 
 ### Tabela `public.tenants` — campos de domínio
 
@@ -323,9 +325,9 @@ automaticamente para criar o subdomínio.
 
 export async function criarSubdominio(slug: string): Promise<string> {
   // slug: 'campo-grande-ms'
-  // domínio criado: campograndems.saudemunic.com.br
+  // domínio criado: campograndems.<dominio-base> (domínio base da implantação)
   const subdomain = slug.replace(/-/g, '')
-  const fullDomain = `${subdomain}.saudemunic.com.br`
+  const fullDomain = `${subdomain}.<dominio-base>`
 
   await fetch(`https://api.cloudflare.com/client/v4/zones/${process.env.CF_ZONE_ID}/dns_records`, {
     method: 'POST',
@@ -462,14 +464,14 @@ Execute antes de commitar qualquer código que acesse dados:
 
 ```env
 # Domínio do Painel Dev (não é tenant)
-ADMIN_DOMAIN=admin.saudemunic.com.br
+ADMIN_DOMAIN=admin.plataforma.exemplo
 
 # Cloudflare
 CF_API_TOKEN=        # token com permissão de DNS edit
-CF_ZONE_ID=          # ID da zona saudemunic.com.br no Cloudflare
+CF_ZONE_ID=          # ID da zona DNS do domínio-base no Cloudflare
 
 # Banco
-DATABASE_URL=postgresql://user:pass@host:5432/saudemunic?schema=public
+DATABASE_URL=postgresql://user:pass@host:5432/saudegov?schema=public
 ```
 
 ---

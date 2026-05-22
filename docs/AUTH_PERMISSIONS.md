@@ -322,7 +322,7 @@ export function PermissionGate({ session, minimumRole, permission, children, fal
 ## 9. Fluxo Completo de Autenticação
 
 ```
-Servidor acessa painel-servidor.saudemunic.com.br
+Servidor acessa o host do painel-servidor (ex.: `campograndems.<dominio-base>`)
   ↓
 Middleware: Tenant Resolver identifica município pelo domínio
   ↓
@@ -376,7 +376,7 @@ Prisma + RLS → retorna apenas dados do município correto
 AUTH_SECRET=
 
 # URL base da aplicação
-NEXTAUTH_URL=https://municipio.saudemunic.com.br
+NEXTAUTH_URL=https://campograndems.<dominio-base>
 
 # IPs permitidos para acesso ao Painel Dev (separados por vírgula)
 SUPERADMIN_ALLOWED_IPS=

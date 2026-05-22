@@ -67,6 +67,24 @@ export async function GET(request: Request): Promise<NextResponse> {
       })
     } else {
       tenant = await getTenantByDomain(domain)
+      if (!tenant) {
+        const fallbackSlug = process.env.DEV_TENANT_SLUG?.trim()
+        if (fallbackSlug) {
+          const db = getPrismaAdmin()
+          tenant = await db.tenant.findFirst({
+            where: { slug: fallbackSlug },
+            select: {
+              id: true,
+              slug: true,
+              name: true,
+              modules: true,
+              theme: true,
+              settings: true,
+              active: true,
+            },
+          })
+        }
+      }
     }
 
     const mapped = tenant ? mapTenantRow(tenant) : null

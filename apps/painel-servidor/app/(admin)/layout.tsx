@@ -1,4 +1,5 @@
-import { requireTenantRole } from '@saude/core-auth/server'
+import { hasPermission, requireTenantRole } from '@saude/core-auth/server'
+import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import { getTenantContext } from '@saude/core-auth/get-tenant-context'
 import { themeToCssVarsStyle } from '../../lib/theme-to-css-vars'
 import { headers } from 'next/headers'
@@ -29,6 +30,7 @@ export default async function AdminLayout({
       logoUrl={tenant.theme.logoUrl ?? tenant.theme.logo_url}
       showAdminNav
       showTfdConfigNav
+      showTfdDashboardNav={hasPermission(session, TFD_PERMISSIONS.VER_DASHBOARD)}
     >
       {children}
     </AppShell>

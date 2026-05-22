@@ -111,8 +111,18 @@ export const enviarSolicitacaoSchema = z.object({
   solicitacaoId: z.string().uuid('ID da solicitação inválido.'),
 })
 
+/** @see docs/API_CONTRACTS.md §6.13 — cancelarSolicitacaoTfd */
+export const cancelarSolicitacaoSchema = z.object({
+  solicitacaoId: z.string().uuid('ID da solicitação inválido.'),
+  motivo: z
+    .string()
+    .trim()
+    .min(20, 'O motivo deve ter pelo menos 20 caracteres.'),
+})
+
 export type AbrirSolicitacaoInput = z.infer<typeof abrirSolicitacaoSchema>
 export type EnviarSolicitacaoInput = z.infer<typeof enviarSolicitacaoSchema>
+export type CancelarSolicitacaoInput = z.infer<typeof cancelarSolicitacaoSchema>
 
 export type TfdTipoAtendimento = (typeof tipoAtendimentoValues)[number]
 export type TfdUrgencia = (typeof urgenciaValues)[number]

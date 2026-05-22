@@ -38,7 +38,7 @@ async function main() {
     create: {
       slug: 'campo-grande-ms',
       name: 'Prefeitura de Campo Grande',
-      domain: 'campograndems.saudemunic.local',
+      domain: 'campograndems.plataforma.local',
       modules: { saude: { tfd: true } },
       theme: {
         primaryColor: '#1a5fa8',
@@ -60,7 +60,7 @@ async function main() {
     create: {
       slug: 'altamira-pa',
       name: 'Prefeitura de Altamira',
-      domain: 'altamirapa.saudemunic.local',
+      domain: 'altamirapa.plataforma.local',
       modules: { saude: { tfd: true } },
       theme: {
         primaryColor: '#2d6a4f',
@@ -73,13 +73,13 @@ async function main() {
 
   // SUPERADMIN
   await prisma.user.upsert({
-    where: { email: 'admin@saudemunic.com.br' },
+    where: { email: 'admin@plataforma.exemplo' },
     update: {},
     create: {
       tenant_id: null,
       role: 'SUPERADMIN',
       name: 'Super Admin',
-      email: 'admin@saudemunic.com.br',
+      email: 'admin@plataforma.exemplo',
       password_hash: await hash('Admin@123', 12),
       active: true,
       permissions: {},
@@ -146,7 +146,7 @@ async function main() {
 
   console.log('✅ Seed concluído.')
   console.log('\n📋 Credenciais de desenvolvimento:')
-  console.log('SUPERADMIN: admin@saudemunic.com.br / Admin@123')
+  console.log('SUPERADMIN: admin@plataforma.exemplo / Admin@123')
   console.log('ADMIN:      admin@campogrande.ms.gov.br / Admin@123')
   console.log('GESTOR:     gestor.tfd@campogrande.ms.gov.br / Admin@123')
   console.log('SERVIDOR:   atendente@campogrande.ms.gov.br / Admin@123')

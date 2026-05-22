@@ -53,7 +53,7 @@ EM_ANALISE
   ├──► PENDENTE (servidor solicita complemento)
   │    [AUTO] notifica solicitante
   │    ↓ servidor envia complemento → volta para EM_ANALISE
-  │    prazo 30 dias sem retorno → alerta gestor
+  │    prazo 30 dias sem retorno → alerta gestor (dashboard TFD — ver §1.2.1)
   │    prazo 60 dias sem retorno → gestor pode cancelar
   │
   ├──► NEGADO (gestor nega com fundamentação obrigatória)
@@ -82,6 +82,26 @@ Em qualquer etapa antes de AGENDADO:
 CANCELADO (motivo obrigatório)
   [AUTO] libera reserva_saldo se existia
 ```
+
+### 1.2.1 Destino dos alertas operacionais na UI (GESTOR)
+
+Alertas que exigem ação ou visão do **gestor** no módulo TFD têm como **destino principal**
+o **dashboard TFD** (`/saude/tfd/dashboard`), acessível com permissão `saude.tfd.ver_dashboard`.
+
+| Alerta | Gatilho (resumo) | Destino principal | Implementação atual (até Sprint 1.8) |
+|--------|------------------|-------------------|----------------------------------------|
+| PENDENTE há 30 dias | Complemento solicitado sem retorno em 30 dias | Dashboard TFD | Provisório na fila `/saude/tfd` |
+| Falha notificação 48h (viagem) | Ambos os canais falham antes da viagem | Dashboard TFD | Provisório na fila `/saude/tfd` |
+| Saldo disponível &lt; 20% | `disponível` abaixo de 20% do `valor_total` | Dashboard TFD | Previsto na Sprint 1.8 |
+| PCs vencendo / vencidas | Prazo de prestação em até 48h ou vencido | Dashboard TFD | Provisório na fila `/saude/tfd` (Sprint 1.7) |
+| Solicitações `MUITO_URGENTE` | Envio com urgência máxima | Dashboard TFD (painel operacional) | Fila (prioridade visual) + notificação in-app |
+
+A **fila de solicitações** (`/saude/tfd`) permanece para operação da fila (listagem, filtros,
+abertura de processos). Pode exibir **resumo** dos alertas ou **link** para o dashboard, mas
+**não** é o destino principal dos alertas operacionais do gestor.
+
+> **DT-002:** documentação alinhada na abertura da Sprint 1.8; encerramento do débito quando
+> o dashboard TFD for entregue com os alertas consolidados.
 
 ### 1.3 Tabela de Transições de Status Permitidas
 
@@ -134,8 +154,8 @@ CANCELADO (motivo obrigatório)
   justificativa médica podem ter 2)
 
 **Regra de URGÊNCIA:**
-- `MUITO_URGENTE`: sinalização visual prioritária na fila + notificação imediata
-  ao gestor no momento do envio
+- `MUITO_URGENTE`: notificação imediata ao gestor no envio; painel operacional de
+  urgentes no **dashboard TFD** (§1.2.1). A fila mantém prioridade visual na listagem.
 - As demais urgências seguem ordem de chegada na fila
 
 ---
@@ -158,6 +178,10 @@ CANCELADO (motivo obrigatório)
 - Processo negado encerra o fluxo naquela solicitação
 - Solicitante pode abrir nova solicitação com documentação complementar
   (não há recurso formal no sistema — orientar externamente)
+
+**Complemento (status PENDENTE):**
+- Após 30 dias sem retorno do complemento → alerta no **dashboard TFD** do gestor (§1.2.1)
+- Após 60 dias → gestor pode cancelar com motivo "prazo esgotado" (§1.9)
 
 **Vedações legais (Art. 1º §3º e §5º, Portaria 55/1999):**
 - Não autorizar TFD para procedimentos do **PAB (Piso de Atenção Básica)**
@@ -185,8 +209,8 @@ CANCELADO (motivo obrigatório)
 
 **Notificação automática 48h antes:**
 - Sistema envia notificação in-app para o servidor responsável e motorista
-- Se ambos os canais falharem → alerta visual na dashboard do gestor para
-  contato manual
+- Se ambos os canais falharem → alerta no **dashboard TFD** do gestor para contato
+  manual (§1.2.1). Até a Sprint 1.8, exibido provisoriamente também na fila.
 
 **Múltiplas viagens por solicitação:**
 - Uma solicitação aprovada pode ter mais de uma viagem (ex: ida e retorno)
@@ -200,8 +224,9 @@ CANCELADO (motivo obrigatório)
 **Prazo de envio:**
 - Prestação deve ser enviada em até **10 dias corridos** após a data de retorno
 - Sistema calcula automaticamente: `prazo_envio_at = data_retorno + 10 dias`
-- Alerta automático para o servidor responsável **48h antes** do vencimento
-- Prazo vencido sem envio → alerta na dashboard do gestor
+- Alerta automático para o servidor responsável **48h antes** do vencimento (notificação)
+- Prazo vencido ou vencendo em até 48h sem envio → alerta no **dashboard TFD** do gestor
+  (§1.2.1). Até a Sprint 1.8, exibido provisoriamente também na fila.
 
 **Despesas permitidas (Art. 4º, Portaria 55/1999):**
 - `TRANSPORTE` → passagem terrestre, aérea ou fluvial (canhoto obrigatório)
@@ -251,7 +276,7 @@ Disponível = valor_total
 ```
 
 **Alerta de saldo baixo:**
-- Se `disponível < 20%` do `valor_total` → alerta visual na dashboard do gestor
+- Se `disponível < 20%` do `valor_total` → alerta no **dashboard TFD** do gestor (§1.2.1)
 - Alerta não bloqueia operações — é apenas visual
 
 **Reserva automática na aprovação:**
@@ -295,17 +320,18 @@ Disponível = valor_total
 | Aprovação | Verifica saldo atomicamente → cria reserva → registra movimentação RESERVA |
 | Aprovação com saldo insuficiente | Bloqueia com erro 422 — não aprova |
 | Agendamento criado | Agenda job para 48h antes: notificar servidor e motorista |
-| Ambos os canais de notificação falham | Alerta visual na dashboard do gestor |
+| Ambos os canais de notificação falham | Alerta no dashboard TFD do gestor (§1.2.1) |
 | CNH do motorista vencida | Não aparece na listagem de seleção |
 | CNH vencendo em ≤ 30 dias | Alerta visual no cadastro do motorista |
 | Data da viagem chegou | Job muda status para `EM_VIAGEM` automaticamente |
 | Retorno registrado | Cria prestação com prazo `data_viagem + 10 dias` + agenda alerta |
 | 48h antes do prazo da PC | Notifica servidor responsável |
-| PENDENTE há 30 dias | Alerta no painel do gestor |
+| PC vencendo (≤ 48h) ou vencida sem envio | Alerta no dashboard TFD do gestor (§1.2.1) |
+| PENDENTE há 30 dias | Alerta no dashboard TFD do gestor (§1.2.1) |
 | PENDENTE há 60 dias | Gestor habilitado a cancelar com motivo "prazo esgotado" |
 | Prestação aprovada | Consome reserva → registra movimentação → conclui processo |
 | Processo cancelado | Libera reserva → registra movimentação LIBERAÇÃO |
-| Saldo disponível < 20% | Alerta visual na dashboard do gestor |
+| Saldo disponível < 20% | Alerta no dashboard TFD do gestor (§1.2.1) |
 
 ---
 

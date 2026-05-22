@@ -35,7 +35,7 @@ FASE 4 → Módulo UBS
 - [x] Criar `packages/core-db` com Prisma multi-schema
 - [x] Configurar Neon (PostgreSQL) — ambientes dev e produção
 - [x] Configurar Vercel para os 2 apps com wildcard domain
-- [x] Configurar Cloudflare com zona `saudemunic.com.br`
+- [x] Configurar Cloudflare com zona do domínio-base da implantação
 - [x] `.env.example` documentado
 
 **Critério de conclusão:** ambos os apps sobem localmente, banco conectado.
@@ -220,14 +220,17 @@ FASE 4 → Módulo UBS
 - [x] Criação automática de `reserva_saldo` na aprovação
 - [x] Registro de `movimentacao_saldo` tipo RESERVA
 - [x] Notificações de decisão com fundamentação
-- [x] Alerta PENDENTE há 30 dias no dashboard
+- [x] Alerta PENDENTE há 30 dias (provisório na fila; destino definitivo no dashboard TFD — Sprint 1.8)
 - [x] Audit log de toda decisão
 
 **Critério de conclusão:** aprovação/negativa funciona, saldo reservado automaticamente.
 
-> **Nota:** alerta de 30 dias implementado na fila `/saude/tfd` (não no dashboard geral).
-> Dashboard completo está previsto para Sprint 1.8. `enviarComplementoTfd` incluído
-> nesta sprint por necessidade de ciclo testável do fluxo PENDENTE.
+> **Nota:** o alerta de PENDENTE há 30 dias foi implementado **provisoriamente** na fila
+> `/saude/tfd` (decisão de escopo desta sprint). Os alertas operacionais do gestor
+> permanecem na fila **até a entrega do dashboard TFD na Sprint 1.8**; após a 1.8, o
+> **destino definitivo** é `/saude/tfd/dashboard` (ver `BUSINESS_RULES.md` §1.2.1).
+> A fila pode manter resumo ou link para o dashboard, mas deixa de ser o painel principal.
+> `enviarComplementoTfd` incluído nesta sprint por necessidade de ciclo testável do fluxo PENDENTE.
 
 ---
 
@@ -240,15 +243,16 @@ FASE 4 → Módulo UBS
 - [x] Filtro automático: motoristas com CNH válida na data da viagem
 - [x] Seleção de veículo com verificação de capacidade
 - [x] Job de notificação 48h antes da viagem
-- [x] Alerta no dashboard quando notificação falha
+- [x] Alerta quando notificação 48h falha (provisório na fila; destino definitivo no dashboard TFD — Sprint 1.8)
 - [x] Suporte a múltiplas viagens por solicitação (sequencia 1, 2, 3...)
 - [x] Listagem de agendamentos com filtro por data
 
 **Critério de conclusão:** agendamento criado, motoristas inválidos filtrados, job funciona.
 
-> **Nota:** alerta de falha de notificação implementado na fila `/saude/tfd`
-> (mesmo padrão do alerta PENDENTE 30 dias — DT-002).
-> Dashboard TFD previsto para Sprint 1.8.
+> **Nota:** o alerta de falha da notificação 48h antes da viagem segue a **mesma lógica**
+> do alerta PENDENTE 30 dias (Sprint 1.5): implementado **provisoriamente** na fila
+> `/saude/tfd` até a Sprint 1.8. Após a entrega do dashboard TFD, o destino definitivo
+> dos alertas operacionais do gestor é `/saude/tfd/dashboard` (DT-002).
 
 ---
 
@@ -273,18 +277,30 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 1.8 — Dashboard e Cancelamento
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Dashboard TFD — KPIs, gráficos, alertas operacionais
-- [ ] Alertas: urgentes, saldo baixo, PCs vencendo
-- [ ] Server Action `cancelarSolicitacaoTfd` — com liberação de reserva
-- [ ] Validação: cancelamento bloqueado após AGENDADO
-- [ ] Relatório básico por competência (PDF)
-- [ ] Relatório por paciente (sem dados clínicos)
-- [ ] Audit log completo da plataforma
+- [x] Dashboard TFD — KPIs, gráfico por status (CSS), alertas consolidados, últimas solicitações (`/saude/tfd/dashboard`)
+- [x] Alertas no dashboard: urgentes, saldo baixo, PCs vencendo, pendentes 30 dias, lembrete viagem (destino definitivo — DT-002 encerrado)
+- [x] Server Action `cancelarSolicitacaoTfd` — com liberação de reserva e notificação `PROCESSO_CANCELADO`
+- [x] Validação: cancelamento bloqueado após AGENDADO
+- [x] Relatório PDF por competência (`gerarRelatorioCompetenciaTfd`) — URL assinada 24h, rate limit 3/h
+- [x] Relatório PDF por paciente (`gerarRelatorioPacienteTfd`) — sem dados clínicos
+- [x] Audit logs Painel Dev — filtros expandidos (data, usuário, módulo, ações operacionais)
 
-**Critério de conclusão:** dashboard operacional, cancelamento funciona, relatório básico.
+**Paridade painéis (1.8):**
+
+| Funcionalidade | painel-dev | painel-servidor |
+|---|---|---|
+| `dashboard_tfd` | — | ✅ |
+| `cancelar_solicitacao` | — | ✅ |
+| `relatorio_competencia` | — | ✅ |
+| `relatorio_paciente` | — | ✅ |
+| `audit_log_filtros_expandidos` | ✅ | — |
+
+**Fora do escopo (Sprint 2.1):** exportação CSV/PDF de audit logs; relatórios por prestador/motorista/produção mensal.
+
+**Critério de conclusão:** dashboard operacional, cancelamento funciona, relatórios PDF básicos, audit logs com filtros expandidos no Painel Dev.
 
 ---
 
@@ -306,22 +322,22 @@ FASE 4 → Módulo UBS
 | Campo | Descrição |
 |-------|-----------|
 | **Identificador** | `DT-002` |
-| **Status** | Aberto |
+| **Status** | Resolvido |
 | **Origem** | Fechamento Sprint 1.5 |
-| **Causa** | `docs/SPRINTS.md` descreve alerta de 30 dias como "no dashboard"; implementado na fila `/saude/tfd` por decisão de escopo da sprint. Documentação diverge do código. |
+| **Causa** | `docs/SPRINTS.md` descrevia alerta de 30 dias como "no dashboard"; implementado na fila `/saude/tfd` por decisão de escopo das sprints 1.5 e 1.6. Documentação divergia do código. |
 | **Impacto** | Baixo — apenas documentação. Nenhum impacto funcional. |
-| **Resolução prevista** | Atualizar `SPRINTS.md` e `BUSINESS_RULES.md` na abertura da Sprint 1.8 quando o dashboard for implementado. |
+| **Resolução** | `SPRINTS.md` (notas 1.5/1.6) e `BUSINESS_RULES.md` (§1.2.1) alinhados ao destino definitivo. Sprint 1.8 entregou `/saude/tfd/dashboard` com alertas consolidados; banners removidos da fila para gestores com `ver_dashboard`. |
 
 ### DT-003 — Prisma Client local desatualizado após migrations da sprint
 
 | Campo | Descrição |
 |-------|-----------|
 | **Identificador** | `DT-003` |
-| **Status** | Aberto |
+| **Status** | Resolvido |
 | **Origem** | Fechamento Sprint 1.5 |
 | **Causa** | Prisma Client em `packages/core-db` pode estar desatualizado após migrations da sprint (delegate `tfdSolicitacao` ausente localmente em alguns ambientes). |
 | **Impacto** | Scripts locais e smoke RLS usam SQL raw como contorno. Build e type-check não afetados (`skipLibCheck`). Pode causar erros em dev após `git pull` sem `db:generate`. |
-| **Resolução prevista** | Adicionar `npm run db:generate` ao onboarding e ao CI antes do próximo deploy em staging. Resolver junto com `DT-001`. |
+| **Resolução** | Script `npm run db:generate` na raiz; `turbo.json` executa `db:generate` antes de `type-check` e `build`; CI em `.github/workflows/ci.yml`; onboarding documentado no `README.md`. |
 
 ---
 
@@ -368,7 +384,7 @@ FASE 4 → Módulo UBS
 | 1.5 | Regulação e decisão | ✅ Concluído |
 | 1.6 | Agendamento de viagem | ✅ Concluído |
 | 1.7 | Prestação de contas | ✅ Concluído |
-| 1.8 | Dashboard e cancelamento | 📋 Planejado |
+| 1.8 | Dashboard e cancelamento | ✅ Concluído |
 | 2.1 | Relatórios completos | 💡 Planejado |
 | 2.2 | CADSUS real | 💡 Planejado |
 

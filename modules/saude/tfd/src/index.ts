@@ -46,12 +46,28 @@ export type {
   TfdSolicitacaoOrigemRetornoItem,
   AbrirSolicitacaoOutput,
   EnviarSolicitacaoOutput,
+  TfdDashboardSaldoItem,
+  TfdDashboardOutput,
+  TfdAlertaUrgente,
+  TfdAlertaSaldoBaixo,
+  TfdAlertaPC,
+  RelatorioCompetenciaInput,
+  RelatorioPacienteInput,
+  RelatorioCompetenciaData,
+  RelatorioPacienteData,
+  PacienteRelatorioBuscaItem,
 } from './types/tfd.types'
 
 export {
   abrirSolicitacaoSchema,
   enviarSolicitacaoSchema,
+  cancelarSolicitacaoSchema,
 } from './validators/solicitacao.schema'
+
+export {
+  relatorioCompetenciaSchema,
+  relatorioPacienteSchema,
+} from './validators/relatorio.schema'
 
 export {
   iniciarAnaliseSchema,
@@ -66,6 +82,7 @@ export { criarAgendamentoSchema, registrarRetornoSchema } from './validators/age
 export type {
   AbrirSolicitacaoInput,
   EnviarSolicitacaoInput,
+  CancelarSolicitacaoInput,
   TfdTipoAtendimento,
   TfdUrgencia,
   TfdRelacaoAcompanhante,
@@ -176,7 +193,11 @@ export {
 } from './actions/configuracao'
 
 export { buscarPacientePorCns, vincularPaciente } from './actions/paciente'
-export { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from './actions/solicitacao'
+export {
+  abrirSolicitacaoTfd,
+  enviarSolicitacaoTfd,
+  cancelarSolicitacaoTfd,
+} from './actions/solicitacao'
 export {
   iniciarAnaliseTfd,
   solicitarComplementoTfd,
@@ -194,6 +215,12 @@ export {
   listarMotoristasAgendamentoTfd,
   registrarRetornoTfd,
 } from './actions/viagem'
+export {
+  gerarRelatorioCompetenciaTfd,
+  gerarRelatorioPacienteTfd,
+  buscarPacienteRelatorioTfdAction,
+} from './actions/relatorio'
+export type { GerarRelatorioTfdOutput } from './actions/relatorio'
 export { processarLembretesViagem } from './jobs/processar-lembretes-viagem'
 export type { ProcessarLembretesViagemResult } from './jobs/processar-lembretes-viagem'
 export { processarLembretesPrestacao } from './jobs/processar-lembretes-prestacao'
@@ -221,9 +248,16 @@ export { getVeiculosAgendamentoTfd } from './queries/get-veiculos-agendamento'
 export { getViagensSolicitacaoTfd } from './queries/get-viagens-solicitacao'
 export { getAgendamentosTfd } from './queries/get-agendamentos'
 export type { GetAgendamentosFiltros } from './queries/get-agendamentos'
+export { getDashboardTfd } from './queries/get-dashboard-tfd'
+export { getAlertasUrgentesTfd } from './queries/get-alertas-urgentes'
 export { getAlertasPendente30Dias } from './queries/get-alertas-regulacao'
 export { getAlertasLembreteViagemTfd } from './queries/get-alertas-lembrete-viagem'
 export { getAlertasPrestacaoTfd } from './queries/get-alertas-prestacao'
+export { getRelatorioCompetenciaTfd } from './queries/get-relatorio-competencia'
+export {
+  getRelatorioPacienteTfd,
+  buscarPacienteRelatorioTfd,
+} from './queries/get-relatorio-paciente'
 export { getPrestacoesTfd } from './queries/get-prestacoes'
 export type { GetPrestacoesFiltros } from './queries/get-prestacoes'
 export { getSolicitacoesOrigemRetornoTfd } from './queries/get-solicitacoes-origem-retorno'
@@ -238,3 +272,9 @@ export {
 export { verificaCapacidadeVeiculo, calcProximaSequenciaViagem } from './utils/viagem'
 export { calcSaldoDisponivel } from './utils/saldo'
 export type { CalcSaldoDisponivelInput, CalcSaldoDisponivelResult } from './utils/saldo'
+export {
+  isStatusCancelavelTfd,
+  mensagemStatusNaoCancelavel,
+  TFD_STATUS_BLOQUEIA_CANCELAMENTO,
+} from './utils/cancelamento'
+export type { TfdStatusBloqueiaCancelamento } from './utils/cancelamento'
