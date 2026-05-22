@@ -1,22 +1,18 @@
-'use client'
+import { loginWithCredentials } from '../actions'
 
-import { useAuthCsrfToken } from '@saude/core-auth/client'
-import { useState } from 'react'
-
-export function LoginForm() {
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const csrfToken = useAuthCsrfToken()
-  const canSubmit = Boolean(csrfToken)
-
+export function LoginForm({ showError = false }: { showError?: boolean }) {
   return (
     <form
-      method="post"
-      action="/api/auth/callback/credentials"
+      action={loginWithCredentials}
       className="flex w-full max-w-sm flex-col gap-4"
     >
-      <input type="hidden" name="csrfToken" value={csrfToken} />
-      <input type="hidden" name="callbackUrl" value="/dashboard" />
+      <input type="hidden" name="redirectTo" value="/dashboard" />
+
+      {showError ? (
+        <p role="alert" className="text-sm text-red-600">
+          E-mail ou senha inválidos.
+        </p>
+      ) : null}
 
       <label className="flex flex-col gap-1 text-sm">
         E-mail
@@ -25,9 +21,6 @@ export function LoginForm() {
           name="email"
           autoComplete="email"
           required
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          disabled={!canSubmit}
           className="rounded border border-neutral-300 px-3 py-2 text-base"
         />
       </label>
@@ -39,19 +32,15 @@ export function LoginForm() {
           name="password"
           autoComplete="current-password"
           required
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          disabled={!canSubmit}
           className="rounded border border-neutral-300 px-3 py-2 text-base"
         />
       </label>
 
       <button
         type="submit"
-        disabled={!canSubmit}
-        className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white disabled:opacity-60"
+        className="rounded bg-neutral-900 px-4 py-2 text-sm font-medium text-white"
       >
-        {canSubmit ? 'Entrar' : 'Carregando...'}
+        Entrar
       </button>
     </form>
   )

@@ -5,6 +5,7 @@ export const JWT_EXPIRY_SECONDS = parseInt(process.env.JWT_EXPIRY ?? '28800', 10
 
 /** Config compartilhada — compatível com Edge (sem Prisma nem next/headers). */
 export const authConfig = {
+  basePath: '/api/auth',
   session: {
     strategy: 'jwt' as const,
     maxAge: JWT_EXPIRY_SECONDS,

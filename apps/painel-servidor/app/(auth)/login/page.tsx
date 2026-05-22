@@ -2,7 +2,12 @@ import { headers } from 'next/headers'
 import { getTenantByDomain } from '@saude/core-db'
 import { LoginForm } from './components/login-form'
 
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ error?: string }>
+}) {
+  const { error } = await searchParams
   const h = await headers()
   const tenantId = h.get('x-tenant-id')
   const host = h.get('host') ?? ''
@@ -25,7 +30,7 @@ export default async function LoginPage() {
           </p>
         ) : null}
       </div>
-      <LoginForm />
+      <LoginForm showError={error === 'credentials'} />
     </main>
   )
 }
