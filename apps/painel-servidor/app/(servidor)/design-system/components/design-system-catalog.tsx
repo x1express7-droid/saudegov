@@ -1,6 +1,6 @@
 'use client'
 
-import type { SaudeMunicSession } from '@saude/core-auth'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import type { ColumnDef } from '@saude/ui'
 import {
   Alert,
@@ -18,7 +18,6 @@ import {
   EmptyState,
   FileUpload,
   Input,
-  PermissionGate,
   ProtocoloBadge,
   Select,
   Spinner,
@@ -29,6 +28,7 @@ import {
   UrgenciaBadge,
   TFD_URGENCIA_CONFIG,
 } from '@saude/ui'
+import { PermissionGate } from '@saude/ui/permission-gate'
 import type { TfdStatus, TfdUrgencia, TramitacaoItem } from '@saude/ui'
 import { FileQuestion } from 'lucide-react'
 import { useState, type ReactNode } from 'react'

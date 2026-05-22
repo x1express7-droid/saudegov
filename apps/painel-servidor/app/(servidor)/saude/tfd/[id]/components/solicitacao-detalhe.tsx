@@ -1,7 +1,10 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import type { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd'
+import type {
+  TfdSolicitacaoDetalhe,
+  TfdViagemSolicitacaoItem,
+} from '@saude/mod-saude-tfd'
 import { Button, Card, CardHeader, Spinner, TFD_URGENCIA_CONFIG } from '@saude/ui'
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
@@ -66,6 +69,26 @@ function labelUrgencia(urgencia: string): string {
   return config?.label ?? urgencia
 }
 
+const VIAGEM_STATUS_LABEL: Record<string, string> = {
+  AGENDADA: 'Agendada',
+  REALIZADA: 'Realizada',
+  CANCELADA: 'Cancelada',
+}
+
+function labelViagemStatus(status: string): string {
+  return VIAGEM_STATUS_LABEL[status] ?? status
+}
+
+function labelLembrete48h(viagem: TfdViagemSolicitacaoItem): string {
+  if (viagem.lembrete48hEnviadoAt) {
+    return `Enviado em ${formatDateTime(viagem.lembrete48hEnviadoAt)}`
+  }
+  if (viagem.lembrete48hFalhouAt) {
+    return `Falha em ${formatDateTime(viagem.lembrete48hFalhouAt)}`
+  }
+  return 'Pendente'
+}
+
 function DetalheCampo({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
@@ -81,9 +104,13 @@ function DetalheCampo({ label, children }: { label: string; children: ReactNode 
 
 export interface SolicitacaoDetalheProps {
   solicitacao: TfdSolicitacaoDetalhe
+  viagens?: TfdViagemSolicitacaoItem[]
 }
 
-export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
+export function SolicitacaoDetalhe({
+  solicitacao,
+  viagens = [],
+}: SolicitacaoDetalheProps) {
   const [laudoError, setLaudoError] = useState<string | null>(null)
   const [isLaudoPending, startLaudoTransition] = useTransition()
 
@@ -178,6 +205,39 @@ export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
           </DetalheCampo>
         ) : null}
       </dl>
+
+      {viagens.length > 0 ? (
+        <section className="mt-[var(--space-6)] border-t border-[var(--color-border)] pt-[var(--space-4)]">
+          <h3 className="text-[length:var(--text-base)] font-semibold text-[var(--color-text)]">
+            Viagens agendadas
+          </h3>
+          <ul className="mt-[var(--space-4)] flex flex-col gap-[var(--space-3)]">
+            {viagens.map((viagem) => (
+              <li
+                key={viagem.id}
+                className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-[var(--space-3)]"
+              >
+                <p className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
+                  Viagem {viagem.sequencia} — {labelViagemStatus(viagem.status)}
+                </p>
+                <dl className="mt-[var(--space-2)] grid gap-[var(--space-2)] sm:grid-cols-2">
+                  <DetalheCampo label="Data">{formatDate(viagem.dataViagem)}</DetalheCampo>
+                  <DetalheCampo label="Hora de saída">{viagem.horaSaida ?? '—'}</DetalheCampo>
+                  <DetalheCampo label="Motorista">
+                    {viagem.motorista?.nome ?? '—'}
+                  </DetalheCampo>
+                  <DetalheCampo label="Veículo">
+                    {viagem.veiculo
+                      ? `${viagem.veiculo.placa} — ${viagem.veiculo.modelo}`
+                      : '—'}
+                  </DetalheCampo>
+                  <DetalheCampo label="Lembrete 48h">{labelLembrete48h(viagem)}</DetalheCampo>
+                </dl>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ) : null}
 
       {temDadosClinicos ? (
         <section className="mt-[var(--space-6)] border-t border-[var(--color-border)] pt-[var(--space-4)]">

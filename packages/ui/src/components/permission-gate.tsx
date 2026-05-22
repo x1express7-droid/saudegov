@@ -1,4 +1,5 @@
-import { hasPermission, type SaudeMunicSession } from '@saude/core-auth'
+import { hasPermission } from '@saude/core-auth/permissions'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import type { ReactNode } from 'react'
 
 export interface PermissionGateProps {

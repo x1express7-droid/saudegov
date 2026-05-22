@@ -1,6 +1,7 @@
 import {
   Activity,
   Building2,
+  CalendarDays,
   ClipboardList,
   LayoutDashboard,
   List,
@@ -55,6 +56,7 @@ function buildNavItems(
   if (modules.saude?.tfd) {
     const tfdChildren: SidebarNavChildItem[] = [
       { label: 'Fila', href: '/saude/tfd' },
+      { label: 'Agendamentos', href: '/saude/tfd/agendamentos' },
       { label: 'Nova solicitação', href: '/saude/tfd/nova' },
       { label: 'Pacientes', href: '/saude/tfd/pacientes' },
     ]
@@ -111,6 +113,9 @@ function isActivePath(pathname: string, href: string): boolean {
   if (href === '/dashboard') {
     return pathname === '/dashboard' || pathname === '/'
   }
+  if (href === '/saude/tfd') {
+    return pathname === '/saude/tfd'
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
 }
 
@@ -124,6 +129,9 @@ function isTfdSectionActive(pathname: string, children: SidebarNavChildItem[]): 
 function childIcon(href: string): ReactNode {
   if (href === '/saude/tfd') {
     return <List className="size-4 shrink-0" aria-hidden="true" />
+  }
+  if (href === '/saude/tfd/agendamentos') {
+    return <CalendarDays className="size-4 shrink-0" aria-hidden="true" />
   }
   if (href === '/saude/tfd/nova') {
     return <PlusCircle className="size-4 shrink-0" aria-hidden="true" />

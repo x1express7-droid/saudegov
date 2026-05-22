@@ -232,37 +232,41 @@ FASE 4 → Módulo UBS
 ---
 
 ### Sprint 1.6 — Agendamento de Viagem
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Server Action `criarAgendamentoTfd` — APROVADO → AGENDADO
-- [ ] Validação: data mínima 72h no futuro
-- [ ] Filtro automático: motoristas com CNH válida na data da viagem
-- [ ] Seleção de veículo com verificação de capacidade
-- [ ] Job de notificação 48h antes da viagem
-- [ ] Alerta no dashboard quando notificação falha
-- [ ] Suporte a múltiplas viagens por solicitação (sequencia 1, 2, 3...)
-- [ ] Listagem de agendamentos com filtro por data
+- [x] Server Action `criarAgendamentoTfd` — APROVADO → AGENDADO
+- [x] Validação: data mínima 72h no futuro
+- [x] Filtro automático: motoristas com CNH válida na data da viagem
+- [x] Seleção de veículo com verificação de capacidade
+- [x] Job de notificação 48h antes da viagem
+- [x] Alerta no dashboard quando notificação falha
+- [x] Suporte a múltiplas viagens por solicitação (sequencia 1, 2, 3...)
+- [x] Listagem de agendamentos com filtro por data
 
 **Critério de conclusão:** agendamento criado, motoristas inválidos filtrados, job funciona.
+
+> **Nota:** alerta de falha de notificação implementado na fila `/saude/tfd`
+> (mesmo padrão do alerta PENDENTE 30 dias — DT-002).
+> Dashboard TFD previsto para Sprint 1.8.
 
 ---
 
 ### Sprint 1.7 — Prestação de Contas
-**Status:** 📋 Planejado
+**Status:** ✅ Concluído
 
 **Entregas:**
-- [ ] Server Action `registrarRetornoTfd` — EM_VIAGEM → AGUARDANDO_PC
-- [ ] Criação automática de `prestacao_conta` com prazo
-- [ ] Job de alerta 48h antes do prazo da prestação
-- [ ] Server Action `registrarDespesa` — lançar itens com comprovante
-- [ ] Validação: comprovante obrigatório para valores ≥ R$ 50
-- [ ] Server Action `enviarPrestacaoContas` — AGUARDANDO_PC → PC_EM_ANALISE
-- [ ] Server Action `registrarVisualizacaoComprovante`
-- [ ] Server Action `decidirPrestacaoContas` — bloquear sem ver todos comprovantes
-- [ ] Aprovação: consumir reserva + registrar CONSUMO + LIBERACAO se aplicável
-- [ ] Rejeição: volta para AGUARDANDO_PC + notifica servidor
-- [ ] Status final: CONCLUIDO
+- [x] Server Action `registrarRetornoTfd` — EM_VIAGEM → AGUARDANDO_PC
+- [x] Criação automática de `prestacao_conta` com prazo
+- [x] Job de alerta 48h antes do prazo da prestação
+- [x] Server Action `registrarDespesa` — lançar itens com comprovante
+- [x] Validação: comprovante obrigatório para valores ≥ R$ 50
+- [x] Server Action `enviarPrestacaoContas` — AGUARDANDO_PC → PC_EM_ANALISE
+- [x] Server Action `registrarVisualizacaoComprovante`
+- [x] Server Action `decidirPrestacaoContas` — bloquear sem ver todos comprovantes
+- [x] Aprovação: consumir reserva + registrar CONSUMO + LIBERACAO se aplicável
+- [x] Rejeição: volta para AGUARDANDO_PC + notifica servidor
+- [x] Status final: CONCLUIDO
 
 **Critério de conclusão:** ciclo completo — da viagem à prestação aprovada.
 
@@ -362,8 +366,8 @@ FASE 4 → Módulo UBS
 | 1.3 | Paciente e CADSUS stub | ✅ Concluído |
 | 1.4 | Abertura de solicitação | ✅ Concluído |
 | 1.5 | Regulação e decisão | ✅ Concluído |
-| 1.6 | Agendamento de viagem | 📋 Planejado |
-| 1.7 | Prestação de contas | 📋 Planejado |
+| 1.6 | Agendamento de viagem | ✅ Concluído |
+| 1.7 | Prestação de contas | ✅ Concluído |
 | 1.8 | Dashboard e cancelamento | 📋 Planejado |
 | 2.1 | Relatórios completos | 💡 Planejado |
 | 2.2 | CADSUS real | 💡 Planejado |

@@ -39,9 +39,6 @@ export type { InputProps } from './components/input'
 export { PageHeader } from './components/page-header'
 export type { PageHeaderProps } from './components/page-header'
 
-export { PermissionGate } from './components/permission-gate'
-export type { PermissionGateProps } from './components/permission-gate'
-
 export { ProtocoloBadge } from './components/protocolo-badge'
 export type { ProtocoloBadgeProps } from './components/protocolo-badge'
 

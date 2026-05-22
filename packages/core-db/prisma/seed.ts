@@ -3,6 +3,8 @@ import { hash } from 'bcryptjs'
 import { seedSprint11TfdPlatformFeatures } from './seeds/sprint-1-1-platform-features'
 import { seedSprint12TfdPlatformFeatures } from './seeds/sprint-1-2-platform-features'
 import { seedSprint15TfdPlatformFeatures } from './seeds/sprint-1-5-platform-features'
+import { seedSprint16TfdPlatformFeatures } from './seeds/sprint-1-6-platform-features'
+import { seedSprint17TfdPlatformFeatures } from './seeds/sprint-1-7-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 
 const prisma = new PrismaClient()
@@ -628,6 +630,16 @@ async function main() {
   const sprint15TfdFeaturesCount = await seedSprint15TfdPlatformFeatures()
   console.log(
     `\n📌 platform_features (Sprint 1.5 TFD): ${sprint15TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint16TfdFeaturesCount = await seedSprint16TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 1.6 TFD): ${sprint16TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint17TfdFeaturesCount = await seedSprint17TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 1.7 TFD): ${sprint17TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
   )
 
   await seedTfdSaldoExemplo(prisma, campograndems.id, gestorCampograndems.id)

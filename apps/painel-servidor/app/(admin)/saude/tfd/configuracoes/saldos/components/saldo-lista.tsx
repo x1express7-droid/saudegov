@@ -1,16 +1,16 @@
 'use client'
 
 import { TFD_PERMISSIONS, type SaldoListItem } from '@saude/mod-saude-tfd'
-import type { SaudeMunicSession } from '@saude/core-auth'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   Alert,
   Badge,
   Button,
   DataTable,
   EmptyState,
-  PermissionGate,
   type ColumnDef,
 } from '@saude/ui'
+import { PermissionGate } from '@saude/ui/permission-gate'
 import { AlertTriangle, Plus, Wallet } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'

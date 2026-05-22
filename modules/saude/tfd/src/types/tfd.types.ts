@@ -135,6 +135,82 @@ export interface TfdMotoristaOutput {
   updatedAt: string
 }
 
+/** Motorista elegível para agendamento na data da viagem (CNH válida). */
+export interface TfdMotoristaAgendamentoItem {
+  id: string
+  nome: string
+  cnhNumero: string
+  cnhValidade: string
+  cnhCategoria: string
+}
+
+/** Veículo elegível para agendamento conforme ocupação necessária. */
+export interface TfdVeiculoAgendamentoItem {
+  id: string
+  placa: string
+  modelo: string
+  capacidadePassageiros: number
+}
+
+/** Item da listagem de agendamentos (viagens) com contexto da solicitação. */
+export interface TfdAgendamentoListItem {
+  id: string
+  sequencia: number
+  dataViagem: string
+  horaSaida: string | null
+  status: string
+  solicitacao: {
+    id: string
+    protocolo: string
+    paciente: { nome: string }
+  }
+  motorista: { id: string; nome: string } | null
+  veiculo: { id: string; placa: string; modelo: string } | null
+  lembrete48hEnviadoAt: string | null
+  lembrete48hFalhouAt: string | null
+}
+
+/** Registro de comprovante visualizado pelo gestor na análise da PC. */
+export interface TfdComprovanteVistoItem {
+  comprovanteAnexoId: string
+  userId: string
+  visualizadoAt: string
+}
+
+/** Resumo da prestação de contas vinculada à viagem. */
+export interface TfdPrestacaoViagemResumo {
+  id: string
+  status: string
+  prazoEnvioAt: string
+  observacoesGestor: string | null
+  comprovantesVistos: TfdComprovanteVistoItem[]
+}
+
+/** Item de despesa no detalhe da solicitação — sem dados sensíveis. */
+export interface TfdItemDespesaResumo {
+  id: string
+  tipo: string
+  valor: number
+  descricao: string | null
+  comprovanteAnexoId: string | null
+  responsavelPagamento: string
+}
+
+/** Viagem vinculada a uma solicitação TFD. */
+export interface TfdViagemSolicitacaoItem {
+  id: string
+  sequencia: number
+  dataViagem: string
+  horaSaida: string | null
+  status: string
+  motorista: { nome: string } | null
+  veiculo: { placa: string; modelo: string } | null
+  lembrete48hEnviadoAt: string | null
+  lembrete48hFalhouAt: string | null
+  prestacao: TfdPrestacaoViagemResumo | null
+  itensDespesa: TfdItemDespesaResumo[]
+}
+
 // --- Saldos financeiros ---
 
 export type TfdFonteRecursoValor =
@@ -203,6 +279,7 @@ export type EnviarSolicitacaoOutput = undefined
 /** Detalhe de solicitação TFD — campos clínicos opcionais (permissão analisar_laudo). */
 export interface TfdSolicitacaoDetalhe {
   id: string
+  processoId: string
   protocolo: string
   status: string
   urgencia: string
@@ -232,6 +309,47 @@ export interface TfdSolicitacaoDetalhe {
   cidPrincipal?: string | null
   diagnostico?: string | null
   observacoesClinicas?: string | null
+}
+
+/** Motivo do alerta de prestação de contas na fila TFD (gestor). */
+export type AlertaPrestacaoMotivo = 'LEMBRETE_FALHOU' | 'PRAZO_VENCIDO' | 'PRAZO_VENCENDO'
+
+/** Alerta operacional — prestação com prazo vencendo ou lembrete automático falhou (gestor). */
+export interface AlertaPrestacaoPrazo {
+  id: string
+  motivo: AlertaPrestacaoMotivo
+  prazoEnvioAt: string
+  lembrete48hFalhouAt: string | null
+  sequenciaViagem: number
+  solicitacao: {
+    id: string
+    protocolo: string
+  }
+}
+
+/** Item da listagem de prestações de contas — sem dados clínicos. */
+export interface TfdPrestacaoListItem {
+  id: string
+  status: string
+  prazoEnvioAt: string
+  valorTotal: number
+  quantidadeItens: number
+  sequenciaViagem: number
+  protocolo: string
+  solicitacaoId: string
+  paciente: { nome: string }
+  especialidade: string
+}
+
+/** Alerta operacional — lembrete 48h da viagem não enviado (gestor). */
+export interface AlertaLembreteViagemFalhou {
+  id: string
+  dataViagem: string
+  lembrete48hFalhouAt: string
+  solicitacao: {
+    id: string
+    protocolo: string
+  }
 }
 
 /** Alerta operacional — complemento pendente há mais de 30 dias (gestor). */

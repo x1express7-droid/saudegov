@@ -1,4 +1,6 @@
-import { getTenantContext, requireTenantRole } from '@saude/core-auth'
+import { requireTenantRole } from '@saude/core-auth'
+import { getTenantContext } from '@saude/core-auth/get-tenant-context'
+import { themeToCssVarsStyle } from '../../lib/theme-to-css-vars'
 import { headers } from 'next/headers'
 import { AppShell } from '../../components/app-shell'
 
@@ -15,7 +17,10 @@ export default async function AdminLayout({
   const municipalityName =
     tenant.theme.municipalityName ?? tenant.theme.municipality_name ?? 'Município'
 
+  const themeCssVars = themeToCssVarsStyle(tenant.theme)
+
   return (
+    <div className="min-h-screen" style={themeCssVars}>
     <AppShell
       pathname={pathname}
       modules={tenant.modules}
@@ -27,5 +32,6 @@ export default async function AdminLayout({
     >
       {children}
     </AppShell>
+    </div>
   )
 }

@@ -4,6 +4,11 @@ export {
   type NotificationEvent,
   type NotificationChannel,
   type SolicitacaoTfdNotificationContext,
+  type LembreteViagem48hNotificationContext,
+  type LembretePrestacao48hNotificationContext,
+  type PrestacaoEnviadaNotificationContext,
+  type PrestacaoDecisaoNotificationContext,
+  type PrestacaoRejeitadaNotificationContext,
   type NotificationMessage,
   type DispararNotificacaoInput,
 } from './types'
@@ -14,3 +19,8 @@ export { buildSolicitacaoTfdEnviadaMessage } from './templates/solicitacao-tfd-e
 export { buildSolicitacaoTfdMuitoUrgenteMessage } from './templates/solicitacao-tfd-muito-urgente'
 export { buildSolicitacaoTfdAprovadaMessage } from './templates/solicitacao-tfd-aprovada'
 export { buildSolicitacaoTfdNegadaMessage } from './templates/solicitacao-tfd-negada'
+export { buildLembreteViagem48hMessage } from './templates/lembrete-viagem-48h'
+export { buildLembretePrestacao48hMessage } from './templates/lembrete-prestacao-48h'
+export { buildPrestacaoEnviadaMessage } from './templates/prestacao-enviada'
+export { buildPrestacaoAprovadaMessage } from './templates/prestacao-aprovada'
+export { buildPrestacaoRejeitadaMessage } from './templates/prestacao-rejeitada'

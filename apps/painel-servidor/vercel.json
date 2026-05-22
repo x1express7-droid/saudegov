@@ -1,0 +1,12 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/tfd-lembrete-viagem",
+      "schedule": "0 * * * *"
+    },
+    {
+      "path": "/api/cron/tfd-lembrete-prestacao",
+      "schedule": "0 * * * *"
+    }
+  ]
+}

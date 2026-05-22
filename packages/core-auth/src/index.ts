@@ -4,8 +4,6 @@ export { BCRYPT_ROUNDS, hashPassword, verifyPassword } from './crypto'
 
 export { maskCPF, maskCNS, maskEmail, maskToken } from './masking'
 
-export { auth, handlers, signIn, signOut } from './auth.config'
-
 export { resolveTenant, type TenantContext } from './tenant-resolver'
 
 export { getTenantContext, assertModuleActive } from './get-tenant-context'
@@ -24,7 +22,6 @@ export {
   requireSuperAdmin,
   requireTenantRole,
   requirePermission,
-  hasRole,
-  hasPermission,
-  isSuperAdmin,
 } from './authorization'
+
+export { hasRole, hasPermission, isSuperAdmin } from './permissions'

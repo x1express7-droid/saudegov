@@ -5,18 +5,25 @@ import {
   requireTenantRole,
 } from '@saude/core-auth'
 import {
+  getAlertasLembreteViagemTfd,
   getAlertasPendente30Dias,
+  getAlertasPrestacaoTfd,
   getSolicitacoesTfd,
   TFD_PERMISSIONS,
+  type AlertaLembreteViagemFalhou,
   type AlertaPendente30Dias,
+  type AlertaPrestacaoPrazo,
 } from '@saude/mod-saude-tfd'
 import type { TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
-import { Alert, Button, PageHeader, PermissionGate } from '@saude/ui'
+import { Alert, Button, PageHeader } from '@saude/ui'
+import { PermissionGate } from '@saude/ui/permission-gate'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
+import { AlertaLembreteViagem } from './components/alerta-lembrete-viagem'
+import { AlertaPrestacaoPrazoBanner } from './components/alerta-prestacao-prazo'
 import { AlertaPendentes } from './components/alerta-pendentes'
 import { SolicitacaoFiltros } from './components/solicitacao-filtros'
 import { SolicitacaoLista } from './components/solicitacao-lista'
@@ -103,11 +110,25 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
   const protocoloRascunho = params.rascunho?.trim()
 
   let alertasPendente30Dias: AlertaPendente30Dias[] = []
+  let alertasLembreteViagem: AlertaLembreteViagemFalhou[] = []
+  let alertasPrestacao: AlertaPrestacaoPrazo[] = []
   if (hasRole(session, 'GESTOR')) {
     try {
       alertasPendente30Dias = await getAlertasPendente30Dias()
     } catch {
       alertasPendente30Dias = []
+    }
+
+    try {
+      alertasLembreteViagem = await getAlertasLembreteViagemTfd()
+    } catch {
+      alertasLembreteViagem = []
+    }
+
+    try {
+      alertasPrestacao = await getAlertasPrestacaoTfd()
+    } catch {
+      alertasPrestacao = []
     }
   }
 
@@ -141,6 +162,8 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
         </Alert>
       ) : null}
 
+      <AlertaLembreteViagem alertas={alertasLembreteViagem} />
+      <AlertaPrestacaoPrazoBanner alertas={alertasPrestacao} />
       <AlertaPendentes alertas={alertasPendente30Dias} />
 
       <Suspense

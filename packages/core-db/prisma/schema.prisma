@@ -877,6 +877,8 @@ model TfdViagem {
   observacoes           String?         @db.Text
   status                TfdViagemStatus @default(AGENDADA)
   retorno_registrado_at DateTime?       @db.Timestamptz
+  lembrete_48h_enviado_at DateTime?     @db.Timestamptz
+  lembrete_48h_falhou_at  DateTime?     @db.Timestamptz
   created_at            DateTime        @default(now()) @db.Timestamptz
   updated_at            DateTime        @updatedAt @db.Timestamptz
   tenant                Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
@@ -927,11 +929,13 @@ model TfdPrestacaoConta {
   aprovado_por_id     String?            @db.Uuid
   aprovado_at         DateTime?          @db.Timestamptz
   observacoes_gestor  String?            @db.Text
-  prazo_envio_at      DateTime           @db.Timestamptz
-  created_at          DateTime           @default(now()) @db.Timestamptz
-  updated_at          DateTime           @updatedAt @db.Timestamptz
-  tenant              Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  viagem              TfdViagem          @relation(fields: [viagem_id], references: [id], onDelete: Cascade)
+  prazo_envio_at            DateTime           @db.Timestamptz
+  lembrete_48h_enviado_at   DateTime?          @db.Timestamptz
+  lembrete_48h_falhou_at    DateTime?          @db.Timestamptz
+  created_at                DateTime           @default(now()) @db.Timestamptz
+  updated_at                DateTime           @updatedAt @db.Timestamptz
+  tenant                    Tenant             @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  viagem                    TfdViagem          @relation(fields: [viagem_id], references: [id], onDelete: Cascade)
   saldo               TfdSaldo?          @relation(fields: [saldo_id], references: [id], onDelete: SetNull)
   aprovado_por        User?              @relation("TfdPrestacaoAprovado", fields: [aprovado_por_id], references: [id], onDelete: SetNull)
 

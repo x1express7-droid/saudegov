@@ -1,7 +1,11 @@
+import { getToken } from 'next-auth/jwt'
 import { type NextRequest, NextResponse } from 'next/server'
-import { auth } from '@saude/core-auth'
 
 const PUBLIC_PATHS = ['/login', '/api/auth']
+
+function authSecret(): string | undefined {
+  return process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim()
+}
 
 function getClientIp(req: NextRequest): string | null {
   const forwarded = req.headers.get('x-forwarded-for')
@@ -49,18 +53,20 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  const session = await auth()
-  if (!session?.user) {
+  const token = await getToken({ req, secret: authSecret() })
+  const userId = token?.id as string | undefined
+  const role = token?.role as string | undefined
+  if (!userId || !role) {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
-  if (session.user.role !== 'SUPERADMIN') {
+  if (role !== 'SUPERADMIN') {
     return NextResponse.redirect(new URL('/login', req.url))
   }
 
   const res = NextResponse.next()
-  res.headers.set('x-user-id', session.user.id)
-  res.headers.set('x-user-role', session.user.role)
+  res.headers.set('x-user-id', userId)
+  res.headers.set('x-user-role', role)
   return res
 }
 

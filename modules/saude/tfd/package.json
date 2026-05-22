@@ -13,6 +13,8 @@
     "@saude/core-documents": "*",
     "@saude/core-notifications": "*",
     "@saude/validators": "*",
+    "date-fns": "^4.2.1",
+    "date-fns-tz": "^3.2.0",
     "zod": "^3.25.76"
   },
   "peerDependencies": {

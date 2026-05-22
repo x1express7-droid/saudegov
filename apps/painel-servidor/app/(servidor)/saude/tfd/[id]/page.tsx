@@ -7,8 +7,12 @@ import {
 import {
   getSaldosTfd,
   getSolicitacaoTfd,
+  getVeiculosAgendamentoTfd,
+  getViagensSolicitacaoTfd,
   TFD_PERMISSIONS,
   type SaldoListItem,
+  type TfdVeiculoAgendamentoItem,
+  type TfdViagemSolicitacaoItem,
 } from '@saude/mod-saude-tfd'
 import {
   PageHeader,
@@ -104,6 +108,29 @@ export default async function TfdDetalhePage({ params }: TfdDetalhePageProps) {
 
   const saldosAtivos = await loadSaldosParaDecisao(solicitacao.status, canLoadSaldos)
 
+  const statusAgendavel =
+    solicitacao.status === 'APROVADO' || solicitacao.status === 'AGENDADO'
+
+  const statusComViagens =
+    statusAgendavel ||
+    solicitacao.status === 'EM_VIAGEM' ||
+    solicitacao.status === 'AGUARDANDO_PC' ||
+    solicitacao.status === 'PC_EM_ANALISE' ||
+    solicitacao.status === 'CONCLUIDO'
+
+  let viagens: TfdViagemSolicitacaoItem[] = []
+  let veiculosAgendamento: TfdVeiculoAgendamentoItem[] = []
+
+  if (statusComViagens) {
+    const acompanhanteNecessario = solicitacao.acompanhante !== null
+    const viagensPromise = getViagensSolicitacaoTfd(id)
+    const veiculosPromise = statusAgendavel
+      ? getVeiculosAgendamentoTfd(acompanhanteNecessario)
+      : Promise.resolve([] as TfdVeiculoAgendamentoItem[])
+
+    ;[viagens, veiculosAgendamento] = await Promise.all([viagensPromise, veiculosPromise])
+  }
+
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
@@ -142,7 +169,7 @@ export default async function TfdDetalhePage({ params }: TfdDetalhePageProps) {
 
       <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
-          <SolicitacaoDetalhe solicitacao={solicitacao} />
+          <SolicitacaoDetalhe solicitacao={solicitacao} viagens={viagens} />
           <SolicitacaoTimeline tramitacoes={solicitacao.tramitacoes} />
         </div>
 
@@ -152,6 +179,8 @@ export default async function TfdDetalhePage({ params }: TfdDetalhePageProps) {
             solicitacao={solicitacao}
             saldosAtivos={saldosAtivos}
             canLoadSaldos={canLoadSaldos}
+            veiculosAgendamento={veiculosAgendamento}
+            viagens={viagens}
           />
         </aside>
       </div>

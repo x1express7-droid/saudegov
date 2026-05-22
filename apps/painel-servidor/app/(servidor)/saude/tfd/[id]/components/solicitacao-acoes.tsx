@@ -1,6 +1,6 @@
 'use client'
 
-import type { SaudeMunicSession } from '@saude/core-auth'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   decidirSolicitacaoTfd,
   enviarComplementoTfd,
@@ -9,19 +9,26 @@ import {
   TFD_PERMISSIONS,
   type SaldoListItem,
   type TfdSolicitacaoDetalhe,
+  type TfdVeiculoAgendamentoItem,
+  type TfdViagemSolicitacaoItem,
 } from '@saude/mod-saude-tfd'
 import {
   Button,
   Card,
   CardHeader,
   Input,
-  PermissionGate,
   Select,
   Spinner,
   Textarea,
 } from '@saude/ui'
+import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
+
+import { AgendamentoForm } from './agendamento-form'
+import { DespesaForm } from './despesa-form'
+import { PrestacaoAnalisePainel } from './prestacao-analise-painel'
+import { RetornoViagemAcao } from './retorno-viagem-acao'
 
 const MIN_TEXTO = 20
 
@@ -35,6 +42,8 @@ export interface SolicitacaoAcoesProps {
   solicitacao: TfdSolicitacaoDetalhe
   saldosAtivos: SaldoListItem[]
   canLoadSaldos: boolean
+  veiculosAgendamento: TfdVeiculoAgendamentoItem[]
+  viagens: TfdViagemSolicitacaoItem[]
 }
 
 function ServerError({ message }: { message: string }) {
@@ -50,6 +59,8 @@ export function SolicitacaoAcoes({
   solicitacao,
   saldosAtivos,
   canLoadSaldos,
+  veiculosAgendamento,
+  viagens,
 }: SolicitacaoAcoesProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -161,10 +172,29 @@ export function SolicitacaoAcoes({
     )
   }
 
-  const hasAnyAction =
+  const hasRegulacaoAction =
     solicitacao.status === 'ENVIADO' ||
     solicitacao.status === 'EM_ANALISE' ||
     solicitacao.status === 'PENDENTE'
+
+  const showAgendamentoForm =
+    solicitacao.status === 'APROVADO' || solicitacao.status === 'AGENDADO'
+
+  const showRetorno = solicitacao.status === 'EM_VIAGEM'
+  const showDespesa =
+    solicitacao.status === 'AGUARDANDO_PC' ||
+    viagens.some(
+      (viagem) =>
+        viagem.prestacao?.status === 'PENDENTE' || viagem.prestacao?.status === 'REJEITADA'
+    )
+  const showAnalisePrestacao = solicitacao.status === 'PC_EM_ANALISE'
+
+  const hasAnyAction =
+    hasRegulacaoAction ||
+    showAgendamentoForm ||
+    showRetorno ||
+    showDespesa ||
+    showAnalisePrestacao
 
   return (
     <Card header={<CardHeader>Ações</CardHeader>} className="lg:sticky lg:top-[var(--space-4)]">
@@ -380,6 +410,46 @@ export function SolicitacaoAcoes({
               </>
             )}
           </div>
+        ) : null}
+
+        {showAgendamentoForm ? (
+          <PermissionGate session={session} permission={TFD_PERMISSIONS.AGENDAR_VIAGEM}>
+            <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
+              <AgendamentoForm
+                solicitacaoId={solicitacao.id}
+                veiculos={veiculosAgendamento}
+                titulo={
+                  solicitacao.status === 'APROVADO'
+                    ? 'Agendar viagem'
+                    : 'Agendar nova viagem'
+                }
+              />
+            </div>
+          </PermissionGate>
+        ) : null}
+
+        {showRetorno ? (
+          <RetornoViagemAcao
+            session={session}
+            solicitacaoStatus={solicitacao.status}
+            viagens={viagens}
+          />
+        ) : null}
+
+        {showDespesa ? (
+          <DespesaForm
+            session={session}
+            processoId={solicitacao.processoId}
+            viagens={viagens}
+          />
+        ) : null}
+
+        {showAnalisePrestacao ? (
+          <PrestacaoAnalisePainel
+            session={session}
+            solicitacaoStatus={solicitacao.status}
+            viagens={viagens}
+          />
         ) : null}
 
         {serverError ? <ServerError message={serverError} /> : null}
