@@ -9,10 +9,13 @@ RUN apk add --no-cache libc6-compat openssl
 WORKDIR /app
 
 FROM base AS builder
+# Coolify pode injetar NODE_ENV=production no build; devDeps (tailwind, postcss) são necessárias
+ENV NODE_ENV=development
 COPY . .
 RUN npm install
 RUN cd packages/core-db && npx prisma generate
 RUN npx turbo build --filter=@saude/app-painel-servidor
+ENV NODE_ENV=production
 
 FROM base AS runner
 ENV NODE_ENV=production
