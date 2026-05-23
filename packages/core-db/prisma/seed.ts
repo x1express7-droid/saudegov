@@ -554,7 +554,7 @@ async function main() {
 
   await upsertUser({
     tenantId: campograndems.id,
-    email: 'admin@campograndems.saudemunic.com.br',
+    email: 'nathan@x1express.com.br',
     role: 'ADMIN',
     name: 'Admin Campo Grande',
     passwordHash,
@@ -656,7 +656,7 @@ async function main() {
   console.log('✅ Seed concluído.')
   console.log('\n📋 Credenciais de desenvolvimento (senha: senha123):')
   console.log('SUPERADMIN: dev@x1express.com.br')
-  console.log('Campo Grande — ADMIN:   admin@campograndems.saudemunic.com.br')
+  console.log('Campo Grande — ADMIN:   nathan@x1express.com.br')
   console.log('Campo Grande — GESTOR:  gestor@campograndems.saudemunic.com.br')
   console.log('Campo Grande — SERVIDOR: servidor@campograndems.saudemunic.com.br')
   console.log('Altamira — ADMIN:   admin@altamirapa.saudemunic.com.br')
