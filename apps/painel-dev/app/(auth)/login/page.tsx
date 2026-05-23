@@ -1,11 +1,25 @@
 import { LoginForm } from './components/login-form'
 
+function loginErrorMessage(error?: string): string | null {
+  switch (error) {
+    case 'credentials':
+      return 'E-mail ou senha inválidos.'
+    case 'ip':
+      return 'Seu IP não está na lista SUPERADMIN_ALLOWED_IPS. Adicione seu IP no Coolify ou defina SUPERADMIN_ENFORCE_IP=false.'
+    case 'session':
+      return 'Login ok, mas a sessão não persistiu. Use a mesma URL (http/https) de AUTH_URL ou defina AUTH_COOKIE_SECURE=false se acessar via HTTP.'
+    default:
+      return null
+  }
+}
+
 export default async function LoginPage({
   searchParams,
 }: {
   searchParams: Promise<{ error?: string }>
 }) {
   const { error } = await searchParams
+  const errorMessage = loginErrorMessage(error)
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
@@ -13,7 +27,7 @@ export default async function LoginPage({
         <h1 className="text-2xl font-semibold">Painel Dev</h1>
         <p className="text-sm text-neutral-600">Acesso restrito — SUPERADMIN</p>
       </div>
-      <LoginForm showError={error === 'credentials'} />
+      <LoginForm errorMessage={errorMessage} />
     </main>
   )
 }

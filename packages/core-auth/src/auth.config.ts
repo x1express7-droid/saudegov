@@ -1,7 +1,10 @@
 import type { NextAuthConfig } from 'next-auth'
 import type { SaudeMunicSession, UserRole } from './types/session'
+import { authUsesSecureCookies } from './auth-env'
 
 export const JWT_EXPIRY_SECONDS = parseInt(process.env.JWT_EXPIRY ?? '28800', 10)
+
+const secureCookies = authUsesSecureCookies()
 
 /** Config compartilhada — compatível com Edge (sem Prisma nem next/headers). */
 export const authConfig = {
@@ -63,4 +66,15 @@ export const authConfig = {
     signIn: '/login',
   },
   trustHost: true,
+  cookies: {
+    sessionToken: {
+      options: { secure: secureCookies },
+    },
+    callbackUrl: {
+      options: { secure: secureCookies },
+    },
+    csrfToken: {
+      options: { secure: secureCookies },
+    },
+  },
 } satisfies Omit<NextAuthConfig, 'providers'>

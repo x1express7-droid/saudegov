@@ -4,10 +4,10 @@ import { loginWithCredentials } from '../actions'
 
 export function LoginForm({
   tenantId,
-  showError = false,
+  errorMessage = null,
 }: {
   tenantId?: string | null
-  showError?: boolean
+  errorMessage?: string | null
 }) {
   return (
     <form
@@ -18,9 +18,9 @@ export function LoginForm({
       <input type="hidden" name="redirectTo" value="/dashboard" />
       {tenantId ? <input type="hidden" name="tenantId" value={tenantId} /> : null}
 
-      {showError ? (
+      {errorMessage ? (
         <Alert variant="error" titulo="Não foi possível entrar">
-          E-mail ou senha inválidos.
+          {errorMessage}
         </Alert>
       ) : null}
 

@@ -9,6 +9,7 @@
     "./server": "./src/server.ts",
     "./client": "./src/client.ts",
     "./edge": "./src/edge.ts",
+    "./middleware-jwt": "./src/middleware-jwt.ts",
     "./get-tenant-context": "./src/get-tenant-context.ts",
     "./auth-node": "./src/auth.node.ts",
     "./auth-node-painel-dev": "./src/auth-node-painel-dev.ts",

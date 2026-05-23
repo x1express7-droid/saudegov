@@ -1,6 +1,6 @@
 import { loginWithCredentials } from '../actions'
 
-export function LoginForm({ showError = false }: { showError?: boolean }) {
+export function LoginForm({ errorMessage = null }: { errorMessage?: string | null }) {
   return (
     <form
       action={loginWithCredentials}
@@ -8,9 +8,9 @@ export function LoginForm({ showError = false }: { showError?: boolean }) {
     >
       <input type="hidden" name="redirectTo" value="/dashboard" />
 
-      {showError ? (
+      {errorMessage ? (
         <p role="alert" className="text-sm text-red-600">
-          E-mail ou senha inválidos.
+          {errorMessage}
         </p>
       ) : null}
 

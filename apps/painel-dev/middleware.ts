@@ -1,13 +1,14 @@
-import { getToken } from 'next-auth/jwt'
+import { getAuthJwtFromRequest } from '@saude/core-auth/middleware-jwt'
 import { type NextRequest, NextResponse } from 'next/server'
 
 const PUBLIC_PATHS = ['/login', '/api/auth']
 
-function authSecret(): string | undefined {
-  return process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim()
-}
-
 function getClientIp(req: NextRequest): string | null {
+  const cfIp = req.headers.get('cf-connecting-ip')?.trim()
+  if (cfIp) {
+    return cfIp
+  }
+
   const forwarded = req.headers.get('x-forwarded-for')
   if (forwarded) {
     const first = forwarded.split(',')[0]?.trim()
@@ -20,17 +21,20 @@ function getClientIp(req: NextRequest): string | null {
   return realIp || null
 }
 
+function isIpAllowlistConfigured(): boolean {
+  return Boolean(process.env.SUPERADMIN_ALLOWED_IPS?.trim())
+}
+
 function isIpAllowed(clientIp: string | null): boolean {
+  if (!isIpAllowlistConfigured()) {
+    return true
+  }
+
   if (!clientIp) {
     return false
   }
 
-  const allowedIps = process.env.SUPERADMIN_ALLOWED_IPS
-  if (!allowedIps?.trim()) {
-    return false
-  }
-
-  const allowlist = allowedIps
+  const allowlist = process.env.SUPERADMIN_ALLOWED_IPS!
     .split(',')
     .map((ip) => ip.trim())
     .filter(Boolean)
@@ -39,6 +43,9 @@ function isIpAllowed(clientIp: string | null): boolean {
 }
 
 function shouldEnforceIpAllowlist(): boolean {
+  if (process.env.SUPERADMIN_ENFORCE_IP === 'false') {
+    return false
+  }
   return process.env.NODE_ENV !== 'development'
 }
 
@@ -49,19 +56,19 @@ export async function middleware(req: NextRequest) {
     return NextResponse.next()
   }
 
-  if (shouldEnforceIpAllowlist() && !isIpAllowed(getClientIp(req))) {
-    return NextResponse.redirect(new URL('/login', req.url))
+  if (shouldEnforceIpAllowlist() && isIpAllowlistConfigured() && !isIpAllowed(getClientIp(req))) {
+    return NextResponse.redirect(new URL('/login?error=ip', req.url))
   }
 
-  const token = await getToken({ req, secret: authSecret() })
+  const token = await getAuthJwtFromRequest(req)
   const userId = token?.id as string | undefined
   const role = token?.role as string | undefined
   if (!userId || !role) {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(new URL('/login?error=session', req.url))
   }
 
   if (role !== 'SUPERADMIN') {
-    return NextResponse.redirect(new URL('/login', req.url))
+    return NextResponse.redirect(new URL('/login?error=credentials', req.url))
   }
 
   const res = NextResponse.next()
