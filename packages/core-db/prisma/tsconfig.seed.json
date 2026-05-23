@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "target": "ES2022",
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "ignoreDeprecations": "6.0",
+    "types": ["node"],
+    "outDir": "./seed-dist",
+    "rootDir": ".."
+  },
+  "include": ["./seed.ts", "./seeds/**/*.ts", "../src/admin-client.ts", "../src/prisma.ts"]
+}

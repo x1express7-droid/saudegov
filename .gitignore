@@ -6,6 +6,7 @@ node_modules/
 .turbo/
 dist/
 *.tsbuildinfo
+packages/core-db/prisma/seed-dist/
 
 # Environment
 .env.local
