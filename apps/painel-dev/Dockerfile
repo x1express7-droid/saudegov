@@ -36,10 +36,17 @@ COPY --from=builder --chown=nextjs:nodejs /app/apps/painel-dev/public ./apps/pai
 # Prisma query engine (externalized via serverExternalPackages)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 
-# Prisma Client + schema (migrate via CLI global acima)
+# Prisma Client + schema (migrate/seed via CLI global acima)
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/bcryptjs ./node_modules/bcryptjs
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/ts-node ./node_modules/ts-node
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/typescript ./node_modules/typescript
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/package.json ./packages/core-db/package.json
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/tsconfig.json ./packages/core-db/tsconfig.json
+COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/src ./packages/core-db/src
 COPY --from=builder --chown=nextjs:nodejs /app/packages/core-db/prisma ./packages/core-db/prisma
 
 USER nextjs
 EXPOSE 3000
-CMD ["sh", "-c", "npx prisma migrate deploy --schema=packages/core-db/prisma/schema.prisma && node apps/painel-dev/server.js"]
+# Seed idempotente (upsert) — cria SUPERADMIN e tenants de dev. SKIP_DB_SEED=true para desativar.
+CMD ["sh", "-c", "npx prisma migrate deploy --schema=packages/core-db/prisma/schema.prisma && if [ \"$SKIP_DB_SEED\" != \"true\" ]; then cd packages/core-db && npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' prisma/seed.ts; fi && cd /app && node apps/painel-dev/server.js"]

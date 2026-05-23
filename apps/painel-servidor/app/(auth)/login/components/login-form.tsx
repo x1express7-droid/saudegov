@@ -2,7 +2,13 @@ import { Alert, Button, Input } from '@saude/ui'
 
 import { loginWithCredentials } from '../actions'
 
-export function LoginForm({ showError = false }: { showError?: boolean }) {
+export function LoginForm({
+  tenantId,
+  showError = false,
+}: {
+  tenantId?: string | null
+  showError?: boolean
+}) {
   return (
     <form
       action={loginWithCredentials}
@@ -10,6 +16,7 @@ export function LoginForm({ showError = false }: { showError?: boolean }) {
       noValidate
     >
       <input type="hidden" name="redirectTo" value="/dashboard" />
+      {tenantId ? <input type="hidden" name="tenantId" value={tenantId} /> : null}
 
       {showError ? (
         <Alert variant="error" titulo="Não foi possível entrar">

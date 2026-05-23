@@ -13,6 +13,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         email: { label: 'E-mail', type: 'email' },
         password: { label: 'Senha', type: 'password' },
+        tenantId: { label: 'Tenant ID', type: 'text' },
       },
       async authorize(credentials) {
         const { authorizeCredentials } = await import('./auth-authorize')

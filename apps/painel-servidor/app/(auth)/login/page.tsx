@@ -30,7 +30,7 @@ export default async function LoginPage({
           </p>
         ) : null}
       </div>
-      <LoginForm showError={error === 'credentials'} />
+      <LoginForm tenantId={tenantId} showError={error === 'credentials'} />
     </main>
   )
 }

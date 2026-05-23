@@ -50,9 +50,21 @@ function toUserRole(role: string): UserRole {
   return 'SERVIDOR'
 }
 
+type CredentialsInput = Partial<Record<'email' | 'password' | 'tenantId', unknown>>
+
 async function getTenantIdFromHeaders(): Promise<string | null> {
   const h = await headers()
   return h.get('x-tenant-id')
+}
+
+/** Server Action do login não repassa headers do middleware ao callback Auth.js. */
+async function resolveTenantId(credentials: CredentialsInput): Promise<string | null> {
+  const fromForm =
+    typeof credentials.tenantId === 'string' ? credentials.tenantId.trim() : ''
+  if (fromForm) {
+    return fromForm
+  }
+  return getTenantIdFromHeaders()
 }
 
 function getRateLimitKey(tenantId: string, email: string): string {
@@ -85,7 +97,7 @@ function clearFailedAttempts(key: string): void {
 }
 
 function isValidCredentials(
-  credentials: Partial<Record<'email' | 'password', unknown>>
+  credentials: CredentialsInput
 ): credentials is { email: string; password: string } {
   return (
     typeof credentials.email === 'string' &&
@@ -120,13 +132,13 @@ async function recordLoginFailed(
 }
 
 export async function authorizeCredentials(
-  credentials: Partial<Record<'email' | 'password', unknown>>
+  credentials: CredentialsInput
 ): Promise<AuthorizeUser | null> {
   if (!isValidCredentials(credentials)) {
     return null
   }
 
-  const tenantId = await getTenantIdFromHeaders()
+  const tenantId = await resolveTenantId(credentials)
   if (!tenantId) {
     return null
   }
