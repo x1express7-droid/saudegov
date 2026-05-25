@@ -9,6 +9,7 @@ import {
   CardHeader,
   Select,
   Spinner,
+  Textarea,
   TFD_URGENCIA_CONFIG,
   cn,
 } from '@saude/ui'
@@ -158,6 +159,7 @@ export function SolicitacaoForm({
       acompanhanteNecessario: false,
       solicitacaoOrigemId: undefined,
       laudoAnexoId: undefined,
+      observacoesAbertura: '',
     },
   })
 
@@ -370,20 +372,7 @@ export function SolicitacaoForm({
         </Alert>
       ) : null}
 
-      <Card header={<CardHeader>Paciente</CardHeader>}>
-        <dl className="grid gap-[var(--space-2)] sm:grid-cols-2">
-          <div>
-            <dt className="text-[length:var(--text-xs)] font-medium uppercase tracking-wide text-[var(--color-text-muted)]">
-              Nome
-            </dt>
-            <dd className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
-              {paciente.nome}
-            </dd>
-          </div>
-        </dl>
-      </Card>
-
-      <Card header={<CardHeader>Dados clínicos</CardHeader>}>
+      <Card header={<CardHeader>Dados da solicitação</CardHeader>}>
         <div className="flex flex-col gap-[var(--space-4)]">
           <Controller
             name="especialidadeId"
@@ -505,6 +494,18 @@ export function SolicitacaoForm({
             {errors.laudoAnexoId.message}
           </p>
         ) : null}
+      </Card>
+
+      <Card header={<CardHeader>Observações</CardHeader>}>
+        <Textarea
+          id="observacoes-abertura"
+          label="Observações do atendimento"
+          rows={4}
+          placeholder="Informações relevantes para regulação e acompanhamento do processo."
+          disabled={isPending}
+          {...register('observacoesAbertura')}
+          error={errors.observacoesAbertura?.message}
+        />
       </Card>
 
       <Card header={<CardHeader>Acompanhante</CardHeader>}>

@@ -4,6 +4,7 @@ import { buscarPacientePorCns, vincularPaciente } from '@saude/mod-saude-tfd/act
 import { Alert, Badge, Button, Card, Input, PageHeader } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { useState, useTransition } from 'react'
 
@@ -53,10 +54,11 @@ function formatSexo(value: DadosCadsus['sexo']): string {
 }
 
 export interface PacienteBuscaFormProps {
+  cadsusEnabled: boolean
   vinculadosSection?: ReactNode
 }
 
-export function PacienteBuscaForm({ vinculadosSection }: PacienteBuscaFormProps) {
+export function PacienteBuscaForm({ cadsusEnabled, vinculadosSection }: PacienteBuscaFormProps) {
   const [etapa, setEtapa] = useState<Etapa>('busca')
   const [cns, setCns] = useState('')
   const [cpf, setCpf] = useState('')
@@ -140,11 +142,15 @@ export function PacienteBuscaForm({ vinculadosSection }: PacienteBuscaFormProps)
     handleVincular(cpf)
   }
 
+  const subtitulo = cadsusEnabled
+    ? 'Cadastre pacientes na base do município ou importe dados pelo CADSUS quando disponível.'
+    : 'Cadastre e gerencie pacientes na base local do município. A integração CADSUS não está ativa.'
+
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
-        titulo="Busca de Paciente"
-        subtitulo="Consulte o CADSUS pelo CNS e vincule o paciente ao município."
+        titulo="Pacientes TFD"
+        subtitulo={subtitulo}
         breadcrumbs={[
           { label: 'TFD', href: '/saude/tfd' },
           { label: 'Pacientes' },
@@ -161,18 +167,36 @@ export function PacienteBuscaForm({ vinculadosSection }: PacienteBuscaFormProps)
         <Card
           header={
             <h2 className="text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]">
-              Consultar no CADSUS
+              Cadastrar paciente
             </h2>
           }
         >
           <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            Use o CNS para localizar o paciente na base nacional. Para filtrar quem já está
-            vinculado ao município, utilize a busca por nome na seção abaixo.
+            Informe os dados do paciente diretamente na base do município. Nome é obrigatório; CPF,
+            CNS e demais campos são opcionais.
+          </p>
+          <Button asChild variant="primary">
+            <Link href="/saude/tfd/nova">Novo cadastro / atendimento TFD</Link>
+          </Button>
+        </Card>
+      ) : null}
+
+      {etapa === 'busca' && cadsusEnabled ? (
+        <Card
+          header={
+            <h2 className="text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]">
+              Importar do CADSUS
+            </h2>
+          }
+        >
+          <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+            Com a integração ativa, use o CNS para localizar o paciente na base nacional e vinculá-lo
+            ao município.
           </p>
           <form onSubmit={handleBuscar} className="flex flex-col gap-[var(--space-4)]" noValidate>
             <Input
               id="paciente-cns"
-              label="Busca por CNS (CADSUS)"
+              label="CNS (Cartão Nacional de Saúde)"
               name="cns"
               inputMode="numeric"
               autoComplete="off"
@@ -183,15 +207,18 @@ export function PacienteBuscaForm({ vinculadosSection }: PacienteBuscaFormProps)
               placeholder="000000000000000"
               hint="Informe os 15 dígitos do Cartão Nacional de Saúde."
             />
-            <Button type="submit" variant="primary" loading={isPending} disabled={isPending}>
+            <Button type="submit" variant="secondary" loading={isPending} disabled={isPending}>
               {isPending ? 'Buscando...' : 'Buscar no CADSUS'}
             </Button>
-            <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-              O paciente será localizado no CADSUS e vinculado ao município para uso nas
-              solicitações TFD.
-            </p>
           </form>
         </Card>
+      ) : null}
+
+      {etapa === 'busca' && !cadsusEnabled ? (
+        <Alert variant="info" titulo="CADSUS não configurado">
+          A consulta à base nacional está desativada neste município. Os pacientes são cadastrados
+          apenas na base local — use o botão acima ou a busca por nome na lista abaixo.
+        </Alert>
       ) : null}
 
       {etapa === 'busca' && vinculadosSection ? vinculadosSection : null}
@@ -300,15 +327,17 @@ export function PacienteBuscaForm({ vinculadosSection }: PacienteBuscaFormProps)
 
       {etapa === 'sucesso' && vinculoSucesso ? (
         <Card>
-          <Alert variant="success" titulo="Paciente vinculado com sucesso">
-            O paciente foi registrado no sistema deste município.
-            <span className="mt-[var(--space-2)] block font-mono text-[length:var(--text-xs)]">
-              ID: {vinculoSucesso.pacienteId}
-            </span>
+          <Alert variant="success" titulo="Paciente cadastrado com sucesso">
+            O paciente foi registrado na base deste município.
           </Alert>
-          <div className="mt-[var(--space-4)]">
-            <Button type="button" variant="primary" onClick={reiniciarFluxo}>
-              Buscar outro paciente
+          <div className="mt-[var(--space-4)] flex flex-wrap gap-[var(--space-3)]">
+            <Button asChild variant="primary">
+              <Link href={`/saude/tfd/nova?pacienteId=${vinculoSucesso.pacienteId}`}>
+                Abrir atendimento TFD
+              </Link>
+            </Button>
+            <Button type="button" variant="secondary" onClick={reiniciarFluxo}>
+              Cadastrar outro paciente
             </Button>
           </div>
         </Card>

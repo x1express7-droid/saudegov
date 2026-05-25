@@ -317,6 +317,7 @@ export async function abrirSolicitacaoTfd(
           status: 'RASCUNHO',
           laudo_anexo_id: data.laudoAnexoId ?? null,
           acompanhante_necessario: data.acompanhanteNecessario,
+          observacoes_abertura: data.observacoesAbertura?.trim() || null,
         },
       })
 

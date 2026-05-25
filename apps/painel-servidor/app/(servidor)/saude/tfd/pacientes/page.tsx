@@ -1,5 +1,5 @@
 import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
-import { getPacientesTfd } from '@saude/mod-saude-tfd'
+import { getPacientesTfd, isCadsusEnabledForTenant } from '@saude/mod-saude-tfd'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -9,7 +9,7 @@ import { PacientesVinculadosFiltro } from './components/pacientes-vinculados-fil
 import { PacientesVinculadosLista } from './components/pacientes-vinculados-lista'
 
 export const metadata: Metadata = {
-  title: 'Busca de Paciente — TFD',
+  title: 'Pacientes — TFD',
 }
 
 interface PacientesPageProps {
@@ -39,14 +39,18 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
   const perPage = Math.min(100, parsePositiveInt(params.perPage, 20))
   const nome = params.nome?.trim()
 
-  const { items, total } = await getPacientesTfd({
-    nome: nome || undefined,
-    page,
-    perPage,
-  })
+  const [{ items, total }, cadsusEnabled] = await Promise.all([
+    getPacientesTfd({
+      nome: nome || undefined,
+      page,
+      perPage,
+    }),
+    isCadsusEnabledForTenant(tenant.id),
+  ])
 
   return (
     <PacienteBuscaForm
+      cadsusEnabled={cadsusEnabled}
       vinculadosSection={
         <>
           <section

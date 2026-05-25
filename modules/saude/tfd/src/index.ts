@@ -202,6 +202,13 @@ export {
 
 export { buscarPacientePorCns, vincularPaciente } from './actions/paciente'
 export {
+  buscarPacientesAtendimentoTfd,
+  carregarPacienteAtendimentoTfd,
+  salvarPacienteAtendimentoTfd,
+} from './actions/paciente-atendimento'
+export { getPacienteAtendimentoTfd } from './queries/get-paciente-atendimento'
+export { isCadsusEnabledForTenant } from './queries/is-cadsus-enabled'
+export {
   abrirSolicitacaoTfd,
   enviarSolicitacaoTfd,
   cancelarSolicitacaoTfd,

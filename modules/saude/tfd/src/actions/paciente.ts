@@ -84,6 +84,14 @@ export async function buscarPacientePorCns(
 
     const tenantSettings = await loadTenantSettings(db, tenantId)
 
+    if (tenantSettings.cadsus_enabled !== true) {
+      return {
+        success: false,
+        error:
+          'A integração CADSUS não está ativa neste município. Cadastre o paciente manualmente na base local.',
+      }
+    }
+
     const cadsus = getCadsusService(tenantSettings)
     const resultado = await cadsus.buscarPorCns(data.cns)
 
@@ -234,6 +242,15 @@ export async function vincularPaciente(
     }
 
     const tenantSettings = await loadTenantSettings(db, tenantId)
+
+    if (tenantSettings.cadsus_enabled !== true) {
+      return {
+        success: false,
+        error:
+          'A integração CADSUS não está ativa neste município. Cadastre o paciente manualmente na base local.',
+      }
+    }
+
     const cadsus = getCadsusService(tenantSettings)
     const resultado = await cadsus.buscarPorCns(cns)
 

@@ -55,6 +55,7 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
       laudo_anexo_id: true,
       cid_principal: true,
       diagnostico: true,
+      observacoes_abertura: true,
       especialidade: {
         select: { id: true, nome: true },
       },
@@ -172,6 +173,7 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
       usuario: { nome: item.usuario?.name ?? null },
     })),
     laudoAnexoId: row.laudo_anexo_id,
+    observacoesClinicas: row.observacoes_abertura,
     solicitacaoOrigemId: row.solicitacao_origem_id,
     reservaSaldo: reserva
       ? {
@@ -185,7 +187,6 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
   if (podeVerDadosClinicos) {
     detalhe.cidPrincipal = row.cid_principal
     detalhe.diagnostico = row.diagnostico
-    detalhe.observacoesClinicas = null
 
     await createAuditLog({
       tenantId,

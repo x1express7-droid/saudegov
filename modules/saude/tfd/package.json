@@ -10,6 +10,7 @@
     "./permissions": "./src/permissions.ts",
     "./actions/configuracao": "./src/actions/configuracao.ts",
     "./actions/paciente": "./src/actions/paciente.ts",
+    "./actions/paciente-atendimento": "./src/actions/paciente-atendimento.ts",
     "./actions/solicitacao": "./src/actions/solicitacao.ts",
     "./actions/regulacao": "./src/actions/regulacao.ts",
     "./actions/decisao": "./src/actions/decisao.ts",

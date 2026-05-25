@@ -114,7 +114,7 @@ export function PacientesVinculadosLista({ items, total }: PacientesVinculadosLi
       pagination={{ page, perPage, total }}
       onPaginationChange={handlePaginationChange}
       emptyMessage="Nenhum paciente vinculado encontrado"
-      emptyDescription="Busque um paciente no CADSUS pelo CNS para vinculá-lo ao município."
+      emptyDescription="Nenhum paciente cadastrado. Use «Novo cadastro / atendimento TFD» para registrar na base do município."
     />
   )
 }

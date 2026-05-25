@@ -55,6 +55,11 @@ export const abrirSolicitacaoSchema = z
     }),
     /** Opcional no rascunho; obrigatoriedade e confirmação no storage são validadas em `enviarSolicitacaoTfd`. */
     laudoAnexoId: z.string().uuid('ID do laudo inválido.').optional(),
+    observacoesAbertura: z
+      .string()
+      .trim()
+      .max(5000, 'Observações devem ter no máximo 5000 caracteres.')
+      .optional(),
     acompanhanteNecessario: z.boolean().default(false),
     acompanhante: acompanhanteSchema.optional(),
   })

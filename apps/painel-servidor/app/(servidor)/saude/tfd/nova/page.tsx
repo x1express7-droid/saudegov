@@ -4,22 +4,23 @@ import {
   requirePermission,
   requireTenantRole,
 } from '@saude/core-auth/server'
-import { getPrismaForTenant } from '@saude/core-db'
 import {
   getEspecialidadesTfd,
+  getPacienteAtendimentoTfd,
   getPrestadoresTfd,
   getProcedimentosTfd,
   getSolicitacoesOrigemRetornoTfd,
+  isCadsusEnabledForTenant,
   TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 
-import { SolicitacaoForm } from '../components/solicitacao-form'
+import { AtendimentoTfdForm } from './components/atendimento-tfd-form'
 
 export const metadata: Metadata = {
-  title: 'Nova solicitação — TFD',
+  title: 'Atendimento da Solicitação TFD',
 }
 
 const CATALOGO_PER_PAGE = 100
@@ -45,57 +46,46 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
   await requirePermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
 
   const params = await searchParams
-  const pacienteId = params.pacienteId?.trim()
+  const pacienteIdParam = params.pacienteId?.trim()
 
-  if (!pacienteId || !isUuid(pacienteId)) {
-    redirect('/saude/tfd/pacientes')
+  let initialPaciente = null
+
+  if (pacienteIdParam && isUuid(pacienteIdParam)) {
+    initialPaciente = await getPacienteAtendimentoTfd(pacienteIdParam)
+    if (!initialPaciente) {
+      notFound()
+    }
   }
 
-  const tenantId = session.user.tenantId!
-  const db = await getPrismaForTenant(tenantId)
+  const pacienteIdForOrigem = initialPaciente?.id
 
-  const paciente = await db.paciente.findFirst({
-    where: {
-      id: pacienteId,
-      tenant_id: tenantId,
-      ativo: true,
-    },
-    select: {
-      id: true,
-      nome: true,
-      cpf: true,
-    },
-  })
+  const tenantId = tenant.id
 
-  if (!paciente) {
-    notFound()
-  }
-
-  const [especialidadesResult, procedimentosResult, prestadoresResult, solicitacoesOrigem] =
+  const [especialidadesResult, procedimentosResult, prestadoresResult, solicitacoesOrigem, cadsusEnabled] =
     await Promise.all([
       getEspecialidadesTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
       getProcedimentosTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
       getPrestadoresTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
-      getSolicitacoesOrigemRetornoTfd({ pacienteId: paciente.id }),
+      pacienteIdForOrigem
+        ? getSolicitacoesOrigemRetornoTfd({ pacienteId: pacienteIdForOrigem })
+        : Promise.resolve([]),
+      isCadsusEnabledForTenant(tenantId),
     ])
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
-        titulo="Nova solicitação TFD"
-        subtitulo="Preencha os dados clínicos e anexe o laudo médico para abrir ou enviar a solicitação."
+        titulo="Atendimento da Solicitação TFD"
+        subtitulo="Identifique o paciente, revise os dados cadastrais e registre a solicitação de Tratamento Fora de Domicílio."
         breadcrumbs={[
           { label: 'Fila TFD', href: '/saude/tfd' },
           { label: 'Nova solicitação' },
         ]}
       />
 
-      <SolicitacaoForm
-        paciente={{
-          id: paciente.id,
-          nome: paciente.nome,
-          possuiCpf: Boolean(paciente.cpf),
-        }}
+      <AtendimentoTfdForm
+        initialPaciente={initialPaciente}
+        cadsusEnabled={cadsusEnabled}
         especialidades={especialidadesResult.items}
         procedimentos={procedimentosResult.items}
         prestadores={prestadoresResult.items}

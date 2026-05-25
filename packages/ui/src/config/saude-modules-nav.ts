@@ -1,18 +1,11 @@
 import type { LucideIcon } from 'lucide-react'
 import {
-  Activity,
-  Brain,
   CalendarDays,
   ClipboardList,
-  GitBranch,
-  Home,
   LayoutDashboard,
   List,
-  Pill,
   PlusCircle,
   Settings,
-  ShieldCheck,
-  Syringe,
   UserSearch,
 } from 'lucide-react'
 
@@ -42,8 +35,9 @@ export interface SaudeModuleNavConfig {
 }
 
 /**
- * Catálogo de navegação do Sistema de Saúde.
- * Para adicionar um módulo: inclua a chave em `SaudeModuleToggleKey` e um item neste array.
+ * Catálogo de navegação do Sistema de Saúde (menu lateral).
+ * Inclua aqui apenas módulos em desenvolvimento ou já disponíveis no painel.
+ * Demais chaves em `SaudeModuleToggleKey` permanecem no Painel Dev / tenant até a Fase correspondente.
  */
 export const SAUDE_MODULES_NAV: readonly SaudeModuleNavConfig[] = [
   {
@@ -58,55 +52,6 @@ export const SAUDE_MODULES_NAV: readonly SaudeModuleNavConfig[] = [
       { label: 'Agendamentos', href: '/saude/tfd/agendamentos', icon: CalendarDays },
       { label: 'Pacientes', href: '/saude/tfd/pacientes', icon: UserSearch },
     ],
-  },
-  {
-    moduleKey: 'regul',
-    label: 'Regulação',
-    basePath: '/saude/regul',
-    icon: GitBranch,
-    children: [],
-  },
-  {
-    moduleKey: 'ubs',
-    label: 'UBS / Atenção Básica',
-    basePath: '/saude/ubs',
-    icon: Home,
-    children: [],
-  },
-  {
-    moduleKey: 'farma',
-    label: 'Farmácia Municipal',
-    basePath: '/saude/farma',
-    icon: Pill,
-    children: [],
-  },
-  {
-    moduleKey: 'visa',
-    label: 'Vigilância Sanitária',
-    basePath: '/saude/visa',
-    icon: ShieldCheck,
-    children: [],
-  },
-  {
-    moduleKey: 'viepi',
-    label: 'Vigilância Epidemiológica',
-    basePath: '/saude/viepi',
-    icon: Activity,
-    children: [],
-  },
-  {
-    moduleKey: 'sment',
-    label: 'Saúde Mental',
-    basePath: '/saude/sment',
-    icon: Brain,
-    children: [],
-  },
-  {
-    moduleKey: 'vacin',
-    label: 'Vacinação',
-    basePath: '/saude/vacin',
-    icon: Syringe,
-    children: [],
   },
 ] as const
 

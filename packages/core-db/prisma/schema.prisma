@@ -778,6 +778,7 @@ model TfdSolicitacao {
   motivo_cancelamento     String?              @db.Text
   cancelado_por_id        String?              @db.Uuid
   cancelado_at            DateTime?            @db.Timestamptz
+  observacoes_abertura    String?              @db.Text
   created_at              DateTime             @default(now()) @db.Timestamptz
   updated_at              DateTime             @updatedAt @db.Timestamptz
   tenant                  Tenant               @relation(fields: [tenant_id], references: [id], onDelete: Cascade)

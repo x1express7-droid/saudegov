@@ -147,6 +147,16 @@ export type {
 } from './validators/paciente.schema'
 
 export type {
+  TfdPacienteAtendimentoBuscaItem,
+  TfdPacienteAtendimentoDetalhe,
+} from './types/paciente-atendimento.types'
+
+export type {
+  BuscarPacientesAtendimentoInput,
+  SalvarPacienteAtendimentoInput,
+} from './validators/paciente-atendimento.schema'
+
+export type {
   CriarEspecialidadeInput,
   AtualizarEspecialidadeInput,
   DesativarEspecialidadeInput,
