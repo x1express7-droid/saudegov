@@ -178,7 +178,7 @@ function SaudeModuleAccordion({
 
       {expanded && hasChildren && !collapsed ? (
         <ul
-          className="flex flex-col gap-[var(--space-1)] border-l border-[var(--color-border)] pl-[var(--space-2)] ml-[var(--space-4)]"
+          className="ml-[var(--space-5)] flex flex-col gap-[var(--space-1)] border-l border-[var(--color-border)] pl-[var(--space-4)]"
           aria-label={`${config.label} — navegação`}
         >
           {config.children.map((child) => {
@@ -192,14 +192,14 @@ function SaudeModuleAccordion({
                   onClick={onNavigate}
                   aria-current={childActive ? 'page' : undefined}
                   className={cn(
-                    'flex min-h-[36px] items-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-[var(--space-2)] text-[length:var(--text-xs)] transition-colors',
+                    'flex min-h-[40px] items-center gap-[var(--space-3)] rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] transition-colors',
                     focusRingClassName,
                     childActive
-                      ? 'bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)]'
+                      ? 'bg-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-surface))] font-bold text-[var(--color-primary)]'
                       : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
                   )}
                 >
-                  <ChildIcon className="size-4 shrink-0" aria-hidden="true" />
+                  <ChildIcon className="size-5 shrink-0" aria-hidden="true" />
                   <span>{child.label}</span>
                 </a>
               </li>

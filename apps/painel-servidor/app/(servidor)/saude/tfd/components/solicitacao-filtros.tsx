@@ -103,6 +103,9 @@ export function SolicitacaoFiltros() {
 
   return (
     <Card>
+      <h2 className="mb-[var(--space-4)] text-[length:var(--text-sm)] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+        Filtros
+      </h2>
       <div className="grid gap-[var(--space-4)] md:grid-cols-3">
         <Select
           id="filtro-status-tfd"

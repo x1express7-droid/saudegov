@@ -1,5 +1,6 @@
 'use client'
 
+import type { ReactNode } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -18,6 +19,8 @@ export interface DataTableProps<T> {
   onPaginationChange: (page: number) => void
   loading?: boolean
   emptyMessage?: string
+  emptyDescription?: string
+  emptyCta?: ReactNode
   onRowClick?: (row: T) => void
 }
 
@@ -43,6 +46,8 @@ export function DataTable<T>({
   onPaginationChange,
   loading = false,
   emptyMessage = 'Nenhum registro encontrado.',
+  emptyDescription,
+  emptyCta,
   onRowClick,
 }: DataTableProps<T>) {
   const { page, perPage, total } = pagination
@@ -74,7 +79,8 @@ export function DataTable<T>({
     return (
       <EmptyState
         titulo={emptyMessage}
-        descricao="Ajuste os filtros ou cadastre um novo registro."
+        descricao={emptyDescription ?? 'Ajuste os filtros ou cadastre um novo registro.'}
+        cta={emptyCta}
       />
     )
   }

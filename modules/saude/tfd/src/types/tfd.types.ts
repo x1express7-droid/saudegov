@@ -249,6 +249,14 @@ export interface ExtratoMovimentacaoItem {
 // --- Solicitações TFD (Sprint 1.4) ---
 
 /** Item de listagem — sem CID, diagnóstico, CPF ou CNS. @see docs/API_CONTRACTS.md §7.1 */
+export interface TfdPacienteVinculadoItem {
+  id: string
+  nome: string
+  cnsMascarado: string | null
+  vinculadoEm: string
+  ativo: boolean
+}
+
 export interface TfdSolicitacaoListItem {
   id: string
   protocolo: string

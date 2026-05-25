@@ -1,4 +1,5 @@
-import { Card, TFD_STATUS_CONFIG, type TfdStatus } from '@saude/ui'
+import { Card, EmptyState, TFD_STATUS_CONFIG, type TfdStatus } from '@saude/ui'
+import { BarChart3 } from 'lucide-react'
 
 export interface TfdDashboardGraficoStatusProps {
   porStatus: Record<string, number>
@@ -53,9 +54,12 @@ export function TfdDashboardGraficoStatus({ porStatus }: TfdDashboardGraficoStat
       }
     >
       {entries.length === 0 ? (
-        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-          Nenhuma solicitação no mês corrente.
-        </p>
+        <EmptyState
+          icon={<BarChart3 className="size-6" />}
+          titulo="Nenhuma solicitação no mês corrente"
+          descricao="Quando houver solicitações registradas neste período, a distribuição por status aparecerá aqui."
+          className="border-0 bg-transparent py-[var(--space-8)]"
+        />
       ) : (
         <ul className="flex flex-col gap-[var(--space-3)]" role="list">
           {entries.map(({ status, count, config }) => {

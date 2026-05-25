@@ -1,8 +1,9 @@
 import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
 import { getAgendamentosTfd } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
+import { endOfWeek, format, startOfWeek } from 'date-fns'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
 
 import { AgendamentoFiltros } from './components/agendamento-filtros'
@@ -26,6 +27,16 @@ interface TfdAgendamentosPageProps {
     page?: string
     perPage?: string
   }>
+}
+
+function getCurrentWeekRange(): { dataInicio: string; dataFim: string } {
+  const now = new Date()
+  const start = startOfWeek(now, { weekStartsOn: 1 })
+  const end = endOfWeek(now, { weekStartsOn: 1 })
+  return {
+    dataInicio: format(start, 'yyyy-MM-dd'),
+    dataFim: format(end, 'yyyy-MM-dd'),
+  }
 }
 
 function parsePositiveInt(value: string | undefined, fallback: number): number {
@@ -59,12 +70,38 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
   await requireTenantRole('SERVIDOR')
 
   const params = await searchParams
+
+  const dataInicioParam = parseDateParam(params.dataInicio)
+  const dataFimParam = parseDateParam(params.dataFim)
+
+  if (!dataInicioParam && !dataFimParam) {
+    const { dataInicio, dataFim } = getCurrentWeekRange()
+    const next = new URLSearchParams()
+    next.set('dataInicio', dataInicio)
+    next.set('dataFim', dataFim)
+
+    if (params.motoristaId?.trim()) {
+      next.set('motoristaId', params.motoristaId.trim())
+    }
+    if (params.veiculoId?.trim()) {
+      next.set('veiculoId', params.veiculoId.trim())
+    }
+    if (params.page?.trim()) {
+      next.set('page', params.page.trim())
+    }
+    if (params.perPage?.trim()) {
+      next.set('perPage', params.perPage.trim())
+    }
+
+    redirect(`/saude/tfd/agendamentos?${next.toString()}`)
+  }
+
   const page = parsePositiveInt(params.page, 1)
   const perPage = Math.min(100, parsePositiveInt(params.perPage, 20))
 
   const { items, total } = await getAgendamentosTfd({
-    dataInicio: parseDateParam(params.dataInicio),
-    dataFim: parseDateParam(params.dataFim),
+    dataInicio: dataInicioParam,
+    dataFim: dataFimParam,
     motoristaId: parseUuidParam(params.motoristaId),
     veiculoId: parseUuidParam(params.veiculoId),
     page,

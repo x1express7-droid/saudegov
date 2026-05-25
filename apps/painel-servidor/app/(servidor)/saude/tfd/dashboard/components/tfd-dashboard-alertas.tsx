@@ -5,7 +5,8 @@ import type {
   TfdAlertaUrgente,
   TfdDashboardSaldoItem,
 } from '@saude/mod-saude-tfd/client'
-import { Alert, Card, TFD_STATUS_CONFIG, type TfdStatus } from '@saude/ui'
+import { Alert, Card, EmptyState, TFD_STATUS_CONFIG, type TfdStatus } from '@saude/ui'
+import { BellRing } from 'lucide-react'
 import Link from 'next/link'
 
 export interface TfdDashboardAlertasProps {
@@ -78,9 +79,12 @@ export function TfdDashboardAlertas({
       }
     >
       {totalAlertas === 0 ? (
-        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-          Nenhum alerta no momento.
-        </p>
+        <EmptyState
+          icon={<BellRing className="size-6" />}
+          titulo="Nenhum alerta no momento"
+          descricao="Alertas de urgência, saldo, prestação de contas e viagens aparecerão aqui quando houver pendências."
+          className="border-0 bg-transparent py-[var(--space-8)]"
+        />
       ) : (
         <div className="flex flex-col gap-[var(--space-4)]">
           {alertasUrgentes.length > 0 ? (

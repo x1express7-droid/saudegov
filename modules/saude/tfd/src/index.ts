@@ -37,6 +37,7 @@ export type {
   TfdFonteRecursoValor,
   SaldoListItem,
   ExtratoMovimentacaoItem,
+  TfdPacienteVinculadoItem,
   TfdSolicitacaoListItem,
   TfdSolicitacaoDetalhe,
   AlertaLembreteViagemFalhou,
@@ -247,6 +248,8 @@ export { getSaldosTfd, getSaldoListItemById } from './queries/get-saldos'
 export type { GetSaldosFiltros } from './queries/get-saldos'
 export { getExtratoSaldo, ExtratoSaldoError } from './queries/get-extrato'
 export type { GetExtratoSaldoResult } from './queries/get-extrato'
+export { getPacientesTfd } from './queries/get-pacientes'
+export type { GetPacientesFiltros } from './queries/get-pacientes'
 export { getSolicitacoesTfd } from './queries/get-solicitacoes'
 export type { GetSolicitacoesFiltros } from './queries/get-solicitacoes'
 export { getSolicitacaoTfd } from './queries/get-solicitacao'

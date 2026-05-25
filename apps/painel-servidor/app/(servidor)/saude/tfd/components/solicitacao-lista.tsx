@@ -2,6 +2,7 @@
 
 import { TfdSolicitacaoListItem } from '@saude/mod-saude-tfd/client'
 import {
+  Button,
   DataTable,
   ProtocoloBadge,
   StatusBadge,
@@ -12,6 +13,7 @@ import {
   type TfdStatus,
   type TfdUrgencia,
 } from '@saude/ui'
+import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 
@@ -178,7 +180,13 @@ export function SolicitacaoLista({ items, total }: SolicitacaoListaProps) {
       pagination={{ page, perPage, total }}
       onPaginationChange={handlePaginationChange}
       onRowClick={handleRowClick}
-      emptyMessage="Nenhuma solicitação encontrada."
+      emptyMessage="Nenhuma solicitação encontrada"
+      emptyDescription="Ajuste os filtros ou abra uma nova solicitação para iniciar o fluxo TFD."
+      emptyCta={
+        <Button variant="primary" asChild>
+          <Link href="/saude/tfd/nova">Nova solicitação</Link>
+        </Button>
+      }
     />
   )
 }

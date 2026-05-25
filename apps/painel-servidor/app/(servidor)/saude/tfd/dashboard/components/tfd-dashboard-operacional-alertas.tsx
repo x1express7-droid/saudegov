@@ -3,7 +3,8 @@ import type {
   TfdAlertaPrazoAnalise,
   TfdAlertaUrgenciaSemResposta,
 } from '@saude/mod-saude-tfd/client'
-import { Alert, Card } from '@saude/ui'
+import { Alert, Card, EmptyState } from '@saude/ui'
+import { BellRing } from 'lucide-react'
 import Link from 'next/link'
 
 export interface TfdDashboardOperacionalAlertasProps {
@@ -41,9 +42,12 @@ export function TfdDashboardOperacionalAlertas({ alertas }: TfdDashboardOperacio
       }
     >
       {total === 0 ? (
-        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-          Nenhum alerta no momento.
-        </p>
+        <EmptyState
+          icon={<BellRing className="size-6" />}
+          titulo="Nenhum alerta no momento"
+          descricao="Prazos de análise, urgências sem resposta e agendamentos sem transporte serão exibidos aqui."
+          className="border-0 bg-transparent py-[var(--space-8)]"
+        />
       ) : (
         <div className="flex flex-col gap-[var(--space-4)]">
           {alertas.prazoAnalise.length > 0 ? (

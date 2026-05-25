@@ -4,6 +4,7 @@ import { buscarPacientePorCns, vincularPaciente } from '@saude/mod-saude-tfd/act
 import { Alert, Badge, Button, Card, Input, PageHeader } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import type { ReactNode } from 'react'
 import { useState, useTransition } from 'react'
 
 type Etapa = 'busca' | 'confirmacao' | 'sucesso'
@@ -51,7 +52,11 @@ function formatSexo(value: DadosCadsus['sexo']): string {
   return SEXO_LABELS[value]
 }
 
-export function PacienteBuscaForm() {
+export interface PacienteBuscaFormProps {
+  vinculadosSection?: ReactNode
+}
+
+export function PacienteBuscaForm({ vinculadosSection }: PacienteBuscaFormProps) {
   const [etapa, setEtapa] = useState<Etapa>('busca')
   const [cns, setCns] = useState('')
   const [cpf, setCpf] = useState('')
@@ -153,11 +158,21 @@ export function PacienteBuscaForm() {
       ) : null}
 
       {etapa === 'busca' ? (
-        <Card>
+        <Card
+          header={
+            <h2 className="text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]">
+              Consultar no CADSUS
+            </h2>
+          }
+        >
+          <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+            Use o CNS para localizar o paciente na base nacional. Para filtrar quem já está
+            vinculado ao município, utilize a busca por nome na seção abaixo.
+          </p>
           <form onSubmit={handleBuscar} className="flex flex-col gap-[var(--space-4)]" noValidate>
             <Input
               id="paciente-cns"
-              label="CNS do Paciente"
+              label="Busca por CNS (CADSUS)"
               name="cns"
               inputMode="numeric"
               autoComplete="off"
@@ -166,13 +181,20 @@ export function PacienteBuscaForm() {
               onChange={(event) => setCns(onlyDigits(event.target.value).slice(0, 15))}
               disabled={isPending}
               placeholder="000000000000000"
+              hint="Informe os 15 dígitos do Cartão Nacional de Saúde."
             />
             <Button type="submit" variant="primary" loading={isPending} disabled={isPending}>
               {isPending ? 'Buscando...' : 'Buscar no CADSUS'}
             </Button>
+            <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              O paciente será localizado no CADSUS e vinculado ao município para uso nas
+              solicitações TFD.
+            </p>
           </form>
         </Card>
       ) : null}
+
+      {etapa === 'busca' && vinculadosSection ? vinculadosSection : null}
 
       {etapa === 'confirmacao' && dadosCadsus ? (
         <Card

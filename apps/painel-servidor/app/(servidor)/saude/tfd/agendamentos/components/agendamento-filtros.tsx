@@ -1,8 +1,19 @@
 'use client'
 
 import { Button, Card, Input } from '@saude/ui'
+import { endOfWeek, format, startOfWeek } from 'date-fns'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
+
+function getCurrentWeekRange(): { dataInicio: string; dataFim: string } {
+  const now = new Date()
+  const start = startOfWeek(now, { weekStartsOn: 1 })
+  const end = endOfWeek(now, { weekStartsOn: 1 })
+  return {
+    dataInicio: format(start, 'yyyy-MM-dd'),
+    dataFim: format(end, 'yyyy-MM-dd'),
+  }
+}
 
 const FILTER_KEYS = ['dataInicio', 'dataFim', 'motoristaId', 'veiculoId', 'page'] as const
 
@@ -58,17 +69,18 @@ export function AgendamentoFiltros() {
   }
 
   function handleClear() {
-    setDataInicio('')
-    setDataFim('')
+    const { dataInicio: inicioSemana, dataFim: fimSemana } = getCurrentWeekRange()
+    setDataInicio(inicioSemana)
+    setDataFim(fimSemana)
 
     const next = new URLSearchParams(searchParams.toString())
     for (const key of FILTER_KEYS) {
       next.delete(key)
     }
+    next.set('dataInicio', inicioSemana)
+    next.set('dataFim', fimSemana)
 
-    const query = next.toString()
-    const href = query ? `${pathname}?${query}` : pathname
-    router.push(href)
+    router.push(`${pathname}?${next.toString()}`)
   }
 
   return (
@@ -94,7 +106,7 @@ export function AgendamentoFiltros() {
           <Button type="button" variant="primary" onClick={handleApply}>
             Aplicar filtros
           </Button>
-          <Button type="button" variant="secondary" onClick={handleClear}>
+          <Button type="button" variant="ghost" onClick={handleClear}>
             Limpar filtros
           </Button>
         </div>

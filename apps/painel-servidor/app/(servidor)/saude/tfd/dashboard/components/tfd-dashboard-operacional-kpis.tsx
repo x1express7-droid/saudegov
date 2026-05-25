@@ -17,22 +17,22 @@ interface KpiCardProps {
 
 const toneStyles = {
   warning: {
-    card: 'border-[color-mix(in_srgb,var(--color-warning)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-warning)_8%,var(--color-surface))]',
+    card: 'border-l-4 border-l-[var(--color-warning)] border-[color-mix(in_srgb,var(--color-warning)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-warning)_8%,var(--color-surface))]',
     icon: 'text-[var(--color-warning)]',
     value: 'text-[var(--color-warning)]',
   },
   info: {
-    card: 'border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-surface))]',
+    card: 'border-l-4 border-l-[var(--color-primary)] border-[color-mix(in_srgb,var(--color-primary)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-primary)_6%,var(--color-surface))]',
     icon: 'text-[var(--color-primary)]',
     value: 'text-[var(--color-primary)]',
   },
   success: {
-    card: 'border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_8%,var(--color-surface))]',
+    card: 'border-l-4 border-l-[var(--color-success)] border-[color-mix(in_srgb,var(--color-success)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-success)_8%,var(--color-surface))]',
     icon: 'text-[var(--color-success)]',
     value: 'text-[var(--color-success)]',
   },
   danger: {
-    card: 'border-[color-mix(in_srgb,var(--color-error)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_6%,var(--color-surface))]',
+    card: 'border-l-4 border-l-[var(--color-error)] border-[color-mix(in_srgb,var(--color-error)_35%,var(--color-border))] bg-[color-mix(in_srgb,var(--color-error)_6%,var(--color-surface))]',
     icon: 'text-[var(--color-error)]',
     value: 'text-[var(--color-error)]',
   },

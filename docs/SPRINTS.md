@@ -13,7 +13,7 @@
 ```
 FASE 0 → Fundação (infraestrutura, multi-tenant, auth)
 FASE 1 → MVP TFD (fluxo completo do módulo TFD)
-FASE 2 → Relatórios e exportação TFD
+FASE 2 → Paridade TFD pós-MVP (relatórios, financeiro/UX, regras documentadas, notificações)
 FASE 3 → Módulo Regulação
 FASE 4 → Módulo UBS
 ...
@@ -341,29 +341,132 @@ FASE 4 → Módulo UBS
 
 ---
 
-## 4. FASE 2 — Relatórios e Exportação
+## 4. FASE 2 — Paridade TFD pós-MVP
 
-### Sprint 2.1 — Relatórios Completos TFD
-**Status:** 💡 Planejado
+A Fase 1 entregou o fluxo ponta a ponta (solicitação → regulação → viagem → prestação → saldo/extrato).
+A Fase 2 fecha **lacunas entre código e documentação** (`BUSINESS_RULES.md`, `AUTH_PERMISSIONS.md`,
+`API_CONTRACTS.md`) e melhora **descoberta na UI** do financeiro TFD.
 
-**Entregas:**
-- [ ] Relatório por prestador
-- [ ] Relatório por motorista
-- [ ] Extrato financeiro completo
-- [ ] Relatório de produção mensal
-- [ ] Exportação CSV de qualquer listagem
-- [ ] Exportação de dados do município (Painel Dev)
+> **Fora do escopo desta fase (decisão explícita):** associação de saldo a procedimentos/especialidades
+> específicas (decisão **C1**, adiada na Sprint 1.2 — avaliar em fase futura se necessário).
+
+### Lacunas da Fase 1 mapeadas para a Fase 2
+
+| Área | O que falta | Sprint |
+|------|-------------|--------|
+| Relatórios exportáveis (prestador, motorista, produção, CSV) | Planejado na 1.8 como 2.1 | 2.1 |
+| Navegação e dashboard financeiro do gestor | Menu, KPI saldo, extrato resumido, acesso GESTOR | 2.2 |
+| Regras `BUSINESS_RULES` não codificadas | ESTORNO, 60 dias PENDENTE, job `EM_VIAGEM`, vedações Portaria 55 | 2.3 |
+| Notificações §1.14 | Canal e-mail + retry/fallback | 2.4 |
+| CADSUS produção | RNDS real | 2.5 |
+| Config TFD incompleta na UI | Aba Procedimentos; inativar saldo | 2.2 |
 
 ---
 
-### Sprint 2.2 — Integração CADSUS Real
+### Sprint 2.1 — Relatórios e Exportação TFD
 **Status:** 💡 Planejado
+
+**Referência:** `BUSINESS_RULES.md` §1.12; fora de escopo explícito na Sprint 1.8.
+
+**Entregas:**
+- [ ] Relatório por prestador (volume e gastos por hospital/clínica; sem CID/diagnóstico)
+- [ ] Relatório por motorista (viagens e custos no período)
+- [ ] Relatório de produção mensal (aprovadas, negadas, concluídas, canceladas com valores)
+- [ ] Extrato financeiro completo por saldo e período (visualização + exportação CSV)
+- [ ] `audit_logs` com `acao = EXPORT` apenas na exportação CSV do extrato (não na leitura da página)
+- [ ] Exportação CSV das listagens TFD prioritárias (fila, agendamentos, prestações, saldos)
+- [ ] Exportação de dados do município (Painel Dev — SUPERADMIN)
+- [ ] Rodapé PDF/CSV conforme §1.12: gerado por, data/hora, saudegov
+
+**Critério de conclusão:** gestor com `exportar_relatorio` gera relatórios e CSV com auditoria; LGPD mantida.
+
+---
+
+### Sprint 2.2 — Financeiro TFD: UX, navegação e paridade do gestor
+**Status:** 💡 Planejado
+
+**Referência:** mapa financeiro TFD; `AUTH_PERMISSIONS.md` §7.5; Sprint 1.2 (saldos) e 1.8 (dashboard).
+
+**Entregas:**
+- [ ] Submenu **Financeiro** (ou itens equivalentes) em `saude-modules-nav.ts`:
+  - Saldos → `/saude/tfd/configuracoes/saldos`
+  - Prestações de contas → `/saude/tfd/prestacoes`
+  - Relatórios → link para seção do dashboard gestor ou rota dedicada
+- [ ] Aba **Procedimentos** no layout `/saude/tfd/configuracoes/*` (página já existe na 1.1)
+- [ ] **GESTOR** com `gerenciar_saldo` acessa configuração TFD (saldos) sem exigir papel ADMIN
+  - Rotas de config TFD acessíveis a GESTOR conforme permissões granulares
+- [ ] Server Action `desativarSaldoTfd` (ou equivalente) — saldo `ativo = false`; sem apagar extrato
+- [ ] Dashboard gestor — bloco **Financeiro**:
+  - KPI saldo disponível consolidado (soma ou card por saldo ativo)
+  - Alerta visual se algum saldo &lt; 20% (reforço além da lista em alertas)
+  - Extrato resumido: últimas N movimentações (todas os saldos ou saldo principal)
+- [ ] Notificação in-app `SALDO_BAIXO` quando disponível &lt; 20% (`BUSINESS_RULES.md` §1.14)
+- [ ] Documentar em `BUSINESS_RULES.md` §1.2.1 que alertas operacionais estão no dashboard (DT-002 encerrado)
+
+**Critério de conclusão:** gestor encontra saldo, prestações e indicadores financeiros sem URL manual; GESTOR com permissão acessa saldos.
+
+**Não inclui:** reserva manual (proibida por regra); associação saldo × procedimento (C1).
+
+---
+
+### Sprint 2.3 — Regras operacionais e automações pendentes
+**Status:** 💡 Planejado
+
+**Referência:** `BUSINESS_RULES.md` §1.5, §1.8, §1.9, §1.10.
+
+**Entregas:**
+- [ ] Server Action `estornarMovimentacaoSaldoTfd` — tipo `ESTORNO`, justificativa obrigatória, `usuario_id`, imutabilidade preservada
+- [ ] UI no extrato do saldo (gestor + `gerenciar_saldo`) para registrar estorno com confirmação
+- [ ] Cancelamento de solicitação **PENDENTE há 60 dias** — motivo mínimo incluindo opção “prazo esgotado”; libera reserva se houver
+- [ ] Job/cron: na **data da viagem**, transição automática `AGENDADO` → `EM_VIAGEM` (por viagem/solicitação)
+- [ ] Validações de vedação na decisão de aprovação (configuráveis ou fixas conforme §1.5):
+  - [ ] Bloqueio ou alerta para procedimentos PAB (quando identificável no cadastro)
+  - [ ] Distância mínima 50 km (quando dados de origem/destino disponíveis)
+  - [ ] Flags/documentação para: tratamento experimental, região metropolitana, paciente hospitalizado no destino (mínimo: campos + validação gestor)
+- [ ] `platform_features` e testes de integração para fluxos críticos (estorno, job viagem)
+
+**Critério de conclusão:** regras §1.8–§1.10 críticas executáveis no sistema; job de viagem documentado no README de cron.
+
+---
+
+### Sprint 2.4 — Notificações por e-mail (TFD)
+**Status:** 💡 Planejado
+
+**Referência:** `BUSINESS_RULES.md` §1.14; hoje apenas canal `in_app` (`core-notifications`).
+
+**Entregas:**
+- [ ] Canal `email` em `core-notifications` com template mínimo por evento TFD
+- [ ] Eventos com e-mail conforme §1.14: envio solicitação, MUITO_URGENTE, complemento, aprovação/negativa, lembrete viagem 48h, lembrete PC 48h, prestação enviada/aprovada/rejeitada
+- [ ] Fila/retry: falha → `status = FALHOU'`; retentar após 15 min; após 3 falhas → falha definitiva + in-app ao gestor
+- [ ] Configuração por tenant: e-mail remetente / habilitar canal (stub aceitável em dev)
+- [ ] Manter contexto sem dados sensíveis (LGPD Art. 11)
+
+**Critério de conclusão:** eventos principais disparam in-app + e-mail em staging; falhas registradas e retentadas.
+
+---
+
+### Sprint 2.5 — Integração CADSUS Real
+**Status:** 💡 Planejado
+
+**Referência:** antiga Sprint 2.2; `CADSUS.md`.
 
 **Entregas:**
 - [ ] `CadsusRnds` com autenticação RNDS
 - [ ] Configuração de certificado digital por município
 - [ ] Ativação/desativação no Painel Dev
 - [ ] Sincronização periódica de dados divergentes
+
+**Critério de conclusão:** município com certificado consulta CNS real; stub permanece para dev sem certificado.
+
+---
+
+### Backlog opcional (pós-Fase 2 ou sob demanda)
+
+| Item | Notas |
+|------|--------|
+| Saldo vinculado a procedimentos/especialidades (C1) | Decisão adiada na 1.2; exige modelagem e UX de alocação |
+| Cache do Tenant Resolver em produção | Nota Sprint 0.3; otimização de infra |
+| Storybook do design system | Critério 0.5; hoje coberto por `/design-system` |
 
 ---
 
@@ -385,8 +488,11 @@ FASE 4 → Módulo UBS
 | 1.6 | Agendamento de viagem | ✅ Concluído |
 | 1.7 | Prestação de contas | ✅ Concluído |
 | 1.8 | Dashboard e cancelamento | ✅ Concluído |
-| 2.1 | Relatórios completos | 💡 Planejado |
-| 2.2 | CADSUS real | 💡 Planejado |
+| 2.1 | Relatórios e exportação TFD | 💡 Planejado |
+| 2.2 | Financeiro TFD — UX e paridade gestor | 💡 Planejado |
+| 2.3 | Regras operacionais e automações | 💡 Planejado |
+| 2.4 | Notificações e-mail TFD | 💡 Planejado |
+| 2.5 | CADSUS real | 💡 Planejado |
 
 ---
 

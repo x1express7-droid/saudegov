@@ -35,6 +35,7 @@ export type {
   TfdFonteRecursoValor,
   SaldoListItem,
   ExtratoMovimentacaoItem,
+  TfdPacienteVinculadoItem,
   TfdSolicitacaoListItem,
   TfdSolicitacaoDetalhe,
   AlertaLembreteViagemFalhou,

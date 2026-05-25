@@ -1,12 +1,7 @@
-import {
-  assertModuleActive,
-  getTenantContext,
-  hasPermission,
-  requireTenantRole,
-} from '@saude/core-auth/server'
+import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
 import { getSolicitacoesTfd, TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
 import type { TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
-import { Alert, Button, Card, PageHeader } from '@saude/ui'
+import { Alert, Button, PageHeader } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import type { Metadata } from 'next'
 import Link from 'next/link'
@@ -96,7 +91,6 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
 
   const protocoloEnviado = params.enviado?.trim()
   const protocoloRascunho = params.rascunho?.trim()
-  const canVerDashboard = hasPermission(session, TFD_PERMISSIONS.VER_DASHBOARD)
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -126,20 +120,6 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
           Rascunho salvo com protocolo <strong>{protocoloRascunho}</strong>. Você pode
           localizá-lo na fila e concluir o envio quando o laudo estiver pronto.
         </Alert>
-      ) : null}
-
-      {canVerDashboard ? (
-        <Card>
-          <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-            Alertas operacionais (urgência, saldo, prestação de contas, complementos e viagens)
-            estão consolidados no dashboard TFD.
-          </p>
-          <div className="mt-[var(--space-3)]">
-            <Button variant="secondary" asChild>
-              <Link href="/saude/tfd/dashboard">Abrir dashboard TFD</Link>
-            </Button>
-          </div>
-        </Card>
       ) : null}
 
       <Suspense
