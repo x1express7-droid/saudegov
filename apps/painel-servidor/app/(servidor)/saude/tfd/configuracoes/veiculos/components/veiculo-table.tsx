@@ -1,8 +1,8 @@
 'use client'
 
-import { desativarEspecialidadeTfd } from '@saude/mod-saude-tfd/actions/configuracao'
-import { TfdEspecialidadeListItem } from '@saude/mod-saude-tfd/client'
-import { DeactivateDialog } from '../../../../../configuracoes/organograma/components/deactivate-dialog'
+import { type TfdVeiculoListItem } from '@saude/mod-saude-tfd/client'
+import { desativarVeiculoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
+import { DeactivateDialog } from '@/app/(admin)/configuracoes/organograma/components/deactivate-dialog'
 
 import {
   Badge,
@@ -14,38 +14,26 @@ import {
 import { Pencil, Plus, Power } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { EspecialidadeForm } from './especialidade-form'
+import { VeiculoForm } from './veiculo-form'
 
-const BASE_PATH = '/saude/tfd/configuracoes/especialidades'
+const BASE_PATH = '/saude/tfd/configuracoes/veiculos'
 
-interface EspecialidadeTableProps {
-  items: TfdEspecialidadeListItem[]
+interface VeiculoTableProps {
+  items: TfdVeiculoListItem[]
   pagination: { page: number; perPage: number; total: number }
   ativoFilter?: boolean
 }
 
 type DialogState =
-  | { kind: 'form'; mode: 'create' | 'edit'; especialidade?: TfdEspecialidadeListItem }
-  | { kind: 'deactivate'; especialidade: TfdEspecialidadeListItem }
+  | { kind: 'form'; mode: 'create' | 'edit'; veiculo?: TfdVeiculoListItem }
+  | { kind: 'deactivate'; veiculo: TfdVeiculoListItem }
   | null
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+function statusBadge(ativo: boolean) {
+  return <Badge variant={ativo ? 'green' : 'gray'}>{ativo ? 'Ativo' : 'Inativo'}</Badge>
 }
 
-function statusBadge(ativa: boolean) {
-  return <Badge variant={ativa ? 'green' : 'gray'}>{ativa ? 'Ativa' : 'Inativa'}</Badge>
-}
-
-export function EspecialidadeTable({
-  items,
-  pagination,
-  ativoFilter,
-}: EspecialidadeTableProps) {
+export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTableProps) {
   const router = useRouter()
   const [dialog, setDialog] = useState<DialogState>(null)
 
@@ -64,28 +52,38 @@ export function EspecialidadeTable({
     router.push(query ? `${BASE_PATH}?${query}` : BASE_PATH)
   }
 
-  const columns = useMemo<ColumnDef<TfdEspecialidadeListItem>[]>(
+  const columns = useMemo<ColumnDef<TfdVeiculoListItem>[]>(
     () => [
       {
-        id: 'nome',
-        header: 'Nome',
+        id: 'placa',
+        header: 'Placa',
         cell: ({ row }) => (
-          <span className="font-medium text-[var(--color-text)]">{row.original.nome}</span>
+          <span className="font-mono font-medium uppercase text-[var(--color-text)]">
+            {row.original.placa}
+          </span>
+        ),
+      },
+      {
+        id: 'modelo',
+        header: 'Modelo',
+        cell: ({ row }) => (
+          <span className="text-[var(--color-text)]">{row.original.modelo}</span>
+        ),
+      },
+      {
+        id: 'capacidade',
+        header: 'Capacidade',
+        cell: ({ row }) => (
+          <span className="text-[var(--color-text-muted)]">
+            {row.original.capacidadePassageiros}{' '}
+            {row.original.capacidadePassageiros === 1 ? 'passageiro' : 'passageiros'}
+          </span>
         ),
       },
       {
         id: 'status',
         header: 'Status',
-        cell: ({ row }) => statusBadge(row.original.ativa),
-      },
-      {
-        id: 'createdAt',
-        header: 'Cadastro',
-        cell: ({ row }) => (
-          <span className="text-[var(--color-text-muted)]">
-            {formatDate(row.original.createdAt)}
-          </span>
-        ),
+        cell: ({ row }) => statusBadge(row.original.ativo),
       },
       {
         id: 'acoes',
@@ -98,19 +96,19 @@ export function EspecialidadeTable({
                 type="button"
                 variant="ghost"
                 className="min-h-0 min-w-0 px-[var(--space-2)] py-[var(--space-1)]"
-                onClick={() => setDialog({ kind: 'form', mode: 'edit', especialidade: item })}
-                aria-label={`Editar ${item.nome}`}
+                onClick={() => setDialog({ kind: 'form', mode: 'edit', veiculo: item })}
+                aria-label={`Editar veículo ${item.placa}`}
               >
                 <Pencil className="size-4" aria-hidden="true" />
                 Editar
               </Button>
-              {item.ativa ? (
+              {item.ativo ? (
                 <Button
                   type="button"
                   variant="ghost"
                   className="min-h-0 min-w-0 px-[var(--space-2)] py-[var(--space-1)]"
-                  onClick={() => setDialog({ kind: 'deactivate', especialidade: item })}
-                  aria-label={`Desativar ${item.nome}`}
+                  onClick={() => setDialog({ kind: 'deactivate', veiculo: item })}
+                  aria-label={`Desativar veículo ${item.placa}`}
                 >
                   <Power className="size-4" aria-hidden="true" />
                   Desativar
@@ -137,9 +135,9 @@ export function EspecialidadeTable({
             })
           }}
           options={[
-            { value: 'all', label: 'Todas' },
-            { value: '1', label: 'Somente ativas' },
-            { value: '0', label: 'Somente inativas' },
+            { value: 'all', label: 'Todos' },
+            { value: '1', label: 'Somente ativos' },
+            { value: '0', label: 'Somente inativos' },
           ]}
           className="w-full sm:max-w-xs"
         />
@@ -150,7 +148,7 @@ export function EspecialidadeTable({
           className="shrink-0"
         >
           <Plus className="size-4" aria-hidden="true" />
-          Nova especialidade
+          Novo veículo
         </Button>
       </div>
 
@@ -164,14 +162,14 @@ export function EspecialidadeTable({
             ativo: ativoSelectValue === 'all' ? undefined : ativoSelectValue,
           })
         }}
-        emptyMessage="Nenhuma especialidade cadastrada."
+        emptyMessage="Nenhum veículo cadastrado."
       />
 
       {dialog?.kind === 'form' ? (
-        <EspecialidadeForm
+        <VeiculoForm
           open
           mode={dialog.mode}
-          especialidade={dialog.especialidade}
+          veiculo={dialog.veiculo}
           onOpenChange={(open) => {
             if (!open) {
               setDialog(null)
@@ -183,15 +181,15 @@ export function EspecialidadeTable({
       {dialog?.kind === 'deactivate' ? (
         <DeactivateDialog
           open
-          titulo="Desativar especialidade"
-          descricao={`Confirma a desativação de "${dialog.especialidade.nome}"? Procedimentos vinculados permanecem no cadastro, mas novas solicitações não devem usar esta especialidade.`}
+          titulo="Desativar veículo"
+          descricao={`Confirma a desativação do veículo ${dialog.veiculo.placa} (${dialog.veiculo.modelo})? Veículos inativos não aparecem na seleção de agendamentos.`}
           onOpenChange={(open) => {
             if (!open) {
               setDialog(null)
             }
           }}
           onConfirm={async () => {
-            const response = await desativarEspecialidadeTfd({ id: dialog.especialidade.id })
+            const response = await desativarVeiculoTfd({ id: dialog.veiculo.id })
             if (!response.success) {
               return { success: false, error: response.error }
             }

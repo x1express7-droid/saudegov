@@ -1,8 +1,8 @@
 'use client'
 
-import { type TfdProcedimentoListItem } from '@saude/mod-saude-tfd/client'
-import { desativarProcedimentoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
-import { DeactivateDialog } from '../../../../../configuracoes/organograma/components/deactivate-dialog'
+import { type TfdPrestadorListItem } from '@saude/mod-saude-tfd/client'
+import { desativarPrestadorTfd } from '@saude/mod-saude-tfd/actions/configuracao'
+import { DeactivateDialog } from '@/app/(admin)/configuracoes/organograma/components/deactivate-dialog'
 
 import {
   Badge,
@@ -10,54 +10,52 @@ import {
   DataTable,
   Select,
   type ColumnDef,
-  type SelectOption,
 } from '@saude/ui'
 import { Pencil, Plus, Power } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { ProcedimentoForm } from './procedimento-form'
+import type { EspecialidadeCheckboxOption } from './especialidades-checkbox-group'
+import { PrestadorForm } from './prestador-form'
 
-const BASE_PATH = '/saude/tfd/configuracoes/procedimentos'
+const BASE_PATH = '/saude/tfd/configuracoes/prestadores'
 
-interface ProcedimentoTableProps {
-  items: TfdProcedimentoListItem[]
+interface PrestadorTableProps {
+  items: TfdPrestadorListItem[]
   pagination: { page: number; perPage: number; total: number }
   ativoFilter?: boolean
-  especialidadeFilterId?: string
-  especialidadeOptions: SelectOption[]
+  especialidadeOptions: EspecialidadeCheckboxOption[]
 }
 
 type DialogState =
-  | { kind: 'form'; mode: 'create' | 'edit'; procedimento?: TfdProcedimentoListItem }
-  | { kind: 'deactivate'; procedimento: TfdProcedimentoListItem }
+  | { kind: 'form'; mode: 'create' | 'edit'; prestador?: TfdPrestadorListItem }
+  | { kind: 'deactivate'; prestador: TfdPrestadorListItem }
   | null
 
-function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+function formatCnpj(value: string | null): string {
+  if (!value) {
+    return '—'
+  }
+  if (value.length !== 14) {
+    return value
+  }
+  return `${value.slice(0, 2)}.${value.slice(2, 5)}.${value.slice(5, 8)}/${value.slice(8, 12)}-${value.slice(12)}`
 }
 
 function statusBadge(ativo: boolean) {
   return <Badge variant={ativo ? 'green' : 'gray'}>{ativo ? 'Ativo' : 'Inativo'}</Badge>
 }
 
-export function ProcedimentoTable({
+export function PrestadorTable({
   items,
   pagination,
   ativoFilter,
-  especialidadeFilterId,
   especialidadeOptions,
-}: ProcedimentoTableProps) {
+}: PrestadorTableProps) {
   const router = useRouter()
   const [dialog, setDialog] = useState<DialogState>(null)
 
   const ativoSelectValue =
     ativoFilter === true ? '1' : ativoFilter === false ? '0' : 'all'
-
-  const especialidadeSelectValue = especialidadeFilterId ?? 'all'
 
   function navigate(params: Record<string, string | undefined>) {
     const search = new URLSearchParams()
@@ -67,51 +65,60 @@ export function ProcedimentoTable({
     if (params.ativo === '1' || params.ativo === '0') {
       search.set('ativo', params.ativo)
     }
-    if (params.especialidadeId) {
-      search.set('especialidadeId', params.especialidadeId)
-    }
     const query = search.toString()
     router.push(query ? `${BASE_PATH}?${query}` : BASE_PATH)
   }
 
-  const columns = useMemo<ColumnDef<TfdProcedimentoListItem>[]>(
+  const columns = useMemo<ColumnDef<TfdPrestadorListItem>[]>(
     () => [
       {
         id: 'nome',
-        header: 'Procedimento',
+        header: 'Nome',
         cell: ({ row }) => (
           <span className="font-medium text-[var(--color-text)]">{row.original.nome}</span>
         ),
       },
       {
-        id: 'especialidade',
-        header: 'Especialidade',
+        id: 'local',
+        header: 'Cidade / UF',
         cell: ({ row }) => (
-          <span className="text-[var(--color-text)]">{row.original.especialidadeNome}</span>
+          <span className="text-[var(--color-text)]">
+            {row.original.cidade} / {row.original.estado}
+          </span>
         ),
       },
       {
-        id: 'codigoSigtap',
-        header: 'Código SIGTAP',
+        id: 'cnpj',
+        header: 'CNPJ',
         cell: ({ row }) => (
           <span className="font-mono text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            {row.original.codigoSigtap ?? '—'}
+            {formatCnpj(row.original.cnpj)}
           </span>
+        ),
+      },
+      {
+        id: 'especialidades',
+        header: 'Especialidades',
+        cell: ({ row }) => (
+          <div className="flex max-w-md flex-wrap gap-[var(--space-1)]">
+            {row.original.especialidadeNomes.length === 0 ? (
+              <span className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                —
+              </span>
+            ) : (
+              row.original.especialidadeNomes.map((nome, index) => (
+                <Badge key={`${row.original.id}-${index}`} variant="blue">
+                  {nome}
+                </Badge>
+              ))
+            )}
+          </div>
         ),
       },
       {
         id: 'status',
         header: 'Status',
         cell: ({ row }) => statusBadge(row.original.ativo),
-      },
-      {
-        id: 'createdAt',
-        header: 'Cadastro',
-        cell: ({ row }) => (
-          <span className="text-[var(--color-text-muted)]">
-            {formatDate(row.original.createdAt)}
-          </span>
-        ),
       },
       {
         id: 'acoes',
@@ -124,7 +131,7 @@ export function ProcedimentoTable({
                 type="button"
                 variant="ghost"
                 className="min-h-0 min-w-0 px-[var(--space-2)] py-[var(--space-1)]"
-                onClick={() => setDialog({ kind: 'form', mode: 'edit', procedimento: item })}
+                onClick={() => setDialog({ kind: 'form', mode: 'edit', prestador: item })}
                 aria-label={`Editar ${item.nome}`}
               >
                 <Pencil className="size-4" aria-hidden="true" />
@@ -135,7 +142,7 @@ export function ProcedimentoTable({
                   type="button"
                   variant="ghost"
                   className="min-h-0 min-w-0 px-[var(--space-2)] py-[var(--space-1)]"
-                  onClick={() => setDialog({ kind: 'deactivate', procedimento: item })}
+                  onClick={() => setDialog({ kind: 'deactivate', prestador: item })}
                   aria-label={`Desativar ${item.nome}`}
                 >
                   <Power className="size-4" aria-hidden="true" />
@@ -150,56 +157,33 @@ export function ProcedimentoTable({
     []
   )
 
-  const filtroEspecialidadeOptions: SelectOption[] = [
-    { value: 'all', label: 'Todas as especialidades' },
-    ...especialidadeOptions,
-  ]
-
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
-      <div className="flex flex-col gap-[var(--space-4)] lg:flex-row lg:items-end lg:justify-between">
-        <div className="flex flex-col gap-[var(--space-4)] sm:flex-row sm:flex-wrap sm:items-end">
-          <Select
-            label="Especialidade"
-            value={especialidadeSelectValue}
-            onValueChange={(value) => {
-              navigate({
-                page: '1',
-                ativo: ativoSelectValue === 'all' ? undefined : ativoSelectValue,
-                especialidadeId: value === 'all' ? undefined : value,
-              })
-            }}
-            options={filtroEspecialidadeOptions}
-            className="w-full sm:max-w-xs"
-          />
-          <Select
-            label="Status"
-            value={ativoSelectValue}
-            onValueChange={(value) => {
-              navigate({
-                page: '1',
-                ativo: value === 'all' ? undefined : value,
-                especialidadeId:
-                  especialidadeSelectValue === 'all' ? undefined : especialidadeSelectValue,
-              })
-            }}
-            options={[
-              { value: 'all', label: 'Todos' },
-              { value: '1', label: 'Somente ativos' },
-              { value: '0', label: 'Somente inativos' },
-            ]}
-            className="w-full sm:max-w-xs"
-          />
-        </div>
+      <div className="flex flex-col gap-[var(--space-4)] sm:flex-row sm:items-end sm:justify-between">
+        <Select
+          label="Status"
+          value={ativoSelectValue}
+          onValueChange={(value) => {
+            navigate({
+              page: '1',
+              ativo: value === 'all' ? undefined : value,
+            })
+          }}
+          options={[
+            { value: 'all', label: 'Todos' },
+            { value: '1', label: 'Somente ativos' },
+            { value: '0', label: 'Somente inativos' },
+          ]}
+          className="w-full sm:max-w-xs"
+        />
 
         <Button
           type="button"
           onClick={() => setDialog({ kind: 'form', mode: 'create' })}
-          disabled={especialidadeOptions.length === 0}
           className="shrink-0"
         >
           <Plus className="size-4" aria-hidden="true" />
-          Novo procedimento
+          Novo prestador
         </Button>
       </div>
 
@@ -211,20 +195,17 @@ export function ProcedimentoTable({
           navigate({
             page: String(page),
             ativo: ativoSelectValue === 'all' ? undefined : ativoSelectValue,
-            especialidadeId:
-              especialidadeSelectValue === 'all' ? undefined : especialidadeSelectValue,
           })
         }}
-        emptyMessage="Nenhum procedimento cadastrado."
+        emptyMessage="Nenhum prestador cadastrado."
       />
 
       {dialog?.kind === 'form' ? (
-        <ProcedimentoForm
+        <PrestadorForm
           open
           mode={dialog.mode}
-          procedimento={dialog.procedimento}
+          prestador={dialog.prestador}
           especialidadeOptions={especialidadeOptions}
-          defaultEspecialidadeId={especialidadeFilterId}
           onOpenChange={(open) => {
             if (!open) {
               setDialog(null)
@@ -236,15 +217,15 @@ export function ProcedimentoTable({
       {dialog?.kind === 'deactivate' ? (
         <DeactivateDialog
           open
-          titulo="Desativar procedimento"
-          descricao={`Confirma a desativação de "${dialog.procedimento.nome}"? O registro permanece no histórico, mas não poderá ser selecionado em novas solicitações.`}
+          titulo="Desativar prestador"
+          descricao={`Confirma a desativação de "${dialog.prestador.nome}"? O cadastro permanece no histórico, mas não poderá ser selecionado em novas solicitações.`}
           onOpenChange={(open) => {
             if (!open) {
               setDialog(null)
             }
           }}
           onConfirm={async () => {
-            const response = await desativarProcedimentoTfd({ id: dialog.procedimento.id })
+            const response = await desativarPrestadorTfd({ id: dialog.prestador.id })
             if (!response.success) {
               return { success: false, error: response.error }
             }

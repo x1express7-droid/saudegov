@@ -11,11 +11,8 @@ export default async function AdminLayout({
 }>) {
   const headersList = await headers()
   const pathname = headersList.get('x-pathname') ?? ''
-  const isTfdConfiguracoes = pathname.startsWith('/saude/tfd/configuracoes')
 
-  const session = isTfdConfiguracoes
-    ? await requireTenantRole('GESTOR')
-    : await requireTenantRole('ADMIN')
+  const session = await requireTenantRole('ADMIN')
 
   const tenant = await getTenantContext()
 

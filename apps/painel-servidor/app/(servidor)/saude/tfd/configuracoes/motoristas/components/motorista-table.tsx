@@ -1,8 +1,8 @@
 'use client'
 
-import { type TfdVeiculoListItem } from '@saude/mod-saude-tfd/client'
-import { desativarVeiculoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
-import { DeactivateDialog } from '../../../../../configuracoes/organograma/components/deactivate-dialog'
+import { type TfdMotoristaListItem, type TfdServidorMotoristaOption } from '@saude/mod-saude-tfd/client'
+import { desativarMotoristaTfd } from '@saude/mod-saude-tfd/actions/configuracao'
+import { DeactivateDialog } from '@/app/(admin)/configuracoes/organograma/components/deactivate-dialog'
 
 import {
   Badge,
@@ -14,31 +14,78 @@ import {
 import { Pencil, Plus, Power } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
-import { VeiculoForm } from './veiculo-form'
+import { MotoristaForm } from './motorista-form'
 
-const BASE_PATH = '/saude/tfd/configuracoes/veiculos'
+const BASE_PATH = '/saude/tfd/configuracoes/motoristas'
 
-interface VeiculoTableProps {
-  items: TfdVeiculoListItem[]
+interface MotoristaTableProps {
+  items: TfdMotoristaListItem[]
   pagination: { page: number; perPage: number; total: number }
   ativoFilter?: boolean
+  servidorOptions: TfdServidorMotoristaOption[]
 }
 
 type DialogState =
-  | { kind: 'form'; mode: 'create' | 'edit'; veiculo?: TfdVeiculoListItem }
-  | { kind: 'deactivate'; veiculo: TfdVeiculoListItem }
+  | { kind: 'form'; mode: 'create' | 'edit'; motorista?: TfdMotoristaListItem }
+  | { kind: 'deactivate'; motorista: TfdMotoristaListItem }
   | null
+
+function formatDate(iso: string): string {
+  return new Date(`${iso}T12:00:00.000Z`).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
 
 function statusBadge(ativo: boolean) {
   return <Badge variant={ativo ? 'green' : 'gray'}>{ativo ? 'Ativo' : 'Inativo'}</Badge>
 }
 
-export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTableProps) {
+function cnhValidadeBadge(item: TfdMotoristaListItem) {
+  if (item.cnhVencida) {
+    return (
+      <Badge variant="red" className="ml-[var(--space-2)]">
+        Vencida
+      </Badge>
+    )
+  }
+  if (item.cnhVencendoEmBreve) {
+    return (
+      <Badge variant="yellow" className="ml-[var(--space-2)]">
+        Vence em breve
+      </Badge>
+    )
+  }
+  return null
+}
+
+export function MotoristaTable({
+  items,
+  pagination,
+  ativoFilter,
+  servidorOptions,
+}: MotoristaTableProps) {
   const router = useRouter()
   const [dialog, setDialog] = useState<DialogState>(null)
 
   const ativoSelectValue =
     ativoFilter === true ? '1' : ativoFilter === false ? '0' : 'all'
+
+  const editServidorOptions = useMemo(() => {
+    if (dialog?.kind !== 'form' || dialog.mode !== 'edit' || !dialog.motorista) {
+      return servidorOptions
+    }
+    return [
+      {
+        value: dialog.motorista.userId,
+        label: dialog.motorista.userNome,
+        email: dialog.motorista.userEmail,
+      },
+      ...servidorOptions,
+    ]
+  }, [dialog, servidorOptions])
 
   function navigate(params: Record<string, string | undefined>) {
     const search = new URLSearchParams()
@@ -52,31 +99,43 @@ export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTablePro
     router.push(query ? `${BASE_PATH}?${query}` : BASE_PATH)
   }
 
-  const columns = useMemo<ColumnDef<TfdVeiculoListItem>[]>(
+  const columns = useMemo<ColumnDef<TfdMotoristaListItem>[]>(
     () => [
       {
-        id: 'placa',
-        header: 'Placa',
+        id: 'servidor',
+        header: 'Servidor',
         cell: ({ row }) => (
-          <span className="font-mono font-medium uppercase text-[var(--color-text)]">
-            {row.original.placa}
+          <div>
+            <span className="font-medium text-[var(--color-text)]">{row.original.userNome}</span>
+            <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              {row.original.userEmail}
+            </p>
+          </div>
+        ),
+      },
+      {
+        id: 'cnh',
+        header: 'CNH',
+        cell: ({ row }) => (
+          <span className="font-mono text-[length:var(--text-sm)] text-[var(--color-text)]">
+            {row.original.cnh}
           </span>
         ),
       },
       {
-        id: 'modelo',
-        header: 'Modelo',
+        id: 'categoria',
+        header: 'Categoria',
         cell: ({ row }) => (
-          <span className="text-[var(--color-text)]">{row.original.modelo}</span>
+          <span className="font-medium text-[var(--color-text)]">{row.original.cnhCategoria}</span>
         ),
       },
       {
-        id: 'capacidade',
-        header: 'Capacidade',
+        id: 'validade',
+        header: 'Validade',
         cell: ({ row }) => (
-          <span className="text-[var(--color-text-muted)]">
-            {row.original.capacidadePassageiros}{' '}
-            {row.original.capacidadePassageiros === 1 ? 'passageiro' : 'passageiros'}
+          <span className="inline-flex flex-wrap items-center text-[var(--color-text)]">
+            {formatDate(row.original.cnhValidade)}
+            {cnhValidadeBadge(row.original)}
           </span>
         ),
       },
@@ -96,8 +155,8 @@ export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTablePro
                 type="button"
                 variant="ghost"
                 className="min-h-0 min-w-0 px-[var(--space-2)] py-[var(--space-1)]"
-                onClick={() => setDialog({ kind: 'form', mode: 'edit', veiculo: item })}
-                aria-label={`Editar veículo ${item.placa}`}
+                onClick={() => setDialog({ kind: 'form', mode: 'edit', motorista: item })}
+                aria-label={`Editar motorista ${item.userNome}`}
               >
                 <Pencil className="size-4" aria-hidden="true" />
                 Editar
@@ -107,8 +166,8 @@ export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTablePro
                   type="button"
                   variant="ghost"
                   className="min-h-0 min-w-0 px-[var(--space-2)] py-[var(--space-1)]"
-                  onClick={() => setDialog({ kind: 'deactivate', veiculo: item })}
-                  aria-label={`Desativar veículo ${item.placa}`}
+                  onClick={() => setDialog({ kind: 'deactivate', motorista: item })}
+                  aria-label={`Desativar motorista ${item.userNome}`}
                 >
                   <Power className="size-4" aria-hidden="true" />
                   Desativar
@@ -148,7 +207,7 @@ export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTablePro
           className="shrink-0"
         >
           <Plus className="size-4" aria-hidden="true" />
-          Novo veículo
+          Novo motorista
         </Button>
       </div>
 
@@ -162,14 +221,15 @@ export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTablePro
             ativo: ativoSelectValue === 'all' ? undefined : ativoSelectValue,
           })
         }}
-        emptyMessage="Nenhum veículo cadastrado."
+        emptyMessage="Nenhum motorista cadastrado."
       />
 
       {dialog?.kind === 'form' ? (
-        <VeiculoForm
+        <MotoristaForm
           open
           mode={dialog.mode}
-          veiculo={dialog.veiculo}
+          motorista={dialog.motorista}
+          servidorOptions={editServidorOptions}
           onOpenChange={(open) => {
             if (!open) {
               setDialog(null)
@@ -181,15 +241,15 @@ export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTablePro
       {dialog?.kind === 'deactivate' ? (
         <DeactivateDialog
           open
-          titulo="Desativar veículo"
-          descricao={`Confirma a desativação do veículo ${dialog.veiculo.placa} (${dialog.veiculo.modelo})? Veículos inativos não aparecem na seleção de agendamentos.`}
+          titulo="Desativar motorista"
+          descricao={`Confirma a desativação de ${dialog.motorista.userNome} como motorista? Ele deixará de aparecer na seleção de agendamentos.`}
           onOpenChange={(open) => {
             if (!open) {
               setDialog(null)
             }
           }}
           onConfirm={async () => {
-            const response = await desativarVeiculoTfd({ id: dialog.veiculo.id })
+            const response = await desativarMotoristaTfd({ id: dialog.motorista.id })
             if (!response.success) {
               return { success: false, error: response.error }
             }
