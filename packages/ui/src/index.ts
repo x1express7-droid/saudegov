@@ -76,3 +76,8 @@ export type { TramitacaoItem, TramitacaoTimelineProps } from './components/trami
 
 export { UrgenciaBadge, TFD_URGENCIA_CONFIG } from './components/urgencia-badge'
 export type { TfdUrgencia, UrgenciaBadgeProps } from './components/urgencia-badge'
+
+export {
+  formFieldsGridClassName,
+  formFieldsStackClassName,
+} from './utils/field-control'

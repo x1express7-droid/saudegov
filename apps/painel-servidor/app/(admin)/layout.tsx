@@ -9,10 +9,15 @@ export default async function AdminLayout({
 }: Readonly<{
   children: React.ReactNode
 }>) {
-  const session = await requireTenantRole('ADMIN')
-  const tenant = await getTenantContext()
   const headersList = await headers()
-  const pathname = headersList.get('x-pathname') ?? '/'
+  const pathname = headersList.get('x-pathname') ?? ''
+  const isTfdConfiguracoes = pathname.startsWith('/saude/tfd/configuracoes')
+
+  const session = isTfdConfiguracoes
+    ? await requireTenantRole('GESTOR')
+    : await requireTenantRole('ADMIN')
+
+  const tenant = await getTenantContext()
 
   const municipalityName =
     tenant.theme.municipalityName ?? tenant.theme.municipality_name ?? 'Município'

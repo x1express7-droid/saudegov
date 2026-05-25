@@ -8,6 +8,36 @@ const PUBLIC_PATHS = ['/login', '/recuperar-senha', '/redefinir-senha', '/api/au
 
 const INTERNAL_API_PREFIXES = ['/api/cron', '/api/internal']
 
+function nextWithRequestHeaders(
+  req: NextRequest,
+  extra: Record<string, string>
+): NextResponse {
+  const requestHeaders = new Headers(req.headers)
+  for (const [key, value] of Object.entries(extra)) {
+    requestHeaders.set(key, value)
+  }
+  return NextResponse.next({
+    request: {
+      headers: requestHeaders,
+    },
+  })
+}
+
+function applyTenantHeaders(
+  req: NextRequest,
+  tenant: TenantContext,
+  extra: Record<string, string>
+): NextResponse {
+  return nextWithRequestHeaders(req, {
+    'x-tenant-id': tenant.id,
+    'x-tenant-slug': tenant.slug,
+    'x-tenant-modules': JSON.stringify(tenant.modules),
+    'x-tenant-theme': JSON.stringify(tenant.theme),
+    'x-pathname': req.nextUrl.pathname,
+    ...extra,
+  })
+}
+
 export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl
 
@@ -34,10 +64,7 @@ export async function middleware(req: NextRequest) {
   }
 
   if (PUBLIC_PATHS.some((p) => pathname.startsWith(p))) {
-    const res = NextResponse.next()
-    res.headers.set('x-tenant-id', tenant.id)
-    res.headers.set('x-pathname', pathname)
-    return res
+    return applyTenantHeaders(req, tenant, {})
   }
 
   const token = await getAuthJwtFromRequest(req)
@@ -52,15 +79,10 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=credentials', req.url))
   }
 
-  const res = NextResponse.next()
-  res.headers.set('x-tenant-id', tenant.id)
-  res.headers.set('x-tenant-slug', tenant.slug)
-  res.headers.set('x-tenant-modules', JSON.stringify(tenant.modules))
-  res.headers.set('x-tenant-theme', JSON.stringify(tenant.theme))
-  res.headers.set('x-user-id', userId)
-  res.headers.set('x-user-role', role)
-  res.headers.set('x-pathname', pathname)
-  return res
+  return applyTenantHeaders(req, tenant, {
+    'x-user-id': userId,
+    'x-user-role': role,
+  })
 }
 
 export const config = {

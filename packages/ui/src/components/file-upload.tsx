@@ -3,7 +3,12 @@
 import { FileText, Upload, X } from 'lucide-react'
 import { useCallback, useId, useRef, useState, type KeyboardEvent } from 'react'
 import { cn } from '../utils/cn'
-import { fieldErrorClassName, fieldLabelClassName, focusRingClassName } from '../utils/field-control'
+import {
+  fieldErrorClassName,
+  fieldHintClassName,
+  fieldLabelClassName,
+  focusRingClassName,
+} from '../utils/field-control'
 
 type FileUploadState = 'idle' | 'dragging' | 'selected' | 'error'
 
@@ -124,14 +129,15 @@ export function FileUpload({
   const hasFile = visualState === 'selected' && selectedFile != null
 
   return (
-    <div className={cn('w-full', className)}>
-      <span id={hintId} className="sr-only">
-        Tipos aceitos: {formatAcceptList(accept)}. Tamanho máximo: {maxSizeMB} MB.
-      </span>
-
-      <label htmlFor={inputId} className={fieldLabelClassName()}>
-        {label}
-      </label>
+    <div className={cn('flex w-full flex-col gap-3', className)}>
+      <div>
+        <label htmlFor={inputId} className={fieldLabelClassName()}>
+          {label}
+        </label>
+        <p id={hintId} className={fieldHintClassName()}>
+          Tipos aceitos: {formatAcceptList(accept)}. Tamanho máximo: {maxSizeMB} MB.
+        </p>
+      </div>
 
       <input
         ref={inputRef}
@@ -139,7 +145,7 @@ export function FileUpload({
         type="file"
         accept={accept.join(',')}
         disabled={disabled}
-        className="sr-only"
+        className="hidden"
         aria-describedby={[hintId, errorMessage ? errorId : null].filter(Boolean).join(' ')}
         onChange={(event) => handleFiles(event.target.files)}
       />

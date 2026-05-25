@@ -17,7 +17,7 @@ export function DialogOverlay({
   return (
     <DialogPrimitive.Overlay
       className={cn(
-        'fixed inset-0 z-50 bg-[color-mix(in_srgb,var(--color-text)_40%,transparent)]',
+        'fixed inset-0 z-[100] bg-[color-mix(in_srgb,var(--color-text)_40%,transparent)]',
         className
       )}
       {...props}
@@ -44,7 +44,7 @@ export function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         className={cn(
-          'fixed left-1/2 top-1/2 z-50 w-[calc(100%-var(--space-8))] max-w-lg -translate-x-1/2 -translate-y-1/2',
+          'fixed left-1/2 top-1/2 z-[101] w-[calc(100%-var(--space-8))] max-w-lg -translate-x-1/2 -translate-y-1/2',
           'rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--space-6)] shadow-[0_8px_24px_color-mix(in_srgb,var(--color-text)_16%,transparent)]',
           'focus:outline-none',
           className

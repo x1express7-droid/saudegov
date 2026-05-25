@@ -73,7 +73,7 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
     ])
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
+    <div className="flex flex-col gap-8">
       <PageHeader
         titulo="Atendimento da Solicitação TFD"
         subtitulo="Identifique o paciente, revise os dados cadastrais e registre a solicitação de Tratamento Fora de Domicílio."

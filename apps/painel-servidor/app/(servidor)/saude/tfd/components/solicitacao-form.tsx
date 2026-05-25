@@ -12,6 +12,7 @@ import {
   Textarea,
   TFD_URGENCIA_CONFIG,
   cn,
+  formFieldsStackClassName,
 } from '@saude/ui'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
@@ -80,7 +81,7 @@ function ProcedimentosCheckboxGroup({
   }
 
   return (
-    <fieldset className="flex flex-col gap-[var(--space-3)]" disabled={disabled}>
+    <fieldset className="flex flex-col gap-4" disabled={disabled}>
       <legend className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
         Procedimentos *
       </legend>
@@ -356,7 +357,7 @@ export function SolicitacaoForm({
 
   return (
     <form
-      className="flex flex-col gap-[var(--space-6)]"
+      className="flex flex-col gap-8"
       onSubmit={handleSubmit(enviarSolicitacao)}
       noValidate
     >
@@ -372,8 +373,10 @@ export function SolicitacaoForm({
         </Alert>
       ) : null}
 
-      <Card header={<CardHeader>Dados da solicitação</CardHeader>}>
-        <div className="flex flex-col gap-[var(--space-4)]">
+      <Card
+        header={<CardHeader>Dados da solicitação</CardHeader>}
+        bodyClassName={formFieldsStackClassName()}
+      >
           <Controller
             name="especialidadeId"
             control={control}
@@ -457,11 +460,10 @@ export function SolicitacaoForm({
               />
             )}
           />
-        </div>
       </Card>
 
       {tipoAtendimento === 'RETORNO' ? (
-        <Card header={<CardHeader>Retorno</CardHeader>}>
+        <Card header={<CardHeader>Retorno</CardHeader>} bodyClassName={formFieldsStackClassName()}>
           <SolicitacaoRetornoPicker
             control={control}
             errors={errors}
@@ -472,7 +474,10 @@ export function SolicitacaoForm({
         </Card>
       ) : null}
 
-      <Card header={<CardHeader>Laudo médico</CardHeader>}>
+      <Card
+        header={<CardHeader>Laudo médico</CardHeader>}
+        bodyClassName={formFieldsStackClassName()}
+      >
         <SolicitacaoLaudoUpload
           disabled={isPending}
           onUploadComplete={(anexoId) => {
@@ -496,7 +501,7 @@ export function SolicitacaoForm({
         ) : null}
       </Card>
 
-      <Card header={<CardHeader>Observações</CardHeader>}>
+      <Card header={<CardHeader>Observações</CardHeader>} bodyClassName={formFieldsStackClassName()}>
         <Textarea
           id="observacoes-abertura"
           label="Observações do atendimento"
@@ -508,8 +513,10 @@ export function SolicitacaoForm({
         />
       </Card>
 
-      <Card header={<CardHeader>Acompanhante</CardHeader>}>
-        <div className="flex flex-col gap-[var(--space-4)]">
+      <Card
+        header={<CardHeader>Acompanhante</CardHeader>}
+        bodyClassName={formFieldsStackClassName()}
+      >
           <Controller
             name="acompanhanteNecessario"
             control={control}
@@ -543,10 +550,9 @@ export function SolicitacaoForm({
               disabled={isPending}
             />
           ) : null}
-        </div>
       </Card>
 
-      <div className="flex flex-col gap-[var(--space-3)] sm:flex-row sm:justify-end">
+      <div className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-6 sm:flex-row sm:justify-end">
         <Button
           type="button"
           variant="secondary"

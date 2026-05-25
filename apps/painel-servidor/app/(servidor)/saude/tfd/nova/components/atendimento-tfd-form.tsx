@@ -51,7 +51,7 @@ export function AtendimentoTfdForm({
   }
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
+    <div className="flex flex-col gap-8">
       <PacienteAtendimentoSection
         initialDetalhe={initialPaciente}
         cadsusEnabled={cadsusEnabled}

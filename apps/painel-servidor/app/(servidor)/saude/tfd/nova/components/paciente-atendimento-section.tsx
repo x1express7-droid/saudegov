@@ -7,7 +7,15 @@ import {
   salvarPacienteAtendimentoTfd,
 } from '@saude/mod-saude-tfd/actions/paciente-atendimento'
 import type { TfdPacienteAtendimentoDetalhe } from '@saude/mod-saude-tfd/client'
-import { Button, Card, CardHeader, Input, Select } from '@saude/ui'
+import {
+  Button,
+  Card,
+  CardHeader,
+  formFieldsGridClassName,
+  formFieldsStackClassName,
+  Input,
+  Select,
+} from '@saude/ui'
 import { useCallback, useState, useTransition } from 'react'
 
 import { buscarEnderecoPorCep } from '../../../../../../lib/viacep'
@@ -263,8 +271,10 @@ export function PacienteAtendimentoSection({
   }
 
   return (
-    <Card header={<CardHeader>Identificação do paciente</CardHeader>}>
-      <div className="flex flex-col gap-[var(--space-4)]">
+    <Card
+      header={<CardHeader>Identificação do paciente</CardHeader>}
+      bodyClassName={formFieldsStackClassName()}
+    >
         <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
           Busque por nome, CPF ou CNS na base do município ou cadastre um novo paciente preenchendo os
           campos abaixo. CPF e CNS são opcionais.
@@ -273,7 +283,7 @@ export function PacienteAtendimentoSection({
             : null}
         </p>
 
-        <div className="grid gap-[var(--space-4)] md:grid-cols-[140px_1fr_auto]">
+        <div className="grid gap-5 md:grid-cols-[140px_1fr_auto]">
           <Select
             id="modo-busca-paciente"
             label="Buscar por"
@@ -342,7 +352,7 @@ export function PacienteAtendimentoSection({
           </p>
         ) : null}
 
-        <div className="grid gap-[var(--space-4)] sm:grid-cols-2 lg:grid-cols-3">
+        <div className={formFieldsGridClassName()}>
           <Input
             id="paciente-nome"
             label="Nome do paciente"
@@ -406,11 +416,11 @@ export function PacienteAtendimentoSection({
           />
         </div>
 
-        <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
-          <h3 className="mb-[var(--space-3)] text-[length:var(--text-sm)] font-semibold text-[var(--color-text)]">
+        <div className="border-t border-[var(--color-border)] pt-5">
+          <h3 className="mb-4 text-[length:var(--text-sm)] font-semibold text-[var(--color-text)]">
             Endereço e contato
           </h3>
-          <div className="grid gap-[var(--space-4)] sm:grid-cols-2 lg:grid-cols-4">
+          <div className={formFieldsGridClassName('sm:grid-cols-2 lg:grid-cols-4')}>
             <Input
               id="paciente-cep"
               label="CEP"
@@ -490,7 +500,7 @@ export function PacienteAtendimentoSection({
           ) : null}
         </div>
 
-        <div className="flex flex-wrap gap-[var(--space-2)]">
+        <div className="flex flex-wrap gap-3 border-t border-[var(--color-border)] pt-5">
           {cadsusEnabled ? (
             <Button
               type="button"
@@ -521,7 +531,6 @@ export function PacienteAtendimentoSection({
             </span>
           )}
         </div>
-      </div>
     </Card>
   )
 }

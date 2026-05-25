@@ -155,7 +155,7 @@ export function SolicitacaoLaudoUpload({
   const uploadDisabled = disabled || isBusy || state === 'concluido'
 
   return (
-    <div className="flex flex-col gap-[var(--space-3)]">
+    <div className="flex flex-col gap-4">
       <FileUpload
         label="Laudo médico"
         accept={[...ACCEPTED_MIME_TYPES]}

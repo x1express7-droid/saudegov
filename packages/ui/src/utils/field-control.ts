@@ -39,3 +39,13 @@ export function fieldHintClassName(className?: string) {
 export function fieldErrorClassName(className?: string) {
   return cn('mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--color-error)]', className)
 }
+
+/** Pilha vertical entre campos (usa escala Tailwind = tokens --space-*). */
+export function formFieldsStackClassName(className?: string) {
+  return cn('flex flex-col gap-5', className)
+}
+
+/** Grade de campos com espaçamento consistente. */
+export function formFieldsGridClassName(className?: string) {
+  return cn('grid gap-5 sm:grid-cols-2 lg:grid-cols-3', className)
+}
