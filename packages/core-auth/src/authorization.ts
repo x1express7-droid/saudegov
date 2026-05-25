@@ -4,6 +4,7 @@ import 'server-only'
 // para fluxo de troca de senha obrigatória (painel-servidor). Login em auth.config.ts
 // ainda não consulta esse campo.
 
+import { headers } from 'next/headers'
 import { forbidden, redirect } from 'next/navigation'
 import type { Session } from 'next-auth'
 import { auth } from './auth.node'
@@ -29,6 +30,35 @@ function toSaudeMunicSession(session: Session): SaudeMunicSession {
   }
 }
 
+/** SUPERADMIN (e sessões legadas) podem não ter tenantId no JWT; o middleware injeta x-tenant-id. */
+async function resolveTenantIdForSession(session: SaudeMunicSession): Promise<string | null> {
+  const fromSession = session.user.tenantId?.trim()
+  if (fromSession) {
+    return fromSession
+  }
+
+  return (await headers()).get('x-tenant-id')?.trim() ?? null
+}
+
+async function enrichSessionTenantId(session: SaudeMunicSession): Promise<SaudeMunicSession> {
+  const tenantId = await resolveTenantIdForSession(session)
+  if (!tenantId) {
+    return session
+  }
+
+  if (session.user.tenantId === tenantId) {
+    return session
+  }
+
+  return {
+    ...session,
+    user: {
+      ...session.user,
+      tenantId,
+    },
+  }
+}
+
 export async function requireAuth(): Promise<SaudeMunicSession> {
   const session = await auth()
   if (!isAppSession(session)) {
@@ -50,15 +80,28 @@ export async function requireSuperAdmin(): Promise<SaudeMunicSession> {
 export async function requireTenantRole(minimumRole: UserRole): Promise<SaudeMunicSession> {
   const session = await requireAuth()
 
-  if (session.user.role === 'SUPERADMIN') {
-    return session
-  }
-
-  if (!hasRole(session, minimumRole)) {
+  if (session.user.role !== 'SUPERADMIN' && !hasRole(session, minimumRole)) {
     redirect('/login')
   }
 
-  return session
+  const enriched = await enrichSessionTenantId(session)
+  const tenantId = await resolveTenantIdForSession(enriched)
+
+  if (!tenantId) {
+    redirect('/login?error=tenant')
+  }
+
+  if (enriched.user.tenantId === tenantId) {
+    return enriched
+  }
+
+  return {
+    ...enriched,
+    user: {
+      ...enriched.user,
+      tenantId,
+    },
+  }
 }
 
 export async function requirePermission(

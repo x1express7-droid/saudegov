@@ -48,6 +48,13 @@ export type {
   EnviarSolicitacaoOutput,
   TfdDashboardSaldoItem,
   TfdDashboardOutput,
+  TfdDashboardOperacionalOutput,
+  TfdDashboardOperacionalKpis,
+  TfdAlertaPrazoAnalise,
+  TfdAlertaPrazoAnaliseMotivo,
+  TfdAlertaUrgenciaSemResposta,
+  TfdAlertaAgendamentoSemTransporte,
+  TfdAtividadeRecenteItem,
   TfdAlertaUrgente,
   TfdAlertaSaldoBaixo,
   TfdAlertaPC,
@@ -249,6 +256,7 @@ export { getViagensSolicitacaoTfd } from './queries/get-viagens-solicitacao'
 export { getAgendamentosTfd } from './queries/get-agendamentos'
 export type { GetAgendamentosFiltros } from './queries/get-agendamentos'
 export { getDashboardTfd } from './queries/get-dashboard-tfd'
+export { getDashboardTfdOperacional } from './queries/get-dashboard-tfd-operacional'
 export { getAlertasUrgentesTfd } from './queries/get-alertas-urgentes'
 export { getAlertasPendente30Dias } from './queries/get-alertas-regulacao'
 export { getAlertasLembreteViagemTfd } from './queries/get-alertas-lembrete-viagem'

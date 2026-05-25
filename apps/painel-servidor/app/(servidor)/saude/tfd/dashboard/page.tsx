@@ -1,6 +1,7 @@
 import {
   assertModuleActive,
   getTenantContext,
+  hasPermission,
   requireTenantRole,
 } from '@saude/core-auth/server'
 import {
@@ -10,6 +11,7 @@ import {
   getAlertasUrgentesTfd,
   getDashboardTfd,
   getSolicitacoesTfd,
+  TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
@@ -19,6 +21,7 @@ import Link from 'next/link'
 import { TfdDashboardAlertas } from './components/tfd-dashboard-alertas'
 import { TfdDashboardGraficoStatus } from './components/tfd-dashboard-grafico-status'
 import { TfdDashboardKpis } from './components/tfd-dashboard-kpis'
+import { TfdDashboardOperacional } from './components/tfd-dashboard-operacional'
 import { TfdDashboardUltimasSolicitacoes } from './components/tfd-dashboard-ultimas-solicitacoes'
 import { TfdRelatoriosPanel } from './components/tfd-relatorios-panel'
 
@@ -26,15 +29,7 @@ export const metadata: Metadata = {
   title: 'Dashboard TFD',
 }
 
-export default async function TfdDashboardPage() {
-  const tenant = await getTenantContext()
-  if (!tenant.modules?.saude?.tfd) {
-    notFound()
-  }
-
-  await assertModuleActive('saude', 'tfd')
-  await requireTenantRole('GESTOR')
-
+async function GestorDashboard() {
   const [dashboard, alertasUrgentes, alertasPrestacao, alertasPendente30, alertasLembreteViagem, listagem] =
     await Promise.all([
       getDashboardTfd(),
@@ -91,4 +86,24 @@ export default async function TfdDashboardPage() {
       <TfdRelatoriosPanel />
     </div>
   )
+}
+
+export default async function TfdDashboardPage() {
+  const tenant = await getTenantContext()
+  if (!tenant.modules?.saude?.tfd) {
+    notFound()
+  }
+
+  await assertModuleActive('saude', 'tfd')
+  const session = await requireTenantRole('SERVIDOR')
+
+  const isGestorDashboard =
+    hasPermission(session, TFD_PERMISSIONS.VER_DASHBOARD) &&
+    (session.user.role === 'GESTOR' || session.user.role === 'ADMIN')
+
+  if (isGestorDashboard) {
+    return <GestorDashboard />
+  }
+
+  return <TfdDashboardOperacional />
 }

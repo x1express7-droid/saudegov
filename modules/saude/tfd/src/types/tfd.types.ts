@@ -431,6 +431,68 @@ export interface TfdAlertaPC {
   }
 }
 
+// --- Dashboard operacional (servidor/atendente) ---
+
+export interface TfdDashboardOperacionalKpis {
+  pendentes: number
+  emAnalise: number
+  aprovadasMes: number
+  negadasCanceladasMes: number
+}
+
+export type TfdAlertaPrazoAnaliseMotivo = 'VENCIDO' | 'PROXIMO_VENCIMENTO'
+
+export interface TfdAlertaPrazoAnalise {
+  solicitacaoId: string
+  protocolo: string
+  urgencia: string
+  status: string
+  motivo: TfdAlertaPrazoAnaliseMotivo
+  diasUteisDecorridos: number
+  pacienteNomeParcial: string
+}
+
+export interface TfdAlertaUrgenciaSemResposta {
+  solicitacaoId: string
+  protocolo: string
+  urgencia: string
+  status: string
+  pacienteNomeParcial: string
+  criadoEm: string
+}
+
+export interface TfdAlertaAgendamentoSemTransporte {
+  viagemId: string
+  solicitacaoId: string
+  protocolo: string
+  dataViagem: string
+  horaSaida: string | null
+  pacienteNomeParcial: string
+  faltaMotorista: boolean
+  faltaVeiculo: boolean
+}
+
+export interface TfdAtividadeRecenteItem {
+  id: string
+  criadoEm: string
+  tipoAcao: string
+  descricaoAcao: string
+  pacienteNomeParcial: string
+  protocolo: string
+  solicitacaoId: string
+  statusAtual: string
+}
+
+export interface TfdDashboardOperacionalOutput {
+  kpis: TfdDashboardOperacionalKpis
+  alertas: {
+    prazoAnalise: TfdAlertaPrazoAnalise[]
+    urgenciaSemResposta: TfdAlertaUrgenciaSemResposta[]
+    agendamentosSemTransporte: TfdAlertaAgendamentoSemTransporte[]
+  }
+  atividadeRecente: TfdAtividadeRecenteItem[]
+}
+
 // --- Sprint 1.8: Relatórios ---
 
 /** Filtros do relatório por competência (mês/ano). @see relatorioCompetenciaSchema */

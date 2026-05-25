@@ -13,7 +13,6 @@ export interface AppShellProps {
   logoUrl?: string
   showAdminNav?: boolean
   showTfdConfigNav?: boolean
-  showTfdDashboardNav?: boolean
   children: ReactNode
 }
 
@@ -25,7 +24,6 @@ export function AppShell({
   logoUrl,
   showAdminNav = false,
   showTfdConfigNav = false,
-  showTfdDashboardNav = false,
   children,
 }: AppShellProps) {
   const sidebarMode = useSidebarMode()
@@ -98,7 +96,6 @@ export function AppShell({
             onNavigate={closeDrawer}
             showAdminNav={showAdminNav}
             showTfdConfigNav={showTfdConfigNav}
-            showTfdDashboardNav={showTfdDashboardNav}
             className="h-[calc(100vh-4rem)] min-h-0"
           />
         </aside>

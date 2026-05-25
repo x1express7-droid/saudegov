@@ -51,6 +51,16 @@ export type {
   SidebarNavItem,
   SidebarProps,
 } from './components/sidebar'
+export {
+  SAUDE_MODULES_NAV,
+  SAUDE_SYSTEM_DASHBOARD,
+  SAUDE_CONFIG_NAV,
+} from './config/saude-modules-nav'
+export type {
+  SaudeModuleNavConfig,
+  SaudeModuleToggleKey,
+  SaudeNavChildConfig,
+} from './config/saude-modules-nav'
 
 export { Spinner } from './components/spinner'
 export type { SpinnerProps } from './components/spinner'

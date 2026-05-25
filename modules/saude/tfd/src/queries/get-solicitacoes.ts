@@ -65,8 +65,10 @@ export async function getSolicitacoesTfd(
 ): Promise<{ items: TfdSolicitacaoListItem[]; total: number }> {
   await assertModuleActive('saude', 'tfd')
   const session = await requireTenantRole('SERVIDOR')
-
-  const tenantId = session.user.tenantId!
+  const tenantId = session.user.tenantId
+  if (!tenantId) {
+    throw new Error('Tenant não identificado para listagem TFD.')
+  }
   const page = Math.max(1, filtros.page ?? 1)
   const perPage = Math.min(MAX_PER_PAGE, Math.max(1, filtros.perPage ?? DEFAULT_PER_PAGE))
 

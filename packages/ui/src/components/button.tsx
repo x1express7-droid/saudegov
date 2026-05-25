@@ -48,13 +48,43 @@ export function Button({
   loading = false,
   disabled,
   children,
+  type = 'button',
   ...props
 }: ButtonProps) {
-  const Comp = asChild ? Slot : 'button'
   const isDisabled = disabled || loading
 
+  // Radix Slot exige exatamente um filho React — loading + asChild são incompatíveis.
+  if (asChild && loading) {
+    return (
+      <button
+        type="button"
+        className={cn(buttonVariants({ variant }), className)}
+        disabled={isDisabled}
+        aria-busy
+        aria-disabled={isDisabled || undefined}
+        {...props}
+      >
+        <Spinner className="size-4" />
+        <span className="sr-only">Carregando</span>
+      </button>
+    )
+  }
+
+  if (asChild) {
+    return (
+      <Slot
+        className={cn(buttonVariants({ variant }), className)}
+        aria-disabled={isDisabled || undefined}
+        {...props}
+      >
+        {children}
+      </Slot>
+    )
+  }
+
   return (
-    <Comp
+    <button
+      type={type}
       className={cn(buttonVariants({ variant }), className)}
       disabled={isDisabled}
       aria-busy={loading || undefined}
@@ -66,9 +96,10 @@ export function Button({
           <Spinner className="size-4" />
           <span className="sr-only">Carregando</span>
         </>
-      ) : null}
-      {children}
-    </Comp>
+      ) : (
+        children
+      )}
+    </button>
   )
 }
 

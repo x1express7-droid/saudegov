@@ -1,5 +1,4 @@
-import { hasPermission, requireTenantRole } from '@saude/core-auth/server'
-import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
+import { requireTenantRole } from '@saude/core-auth/server'
 import { getTenantContext } from '@saude/core-auth/get-tenant-context'
 import { themeToCssVarsStyle } from '../../lib/theme-to-css-vars'
 import { headers } from 'next/headers'
@@ -21,10 +20,6 @@ export default async function ServidorLayout({
   const showTfdConfigNav =
     session.user.role === 'GESTOR' || session.user.role === 'ADMIN'
 
-  const showTfdDashboardNav =
-    hasPermission(session, TFD_PERMISSIONS.VER_DASHBOARD) &&
-    (session.user.role === 'GESTOR' || session.user.role === 'ADMIN')
-
   const themeCssVars = themeToCssVarsStyle(tenant.theme)
 
   return (
@@ -36,7 +31,6 @@ export default async function ServidorLayout({
       userName={session.user.name}
       logoUrl={tenant.theme.logoUrl ?? tenant.theme.logo_url}
       showTfdConfigNav={showTfdConfigNav}
-      showTfdDashboardNav={showTfdDashboardNav}
     >
       {children}
     </AppShell>
