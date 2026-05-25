@@ -2,7 +2,8 @@
 
 import * as DialogPrimitive from '@radix-ui/react-dialog'
 import { X } from 'lucide-react'
-import type { ComponentPropsWithoutRef, HTMLAttributes } from 'react'
+import { useState, type ComponentPropsWithoutRef, type HTMLAttributes } from 'react'
+import { OverlayPortalProvider } from '../context/overlay-portal-context'
 import { cn } from '../utils/cn'
 
 export const Dialog = DialogPrimitive.Root
@@ -31,14 +32,29 @@ export interface DialogContentProps extends ComponentPropsWithoutRef<typeof Dial
   showClose?: boolean
 }
 
+function isRadixOverlayPortalTarget(target: EventTarget | null): boolean {
+  if (!(target instanceof HTMLElement)) return false
+  return (
+    target.closest('[data-radix-select-content]') !== null ||
+    target.closest('[data-radix-select-viewport]') !== null ||
+    target.closest('[data-radix-popper-content-wrapper]') !== null ||
+    target.closest('[role="listbox"]') !== null ||
+    target.closest('[role="option"]') !== null
+  )
+}
+
 export function DialogContent({
   titulo,
   descricao,
   showClose = true,
   className,
   children,
+  onPointerDownOutside,
+  onFocusOutside,
   ...props
 }: DialogContentProps) {
+  const [overlayPortal, setOverlayPortal] = useState<HTMLDivElement | null>(null)
+
   return (
     <DialogPortal>
       <DialogOverlay />
@@ -49,6 +65,18 @@ export function DialogContent({
           'focus:outline-none',
           className
         )}
+        onPointerDownOutside={(event) => {
+          if (isRadixOverlayPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onPointerDownOutside?.(event)
+        }}
+        onFocusOutside={(event) => {
+          if (isRadixOverlayPortalTarget(event.target)) {
+            event.preventDefault()
+          }
+          onFocusOutside?.(event)
+        }}
         {...props}
       >
         <div className="flex items-start justify-between gap-[var(--space-4)]">
@@ -75,7 +103,15 @@ export function DialogContent({
             </DialogPrimitive.Close>
           ) : null}
         </div>
-        {children ? <div className="mt-[var(--space-6)]">{children}</div> : null}
+        <OverlayPortalProvider container={overlayPortal}>
+          {children ? <div className="mt-[var(--space-6)]">{children}</div> : null}
+          <div
+            ref={setOverlayPortal}
+            data-overlay-portal=""
+            className="pointer-events-none relative z-[var(--z-dropdown)] size-0 overflow-visible"
+            aria-hidden="true"
+          />
+        </OverlayPortalProvider>
       </DialogPrimitive.Content>
     </DialogPortal>
   )

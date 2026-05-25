@@ -4,6 +4,7 @@ import * as SelectPrimitive from '@radix-ui/react-select'
 import { AlertCircle, Check, ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { cn } from '../utils/cn'
+import { useOverlayPortalContainer } from '../context/overlay-portal-context'
 import {
   fieldControlClassName,
   fieldErrorClassName,
@@ -51,6 +52,7 @@ export function Select({
 }: SelectProps) {
   const fieldId = id
   const hasError = Boolean(error)
+  const overlayPortal = useOverlayPortalContainer()
 
   return (
     <div className="w-full">
@@ -103,12 +105,12 @@ export function Select({
               aria-hidden="true"
             />
           ) : null}
-          <SelectPrimitive.Portal>
+          <SelectPrimitive.Portal container={overlayPortal ?? undefined}>
             <SelectPrimitive.Content
               position="popper"
               sideOffset={4}
               className={cn(
-                'z-50 max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-text)_12%,transparent)]'
+                'z-[var(--z-dropdown)] max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-text)_12%,transparent)]'
               )}
             >
               <SelectPrimitive.Viewport className="p-[var(--space-1)]">

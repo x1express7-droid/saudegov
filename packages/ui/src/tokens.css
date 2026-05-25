@@ -55,6 +55,16 @@
   --radius: 0.5rem;
   --radius-lg: 0.75rem;
   --radius-xl: 1rem;
+
+  /* Camadas: overlay/modal abaixo de dropdowns portados */
+  --z-overlay: 100;
+  --z-modal: 101;
+  --z-dropdown: 200;
+}
+
+/* Popper do Radix (Select, etc.) acima de modais */
+[data-radix-popper-content-wrapper] {
+  z-index: var(--z-dropdown);
 }
 
 /* §4 — Protocolos em monospace */
