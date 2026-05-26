@@ -1,6 +1,13 @@
 'use client'
 
-import { criarMotoristaSchema, type TfdMotoristaListItem, type TfdServidorMotoristaOption } from '@saude/mod-saude-tfd/client'
+import {
+  CNH_CATEGORIA_LETTERS,
+  parseCnhCategorias,
+  serializeCnhCategorias,
+  type CnhCategoriaLetter,
+  type TfdMotoristaListItem,
+  type TfdServidorMotoristaOption,
+} from '@saude/mod-saude-tfd/client'
 import { atualizarMotoristaTfd, criarMotoristaTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Button,
@@ -17,15 +24,22 @@ import { useEffect, useState, useTransition } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import { z } from 'zod'
 
-const CNH_CATEGORIA_OPTIONS = [
-  { value: 'A', label: 'A' },
-  { value: 'B', label: 'B' },
-  { value: 'C', label: 'C' },
-  { value: 'D', label: 'D' },
-  { value: 'E', label: 'E' },
-] as const
+import { CnhCategoriaCheckboxGroup } from './cnh-categoria-checkbox-group'
 
-const motoristaFormSchema = criarMotoristaSchema
+const motoristaFormSchema = z.object({
+  userId: z.string().uuid('Usuário inválido.'),
+  cnh: z
+    .string()
+    .trim()
+    .min(5, 'CNH inválida.')
+    .max(20, 'CNH deve ter no máximo 20 caracteres.'),
+  cnhCategorias: z
+    .array(z.enum(CNH_CATEGORIA_LETTERS))
+    .min(1, 'Selecione pelo menos uma categoria da CNH.'),
+  cnhValidade: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, 'Data de validade inválida (use AAAA-MM-DD).'),
+})
 
 type MotoristaFormValues = z.infer<typeof motoristaFormSchema>
 
@@ -36,6 +50,8 @@ interface MotoristaFormProps {
   servidorOptions: TfdServidorMotoristaOption[]
   onOpenChange: (open: boolean) => void
 }
+
+const defaultCnhCategorias: CnhCategoriaLetter[] = ['B']
 
 export function MotoristaForm({
   open,
@@ -60,7 +76,7 @@ export function MotoristaForm({
     defaultValues: {
       userId: '',
       cnh: '',
-      cnhCategoria: 'B',
+      cnhCategorias: defaultCnhCategorias,
       cnhValidade: '',
     },
   })
@@ -73,10 +89,11 @@ export function MotoristaForm({
     setFieldErrors({})
 
     if (mode === 'edit' && motorista) {
+      const categorias = parseCnhCategorias(motorista.cnhCategoria)
       reset({
         userId: motorista.userId,
         cnh: motorista.cnh,
-        cnhCategoria: motorista.cnhCategoria as MotoristaFormValues['cnhCategoria'],
+        cnhCategorias: categorias.length > 0 ? categorias : defaultCnhCategorias,
         cnhValidade: motorista.cnhValidade,
       })
       return
@@ -85,7 +102,7 @@ export function MotoristaForm({
     reset({
       userId: servidorOptions[0]?.value ?? '',
       cnh: '',
-      cnhCategoria: 'B',
+      cnhCategorias: defaultCnhCategorias,
       cnhValidade: '',
     })
   }, [open, mode, motorista, servidorOptions, reset])
@@ -97,9 +114,16 @@ export function MotoristaForm({
     setServerError(null)
     setFieldErrors({})
 
+    const cnhCategoria = serializeCnhCategorias(values.cnhCategorias)
+
     startTransition(async () => {
       if (mode === 'create') {
-        const response = await criarMotoristaTfd(values)
+        const response = await criarMotoristaTfd({
+          userId: values.userId,
+          cnh: values.cnh,
+          cnhCategoria,
+          cnhValidade: values.cnhValidade,
+        })
         if (!response.success) {
           setServerError(response.error)
           if (response.fieldErrors) {
@@ -120,7 +144,7 @@ export function MotoristaForm({
       const response = await atualizarMotoristaTfd({
         id: motorista.id,
         cnh: values.cnh,
-        cnhCategoria: values.cnhCategoria,
+        cnhCategoria,
         cnhValidade: values.cnhValidade,
       })
 
@@ -138,6 +162,8 @@ export function MotoristaForm({
   }
 
   const userIdError = errors.userId?.message ?? fieldErrors.userId?.[0]
+  const cnhCategoriasError =
+    errors.cnhCategorias?.message ?? fieldErrors.cnhCategoria?.[0]
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -200,17 +226,14 @@ export function MotoristaForm({
           />
 
           <Controller
-            name="cnhCategoria"
+            name="cnhCategorias"
             control={control}
             render={({ field }) => (
-              <Select
-                label="Categoria da CNH"
+              <CnhCategoriaCheckboxGroup
                 value={field.value}
-                onValueChange={field.onChange}
-                options={[...CNH_CATEGORIA_OPTIONS]}
-                required
+                onChange={field.onChange}
                 disabled={isPending || semServidores}
-                error={errors.cnhCategoria?.message}
+                error={cnhCategoriasError}
               />
             )}
           />

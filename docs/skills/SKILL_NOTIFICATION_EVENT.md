@@ -38,6 +38,7 @@ export const NOTIFICATION_EVENTS = {
   PRESTACAO_APROVADA:           'PRESTACAO_APROVADA',
   PRESTACAO_REJEITADA:          'PRESTACAO_REJEITADA',
   PROCESSO_CANCELADO:           'PROCESSO_CANCELADO',
+  SALDO_BAIXO:                  'SALDO_BAIXO',  // Sprint 2.2 — in-app; gestores ver_dashboard
   // Adicionar novos eventos aqui
 } as const
 

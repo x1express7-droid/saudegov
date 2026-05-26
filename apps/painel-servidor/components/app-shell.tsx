@@ -1,6 +1,6 @@
 'use client'
 
-import { Sidebar, cn } from '@saude/ui'
+import { Sidebar, cn, type SaudeNavChildConfig } from '@saude/ui'
 import { useEffect, useState, type ReactNode } from 'react'
 import { useSidebarMode } from '../lib/use-sidebar-mode'
 import { AppHeader } from './app-header'
@@ -13,6 +13,8 @@ export interface AppShellProps {
   logoUrl?: string
   showAdminNav?: boolean
   showTfdConfigNav?: boolean
+  tfdConfigHref?: string
+  tfdFinanceiroNav?: SaudeNavChildConfig[]
   children: ReactNode
 }
 
@@ -24,6 +26,8 @@ export function AppShell({
   logoUrl,
   showAdminNav = false,
   showTfdConfigNav = false,
+  tfdConfigHref,
+  tfdFinanceiroNav = [],
   children,
 }: AppShellProps) {
   const sidebarMode = useSidebarMode()
@@ -96,6 +100,8 @@ export function AppShell({
             onNavigate={closeDrawer}
             showAdminNav={showAdminNav}
             showTfdConfigNav={showTfdConfigNav}
+            tfdConfigHref={tfdConfigHref}
+            tfdFinanceiroNav={tfdFinanceiroNav}
             className="h-[calc(100vh-4rem)] min-h-0"
           />
         </aside>

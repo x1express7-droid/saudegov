@@ -7,9 +7,13 @@ import {
 import {
   getAlertasLembreteViagemTfd,
   getAlertasPendente30Dias,
+  getAlertasPendente60Dias,
   getAlertasPrestacaoTfd,
   getAlertasUrgentesTfd,
+  getDashboardFinanceiroTfd,
   getDashboardTfd,
+  getMotoristasRelatorioOpcoesTfd,
+  getPrestadoresRelatorioOpcoesTfd,
   getSolicitacoesTfd,
   TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
@@ -19,6 +23,7 @@ import { notFound } from 'next/navigation'
 import Link from 'next/link'
 
 import { TfdDashboardAlertas } from './components/tfd-dashboard-alertas'
+import { TfdDashboardFinanceiro } from './components/tfd-dashboard-financeiro'
 import { TfdDashboardGraficoStatus } from './components/tfd-dashboard-grafico-status'
 import { TfdDashboardKpis } from './components/tfd-dashboard-kpis'
 import { TfdDashboardOperacional } from './components/tfd-dashboard-operacional'
@@ -30,17 +35,31 @@ export const metadata: Metadata = {
 }
 
 async function GestorDashboard() {
-  const [dashboard, alertasUrgentes, alertasPrestacao, alertasPendente30, alertasLembreteViagem, listagem] =
-    await Promise.all([
-      getDashboardTfd(),
-      getAlertasUrgentesTfd(),
-      getAlertasPrestacaoTfd(),
-      getAlertasPendente30Dias(),
-      getAlertasLembreteViagemTfd(),
-      getSolicitacoesTfd({ page: 1, perPage: 10 }),
-    ])
+  const session = await requireTenantRole('GESTOR')
 
-  const saldosBaixo = dashboard.saldos.filter((saldo) => saldo.alertaBaixo)
+  const [
+    dashboard,
+    financeiro,
+    alertasUrgentes,
+    alertasPrestacao,
+    alertasPendente30,
+    alertasPendente60,
+    alertasLembreteViagem,
+    listagem,
+    prestadoresOpcoes,
+    motoristasOpcoes,
+  ] = await Promise.all([
+    getDashboardTfd(),
+    getDashboardFinanceiroTfd(),
+    getAlertasUrgentesTfd(),
+    getAlertasPrestacaoTfd(),
+    getAlertasPendente30Dias(),
+    getAlertasPendente60Dias(),
+    getAlertasLembreteViagemTfd(),
+    getSolicitacoesTfd({ page: 1, perPage: 10 }),
+    getPrestadoresRelatorioOpcoesTfd(),
+    getMotoristasRelatorioOpcoesTfd(),
+  ])
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -59,13 +78,16 @@ async function GestorDashboard() {
 
       <TfdDashboardKpis porStatus={dashboard.porStatus} totalSolicitacoes={dashboard.totalSolicitacoes} />
 
+      <TfdDashboardFinanceiro financeiro={financeiro} />
+
       <div className="grid gap-[var(--space-6)] lg:grid-cols-2">
         <TfdDashboardGraficoStatus porStatus={dashboard.porStatus} />
         <TfdDashboardAlertas
           alertasUrgentes={alertasUrgentes}
-          saldosBaixo={saldosBaixo}
+          saldosBaixo={[]}
           alertasPrestacao={alertasPrestacao}
           alertasPendente30={alertasPendente30}
+          alertasPendente60={alertasPendente60}
           alertasLembreteViagem={alertasLembreteViagem}
         />
       </div>
@@ -83,7 +105,11 @@ async function GestorDashboard() {
         <TfdDashboardUltimasSolicitacoes items={listagem.items} />
       </section>
 
-      <TfdRelatoriosPanel />
+      <TfdRelatoriosPanel
+        session={session}
+        prestadoresOpcoes={prestadoresOpcoes}
+        motoristasOpcoes={motoristasOpcoes}
+      />
     </div>
   )
 }

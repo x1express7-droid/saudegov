@@ -105,9 +105,10 @@ Definidas em `modules/saude/tfd/src/permissions.ts`.
 | `saude.tfd.gerenciar_frota` | GESTOR | Cadastrar veículos e motoristas |
 | `saude.tfd.cancelar_processo` | GESTOR | Cancelar solicitação com motivo obrigatório |
 | `saude.tfd.ver_dashboard` | GESTOR | Acessar dashboard financeiro e KPIs |
-| `saude.tfd.exportar_relatorio` | GESTOR | Gerar e baixar relatórios |
+| `saude.tfd.exportar_relatorio` | GESTOR | Gerar PDFs analíticos e exportar CSV das listagens TFD (fila, agendamentos, prestações, saldos) |
 | `saude.tfd.configurar` | ADMIN | Configurações gerais do módulo TFD |
-| `saude.tfd.configurar_especialidades` | ADMIN | CRUD de especialidades e procedimentos |
+| `saude.tfd.configurar_especialidades` | ADMIN | CRUD de especialidades médicas |
+| `saude.tfd.configurar_procedimentos` | GESTOR | CRUD de procedimentos vinculados a especialidades (aba Configurações TFD) |
 | `saude.tfd.configurar_prestadores` | ADMIN | CRUD de prestadores de saúde externos |
 
 ### 3.2 Regras de gestão de permissões
@@ -246,8 +247,9 @@ const ROLE_REQUIRED = [
 | Ação | SUPERADMIN | ADMIN | GESTOR | SERVIDOR |
 |---|---|---|---|---|
 | CRUD especialidades | ✅ | ✅ | ❌ | ❌ |
-| CRUD procedimentos | ✅ | ✅ | ❌ | ❌ |
+| CRUD procedimentos | ✅ | ✅ | 🎯 `configurar_procedimentos` | ❌ |
 | CRUD prestadores externos | ✅ | ✅ | ❌ | ❌ |
+| Acessar layout `/saude/tfd/configuracoes/*` (abas permitidas) | ✅ | ✅ | 🎯 conforme permissão da aba | ❌ |
 | CRUD veículos | ✅ | ✅ | 🎯 `gerenciar_frota` | ❌ |
 | CRUD motoristas | ✅ | ✅ | 🎯 `gerenciar_frota` | ❌ |
 
@@ -280,8 +282,26 @@ const ROLE_REQUIRED = [
 | Cadastrar saldo financeiro | ✅ | ✅ | 🎯 `gerenciar_saldo` | ❌ |
 | Ver saldos disponíveis | ✅ | ✅ | 🎯 `gerenciar_saldo` | ❌ |
 | Ver extrato de movimentações | ✅ | ✅ | 🎯 `gerenciar_saldo` | ❌ |
+| Exportar extrato CSV (completo no período) | ✅ | ✅ | 🎯 `gerenciar_saldo` | ❌ |
+| Inativar saldo (`ativo = false`, extrato preservado) | ✅ | ✅ | 🎯 `gerenciar_saldo` | ❌ |
 | Dashboard financeiro e KPIs | ✅ | ✅ | 🎯 `ver_dashboard` | ❌ |
-| Exportar relatórios | ✅ | ✅ | 🎯 `exportar_relatorio` | ❌ |
+| Bloco Financeiro no dashboard (KPI consolidado, saldos em alerta, extrato 5 mov.) | ✅ | ✅ | 🎯 `ver_dashboard` | ❌ |
+| Submenu **Financeiro** no sidebar TFD (Saldos / Prestações / Relatórios) | ✅ | ✅ | 🎯 item conforme permissão do link | ❌ |
+| Exportar relatórios PDF (competência, paciente, prestador, motorista, produção) | ✅ | ✅ | 🎯 `exportar_relatorio` | ❌ |
+| Exportar CSV das listagens (fila, agendamentos, prestações, saldos) | ✅ | ✅ | 🎯 `exportar_relatorio` | ❌ |
+
+> Exportações registram `acao = EXPORT` apenas na Server Action de download, não na leitura paginada. Ver `BUSINESS_RULES.md` §1.12 e `API_CONTRACTS.md` §7.4–7.8.
+>
+> **Navegação Financeiro (Sprint 2.2):** Saldos → `gerenciar_saldo`; Prestações → `aprovar_prestacao`; Relatórios → `exportar_relatorio` (rota `/saude/tfd/dashboard`). Ver `modules/saude/tfd/src/utils/tfd-financeiro-nav.ts`.
+
+### 7.6 Painel Dev — plataforma (sem permissão granular de tenant)
+
+| Ação | Quem | Verificação |
+|---|---|---|
+| Exportar dados do município (JSON/CSV) | SUPERADMIN | `requireSuperAdmin()` — `tenantId` no input, não na sessão |
+| Ver extrato de saldo TFD de qualquer tenant | SUPERADMIN | `requireSuperAdmin()` + queries em `apps/painel-dev/lib/queries/tfd-saldos.ts` |
+
+Action: `exportarDadosMunicipio` em `apps/painel-dev/lib/actions/exportar-dados-municipio.ts`. Contrato: `API_CONTRACTS.md` §3.5.
 
 ---
 

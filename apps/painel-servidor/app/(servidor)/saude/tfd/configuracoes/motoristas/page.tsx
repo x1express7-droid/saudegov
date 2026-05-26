@@ -1,7 +1,13 @@
-import { assertModuleActive, getTenantContext } from '@saude/core-auth/server'
+import {
+  assertModuleActive,
+  getTenantContext,
+  requirePermission,
+  requireTenantRole,
+} from '@saude/core-auth/server'
 import {
   getMotoristasTfd,
   getServidoresMotoristaOptionsTfd,
+  TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
 import { Alert, PageHeader } from '@saude/ui'
 import { notFound } from 'next/navigation'
@@ -18,6 +24,8 @@ export default async function MotoristasPage({ searchParams }: MotoristasPagePro
   }
 
   await assertModuleActive('saude', 'tfd')
+  const session = await requireTenantRole('GESTOR')
+  await requirePermission(session, TFD_PERMISSIONS.GERENCIAR_FROTA)
 
   const params = await searchParams
   const page = Math.max(1, Number(params.page) || 1)

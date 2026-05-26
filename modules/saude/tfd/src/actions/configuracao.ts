@@ -22,7 +22,7 @@ import {
   criarMotoristaSchema,
   desativarMotoristaSchema,
 } from '../validators/configuracao.schema'
-import { criarSaldoSchema } from '../validators/financeiro.schema'
+import { criarSaldoSchema, desativarSaldoSchema } from '../validators/financeiro.schema'
 import { ExtratoSaldoError, getExtratoSaldo } from '../queries/get-extrato'
 import type { GetExtratoSaldoResult } from '../queries/get-extrato'
 import { TFD_PERMISSIONS } from '../permissions'
@@ -380,6 +380,7 @@ export async function criarProcedimentoTfd(
         especialidade_id: data.especialidadeId,
         nome: data.nome.trim(),
         codigo_sigtap: normalizeCodigoSigtap(data.codigoSigtap),
+        eh_pab: data.ehPab,
         ativo: true,
       },
       select: {
@@ -387,6 +388,7 @@ export async function criarProcedimentoTfd(
         nome: true,
         especialidade_id: true,
         codigo_sigtap: true,
+        eh_pab: true,
         ativo: true,
       },
     })
@@ -401,6 +403,7 @@ export async function criarProcedimentoTfd(
         nome: created.nome,
         especialidadeId: created.especialidade_id,
         codigoSigtap: created.codigo_sigtap,
+        ehPab: created.eh_pab,
         ativo: created.ativo,
       },
     })
@@ -433,13 +436,14 @@ export async function atualizarProcedimentoTfd(
     }
   }
 
-  const { id, especialidadeId, nome, codigoSigtap, ativo } = parsed.data
+  const { id, especialidadeId, nome, codigoSigtap, ehPab, ativo } = parsed.data
   const tenantId = session.user.tenantId!
 
   if (
     nome === undefined &&
     especialidadeId === undefined &&
     codigoSigtap === undefined &&
+    ehPab === undefined &&
     ativo === undefined
   ) {
     return { success: false, error: 'Informe ao menos um campo para atualizar.' }
@@ -455,6 +459,7 @@ export async function atualizarProcedimentoTfd(
         nome: true,
         especialidade_id: true,
         codigo_sigtap: true,
+        eh_pab: true,
         ativo: true,
       },
     })
@@ -483,6 +488,7 @@ export async function atualizarProcedimentoTfd(
         ...(codigoSigtap !== undefined
           ? { codigo_sigtap: normalizeCodigoSigtap(codigoSigtap) }
           : {}),
+        ...(ehPab !== undefined ? { eh_pab: ehPab } : {}),
         ...(ativo !== undefined ? { ativo } : {}),
       },
       select: {
@@ -490,6 +496,7 @@ export async function atualizarProcedimentoTfd(
         nome: true,
         especialidade_id: true,
         codigo_sigtap: true,
+        eh_pab: true,
         ativo: true,
       },
     })
@@ -504,12 +511,14 @@ export async function atualizarProcedimentoTfd(
         nome: existing.nome,
         especialidadeId: existing.especialidade_id,
         codigoSigtap: existing.codigo_sigtap,
+        ehPab: existing.eh_pab,
         ativo: existing.ativo,
       },
       payloadDepois: {
         nome: updated.nome,
         especialidadeId: updated.especialidade_id,
         codigoSigtap: updated.codigo_sigtap,
+        ehPab: updated.eh_pab,
         ativo: updated.ativo,
       },
     })
@@ -1544,6 +1553,83 @@ export async function criarSaldoTfd(
     return {
       success: false,
       error: 'Não foi possível cadastrar o saldo financeiro. Tente novamente.',
+    }
+  }
+}
+
+export async function desativarSaldoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  // BLOCO 1: Verificar módulo ativo
+  await assertModuleActive('saude', 'tfd')
+
+  // BLOCO 2: Verificar autenticação e papel mínimo
+  const session = await requireTenantRole('GESTOR')
+
+  // BLOCO 3: Verificar permissão granular
+  await requirePermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO)
+
+  // BLOCO 4: Validar input com Zod
+  const parsed = desativarSaldoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const { saldoId } = parsed.data
+
+  const tenantId = session.user.tenantId!
+
+  // BLOCO 5: Lógica de negócio
+  try {
+    const db = await getPrismaForTenant(tenantId)
+
+    const existing = await db.tfdSaldo.findFirst({
+      where: { id: saldoId, tenant_id: tenantId },
+      select: { id: true, descricao: true, ativo: true },
+    })
+
+    if (!existing) {
+      return { success: false, error: 'Saldo financeiro não encontrado.' }
+    }
+
+    if (!existing.ativo) {
+      return { success: false, error: 'Este saldo financeiro já está inativo.' }
+    }
+
+    await db.tfdSaldo.update({
+      where: { id: saldoId, tenant_id: tenantId },
+      data: { ativo: false },
+    })
+
+    // BLOCO 6: Auditoria
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_saldo',
+      entidadeId: saldoId,
+      payloadDepois: { ativo: false },
+    })
+
+    // BLOCO 7: Notificações — fora do escopo desta sprint
+
+    // BLOCO 8: Revalidar cache
+    revalidatePath(SALDOS_PATH)
+
+    // BLOCO 9: Retorno de sucesso
+    return { success: true, data: undefined }
+  } catch (error) {
+    // BLOCO 10: Tratamento de erro
+    console.error('[desativarSaldoTfd] Erro:', {
+      tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível desativar o saldo financeiro. Tente novamente.',
     }
   }
 }

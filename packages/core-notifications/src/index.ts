@@ -9,6 +9,7 @@ export {
   type PrestacaoEnviadaNotificationContext,
   type PrestacaoDecisaoNotificationContext,
   type PrestacaoRejeitadaNotificationContext,
+  type SaldoBaixoNotificationContext,
   type NotificationMessage,
   type DispararNotificacaoInput,
 } from './types'
@@ -25,3 +26,4 @@ export { buildPrestacaoEnviadaMessage } from './templates/prestacao-enviada'
 export { buildPrestacaoAprovadaMessage } from './templates/prestacao-aprovada'
 export { buildPrestacaoRejeitadaMessage } from './templates/prestacao-rejeitada'
 export { buildProcessoCanceladoMessage } from './templates/processo-cancelado'
+export { buildSaldoBaixoMessage } from './templates/saldo-baixo'

@@ -1,12 +1,15 @@
 import type { LucideIcon } from 'lucide-react'
 import {
+  BarChart3,
   CalendarDays,
   ClipboardList,
   LayoutDashboard,
   List,
   PlusCircle,
+  Receipt,
   Settings,
   UserSearch,
+  Wallet,
 } from 'lucide-react'
 
 /** Chaves em `tenant.modules.saude` — alinhado a `docs/MUNICIPAL_MAP.md`. */
@@ -24,6 +27,46 @@ export interface SaudeNavChildConfig {
   label: string
   href: string
   icon: LucideIcon
+}
+
+/** Rótulo da seção Financeiro no accordion TFD. */
+export const TFD_FINANCEIRO_SECTION_LABEL = 'Financeiro' as const
+
+/**
+ * Catálogo do submenu Financeiro (ícones).
+ * Permissões e filtragem: `getTfdFinanceiroVisibleNav` em `@saude/mod-saude-tfd`.
+ */
+export const TFD_FINANCEIRO_NAV_CATALOG = [
+  {
+    label: 'Saldos',
+    href: '/saude/tfd/configuracoes/saldos',
+    icon: Wallet,
+  },
+  {
+    label: 'Prestações de contas',
+    href: '/saude/tfd/prestacoes',
+    icon: Receipt,
+  },
+  {
+    label: 'Relatórios',
+    href: '/saude/tfd/dashboard',
+    icon: BarChart3,
+  },
+] as const satisfies ReadonlyArray<SaudeNavChildConfig>
+
+const TFD_FINANCEIRO_ICON_BY_HREF: Record<string, LucideIcon> = Object.fromEntries(
+  TFD_FINANCEIRO_NAV_CATALOG.map((item) => [item.href, item.icon])
+)
+
+/** Anexa ícones aos itens financeiros filtrados no servidor. */
+export function attachTfdFinanceiroNavIcons(
+  items: ReadonlyArray<{ label: string; href: string }>
+): SaudeNavChildConfig[] {
+  return items.map((item) => ({
+    label: item.label,
+    href: item.href,
+    icon: TFD_FINANCEIRO_ICON_BY_HREF[item.href] ?? Wallet,
+  }))
 }
 
 export interface SaudeModuleNavConfig {
@@ -63,6 +106,7 @@ export const SAUDE_SYSTEM_DASHBOARD = {
 
 export const SAUDE_CONFIG_NAV = {
   label: 'Configurações',
-  href: '/saude/tfd/configuracoes/especialidades',
+  /** Entrada canônica; o destino efetivo é resolvido no servidor conforme permissões TFD. */
+  basePath: '/saude/tfd/configuracoes',
   icon: Settings,
 } as const

@@ -7,6 +7,7 @@ import { seedSprint16TfdPlatformFeatures } from './seeds/sprint-1-6-platform-fea
 import { seedSprint17TfdPlatformFeatures } from './seeds/sprint-1-7-platform-features'
 import { seedSprint18TfdPlatformFeatures } from './seeds/sprint-1-8-platform-features'
 import { seedSprint21TfdPlatformFeatures } from './seeds/sprint-2-1-platform-features'
+import { seedSprint22TfdPlatformFeatures } from './seeds/sprint-2-2-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 
 const prisma = new PrismaClient()
@@ -652,6 +653,11 @@ async function main() {
   const sprint21TfdFeaturesCount = await seedSprint21TfdPlatformFeatures()
   console.log(
     `\n📌 platform_features (Sprint 2.1 TFD): ${sprint21TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint22TfdFeaturesCount = await seedSprint22TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 2.2 TFD): ${sprint22TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
   )
 
   await seedTfdSaldoExemplo(prisma, campograndems.id, gestorCampograndems.id)

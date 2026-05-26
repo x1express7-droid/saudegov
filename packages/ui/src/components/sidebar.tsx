@@ -13,8 +13,10 @@ import {
   SAUDE_CONFIG_NAV,
   SAUDE_MODULES_NAV,
   SAUDE_SYSTEM_DASHBOARD,
+  TFD_FINANCEIRO_SECTION_LABEL,
   type SaudeModuleNavConfig,
   type SaudeModuleToggleKey,
+  type SaudeNavChildConfig,
 } from '../config/saude-modules-nav'
 import { cn } from '../utils/cn'
 import { focusRingClassName } from '../utils/field-control'
@@ -41,8 +43,12 @@ export interface SidebarProps {
   collapsed?: boolean
   onNavigate?: () => void
   showAdminNav?: boolean
-  /** Exibe Configurações do Sistema de Saúde (ADMIN/GESTOR). */
+  /** Exibe link de Configurações TFD quando o usuário tem ao menos uma aba permitida. */
   showTfdConfigNav?: boolean
+  /** Destino do link Configurações (primeira aba permitida para a sessão). */
+  tfdConfigHref?: string
+  /** Itens do submenu Financeiro TFD (já filtrados por permissão no servidor). */
+  tfdFinanceiroNav?: SaudeNavChildConfig[]
   systemName?: string
 }
 
@@ -77,7 +83,43 @@ function isActivePath(pathname: string, href: string): boolean {
   if (href === '/saude/tfd/dashboard') {
     return pathname === '/saude/tfd/dashboard'
   }
+  if (href === '/saude/tfd/prestacoes') {
+    return pathname === '/saude/tfd/prestacoes' || pathname.startsWith('/saude/tfd/prestacoes/')
+  }
+  if (href === '/saude/tfd/configuracoes/saldos') {
+    return (
+      pathname === '/saude/tfd/configuracoes/saldos' ||
+      pathname.startsWith('/saude/tfd/configuracoes/saldos/')
+    )
+  }
   return pathname === href || pathname.startsWith(`${href}/`)
+}
+
+function renderNavChildLink(
+  child: SaudeNavChildConfig,
+  pathname: string,
+  onNavigate?: () => void
+) {
+  const ChildIcon = child.icon
+  const childActive = isActivePath(pathname, child.href)
+
+  return (
+    <a
+      href={child.href}
+      onClick={onNavigate}
+      aria-current={childActive ? 'page' : undefined}
+      className={cn(
+        'flex min-h-[40px] items-center gap-[var(--space-3)] rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] transition-colors',
+        focusRingClassName,
+        childActive
+          ? 'bg-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-surface))] font-bold text-[var(--color-primary)]'
+          : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
+      )}
+    >
+      <ChildIcon className="size-5 shrink-0" aria-hidden="true" />
+      <span>{child.label}</span>
+    </a>
+  )
 }
 
 interface SaudeModuleAccordionProps {
@@ -86,6 +128,7 @@ interface SaudeModuleAccordionProps {
   expanded: boolean
   pathname: string
   collapsed: boolean
+  financeiroChildren?: SaudeNavChildConfig[]
   onToggle: () => void
   onNavigate?: () => void
 }
@@ -96,11 +139,12 @@ function SaudeModuleAccordion({
   expanded,
   pathname,
   collapsed,
+  financeiroChildren = [],
   onToggle,
   onNavigate,
 }: SaudeModuleAccordionProps) {
   const ModuleIcon = config.icon
-  const hasChildren = config.children.length > 0
+  const hasChildren = config.children.length > 0 || financeiroChildren.length > 0
   const sectionActive = resolveActiveModuleKey(pathname) === config.moduleKey
 
   if (!active) {
@@ -181,30 +225,23 @@ function SaudeModuleAccordion({
           className="ml-[var(--space-5)] flex flex-col gap-[var(--space-1)] border-l border-[var(--color-border)] pl-[var(--space-4)]"
           aria-label={`${config.label} — navegação`}
         >
-          {config.children.map((child) => {
-            const ChildIcon = child.icon
-            const childActive = isActivePath(pathname, child.href)
-
-            return (
-              <li key={child.href}>
-                <a
-                  href={child.href}
-                  onClick={onNavigate}
-                  aria-current={childActive ? 'page' : undefined}
-                  className={cn(
-                    'flex min-h-[40px] items-center gap-[var(--space-3)] rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] transition-colors',
-                    focusRingClassName,
-                    childActive
-                      ? 'bg-[color-mix(in_srgb,var(--color-primary)_18%,var(--color-surface))] font-bold text-[var(--color-primary)]'
-                      : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
-                  )}
-                >
-                  <ChildIcon className="size-5 shrink-0" aria-hidden="true" />
-                  <span>{child.label}</span>
-                </a>
+          {config.children.map((child) => (
+            <li key={child.href}>{renderNavChildLink(child, pathname, onNavigate)}</li>
+          ))}
+          {financeiroChildren.length > 0 ? (
+            <>
+              <li className="pt-[var(--space-2)]">
+                <span className="block px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
+                  {TFD_FINANCEIRO_SECTION_LABEL}
+                </span>
               </li>
-            )
-          })}
+              {financeiroChildren.map((child) => (
+                <li key={`financeiro-${child.href}`}>
+                  {renderNavChildLink(child, pathname, onNavigate)}
+                </li>
+              ))}
+            </>
+          ) : null}
         </ul>
       ) : null}
     </div>
@@ -219,6 +256,8 @@ export function Sidebar({
   onNavigate,
   showAdminNav = false,
   showTfdConfigNav = false,
+  tfdConfigHref,
+  tfdFinanceiroNav = [],
   systemName = 'Sistema de Saúde',
 }: SidebarProps) {
   const activeModuleFromPath = resolveActiveModuleKey(pathname)
@@ -239,7 +278,8 @@ export function Sidebar({
   const dashboardActive = isActivePath(pathname, SAUDE_SYSTEM_DASHBOARD.href)
   const DashboardIcon = SAUDE_SYSTEM_DASHBOARD.icon
   const ConfigIcon = SAUDE_CONFIG_NAV.icon
-  const configActive = pathname.startsWith('/saude/tfd/configuracoes')
+  const configActive = pathname.startsWith(SAUDE_CONFIG_NAV.basePath)
+  const tfdConfigLinkHref = tfdConfigHref ?? SAUDE_CONFIG_NAV.basePath
 
   return (
     <nav
@@ -299,6 +339,8 @@ export function Sidebar({
         <ul className="flex flex-col gap-[var(--space-2)]">
           {SAUDE_MODULES_NAV.map((mod) => {
             const active = isModuleActive(modules, mod.moduleKey)
+            const financeiroChildren =
+              mod.moduleKey === 'tfd' && active ? tfdFinanceiroNav : undefined
             return (
               <li key={mod.moduleKey}>
                 <SaudeModuleAccordion
@@ -307,6 +349,7 @@ export function Sidebar({
                   expanded={expandedModuleKey === mod.moduleKey}
                   pathname={pathname}
                   collapsed={collapsed}
+                  financeiroChildren={financeiroChildren}
                   onToggle={() => handleToggleModule(mod.moduleKey)}
                   onNavigate={onNavigate}
                 />
@@ -345,10 +388,10 @@ export function Sidebar({
           </ul>
         ) : null}
 
-        {showTfdConfigNav ? (
+        {showTfdConfigNav && tfdConfigHref ? (
           <div className="mt-auto border-t border-[var(--color-border)] pt-[var(--space-4)]">
             <a
-              href={SAUDE_CONFIG_NAV.href}
+              href={tfdConfigLinkHref}
               onClick={onNavigate}
               title={collapsed ? SAUDE_CONFIG_NAV.label : undefined}
               aria-current={configActive ? 'page' : undefined}

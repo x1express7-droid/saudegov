@@ -55,6 +55,9 @@ export {
   SAUDE_MODULES_NAV,
   SAUDE_SYSTEM_DASHBOARD,
   SAUDE_CONFIG_NAV,
+  TFD_FINANCEIRO_NAV_CATALOG,
+  TFD_FINANCEIRO_SECTION_LABEL,
+  attachTfdFinanceiroNavIcons,
 } from './config/saude-modules-nav'
 export type {
   SaudeModuleNavConfig,

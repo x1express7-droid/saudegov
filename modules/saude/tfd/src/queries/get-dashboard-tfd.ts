@@ -1,11 +1,10 @@
 import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
-import type { PrismaClient } from '@saude/core-db'
 import type { TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
 
 import { TFD_PERMISSIONS } from '../permissions'
-import type { TfdDashboardOutput, TfdDashboardSaldoItem, TfdFonteRecursoValor } from '../types/tfd.types'
-import { calcSaldoDisponivel } from '../utils/saldo'
+import type { TfdDashboardOutput } from '../types/tfd.types'
+import { loadDashboardSaldos } from './dashboard-saldos-shared'
 
 const MS_POR_DIA = 24 * 60 * 60 * 1000
 
@@ -17,32 +16,6 @@ const STATUS_APROVADOS: TfdStatusSolicitacao[] = [
   'PC_EM_ANALISE',
   'CONCLUIDO',
 ]
-
-const saldoSelect = {
-  id: true,
-  descricao: true,
-  fonte: true,
-  valor_total: true,
-  competencia_inicio: true,
-  competencia_fim: true,
-  ativo: true,
-  created_at: true,
-} as const
-
-type SaldoRowSelect = {
-  id: string
-  descricao: string
-  fonte: string
-  valor_total: { toString(): string } | number
-  competencia_inicio: Date
-  competencia_fim: Date
-  ativo: boolean
-  created_at: Date
-}
-
-function decimalToNumber(value: SaldoRowSelect['valor_total']): number {
-  return typeof value === 'number' ? value : Number(value)
-}
 
 function startOfCurrentMonthUtc(): Date {
   const now = new Date()
@@ -90,73 +63,6 @@ function calcTempoMedioAprovacaoDias(
 
   const media = durations.reduce((acc, value) => acc + value, 0) / durations.length
   return Math.round(media * 10) / 10
-}
-
-async function loadDashboardSaldos(
-  db: PrismaClient,
-  tenantId: string
-): Promise<TfdDashboardSaldoItem[]> {
-  const rows = await db.tfdSaldo.findMany({
-    where: { tenant_id: tenantId, ativo: true },
-    select: saldoSelect,
-    orderBy: { created_at: 'desc' },
-  })
-
-  if (rows.length === 0) {
-    return []
-  }
-
-  const saldoIds = rows.map((row) => row.id)
-
-  const [reservasAgg, consumosAgg] = await Promise.all([
-    db.tfdReservaSaldo.groupBy({
-      by: ['saldo_id'],
-      where: {
-        tenant_id: tenantId,
-        saldo_id: { in: saldoIds },
-        status: 'ATIVA',
-      },
-      _sum: { valor_estimado: true },
-    }),
-    db.tfdMovimentacaoSaldo.groupBy({
-      by: ['saldo_id'],
-      where: {
-        tenant_id: tenantId,
-        saldo_id: { in: saldoIds },
-        tipo: 'CONSUMO',
-      },
-      _sum: { valor: true },
-    }),
-  ])
-
-  const reservadoPorSaldo = new Map(
-    reservasAgg.map((item) => [item.saldo_id, Number(item._sum.valor_estimado ?? 0)])
-  )
-  const consumidoPorSaldo = new Map(
-    consumosAgg.map((item) => [item.saldo_id, Number(item._sum.valor ?? 0)])
-  )
-
-  return rows.map((row) => {
-    const valorTotal = decimalToNumber(row.valor_total)
-    const valorReservado = reservadoPorSaldo.get(row.id) ?? 0
-    const valorUtilizado = consumidoPorSaldo.get(row.id) ?? 0
-    const derivados = calcSaldoDisponivel({
-      valorTotal,
-      valorReservado,
-      valorConsumido: valorUtilizado,
-    })
-
-    return {
-      id: row.id,
-      descricao: row.descricao,
-      fonte: row.fonte as TfdFonteRecursoValor,
-      valorTotal,
-      valorReservado,
-      valorUtilizado,
-      valorDisponivel: derivados.valorDisponivel,
-      alertaBaixo: derivados.alertaBaixo,
-    }
-  })
 }
 
 /**

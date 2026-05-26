@@ -14,6 +14,7 @@ export const NOTIFICATION_EVENTS = {
   PRESTACAO_APROVADA: 'PRESTACAO_APROVADA',
   PRESTACAO_REJEITADA: 'PRESTACAO_REJEITADA',
   PROCESSO_CANCELADO: 'PROCESSO_CANCELADO',
+  SALDO_BAIXO: 'SALDO_BAIXO',
 } as const
 
 export type NotificationEvent =
@@ -74,6 +75,12 @@ export interface PrestacaoRejeitadaNotificationContext {
   observacoesGestor: string
 }
 
+/** Contexto de saldo abaixo de 20% — sem valores monetários ou dados sensíveis. */
+export interface SaldoBaixoNotificationContext {
+  nomeSaldo: string
+  percentualDisponivel: number
+}
+
 export interface NotificationMessage {
   titulo: string
   mensagem: string
@@ -96,6 +103,7 @@ export interface DispararNotificacaoInput {
     | PrestacaoEnviadaNotificationContext
     | PrestacaoDecisaoNotificationContext
     | PrestacaoRejeitadaNotificationContext
+    | SaldoBaixoNotificationContext
   /** Usuários a omitir (ex.: quem disparou a ação). */
   excludeUserIds?: string[]
   /** Destinatários explícitos; se omitido, resolve conforme o evento. */

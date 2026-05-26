@@ -28,6 +28,7 @@ import { buildPrestacaoAprovadaMessage } from './templates/prestacao-aprovada'
 import { buildPrestacaoEnviadaMessage } from './templates/prestacao-enviada'
 import { buildPrestacaoRejeitadaMessage } from './templates/prestacao-rejeitada'
 import { buildProcessoCanceladoMessage } from './templates/processo-cancelado'
+import { buildSaldoBaixoMessage } from './templates/saldo-baixo'
 import {
   NOTIFICATION_EVENTS,
   type DispararNotificacaoInput,
@@ -38,8 +39,12 @@ import {
   type PrestacaoDecisaoNotificationContext,
   type PrestacaoEnviadaNotificationContext,
   type PrestacaoRejeitadaNotificationContext,
+  type SaldoBaixoNotificationContext,
   type SolicitacaoTfdNotificationContext,
 } from './types'
+
+/** Gestor com acesso ao dashboard financeiro TFD (BUSINESS_RULES.md §1.14). */
+const PERMISSAO_VER_DASHBOARD_TFD = 'saude.tfd.ver_dashboard'
 
 function asSolicitacaoContext(
   context:
@@ -49,6 +54,7 @@ function asSolicitacaoContext(
     | PrestacaoEnviadaNotificationContext
     | PrestacaoDecisaoNotificationContext
     | PrestacaoRejeitadaNotificationContext
+    | SaldoBaixoNotificationContext
 ): SolicitacaoTfdNotificationContext {
   return context as SolicitacaoTfdNotificationContext
 }
@@ -90,6 +96,8 @@ function buildMessage(
       return buildPrestacaoRejeitadaMessage(input.context as PrestacaoRejeitadaNotificationContext)
     case NOTIFICATION_EVENTS.PROCESSO_CANCELADO:
       return buildProcessoCanceladoMessage(solicitacaoContext)
+    case NOTIFICATION_EVENTS.SALDO_BAIXO:
+      return buildSaldoBaixoMessage(input.context as SaldoBaixoNotificationContext)
     default: {
       const _exhaustive: never = evento
       throw new Error(`Evento de notificação não suportado: ${String(_exhaustive)}`)
@@ -145,6 +153,59 @@ async function resolverUsuariosSetorModulo(
   }
 
   return [...userIds]
+}
+
+function userHasPermission(permissions: unknown, permissionKey: string): boolean {
+  if (!permissions || typeof permissions !== 'object') {
+    return false
+  }
+
+  return (permissions as Record<string, boolean>)[permissionKey] === true
+}
+
+async function resolverGestoresVerDashboardModulo(
+  db: TenantDb,
+  tenantId: string,
+  modulo: string,
+  permissionKey: string,
+  excludeUserIds: string[]
+): Promise<string[]> {
+  const gestorIds = await resolverUsuariosSetorModulo(
+    db,
+    tenantId,
+    modulo,
+    ROLES_GESTOR_SETOR_MODULO,
+    excludeUserIds
+  )
+
+  if (gestorIds.length === 0) {
+    return []
+  }
+
+  const users = await db.user.findMany({
+    where: {
+      tenant_id: tenantId,
+      id: { in: gestorIds },
+      active: true,
+      deleted_at: null,
+    },
+    select: { id: true, permissions: true },
+  })
+
+  const excludeSet = new Set(excludeUserIds)
+  const destinatarios: string[] = []
+
+  for (const user of users) {
+    if (excludeSet.has(user.id)) {
+      continue
+    }
+
+    if (userHasPermission(user.permissions, permissionKey)) {
+      destinatarios.push(user.id)
+    }
+  }
+
+  return destinatarios
 }
 
 async function resolverDestinatariosSetorModulo(
@@ -285,6 +346,16 @@ async function resolverDestinatarios(
       input.tenantId,
       input.modulo,
       ROLES_GESTOR_SETOR_MODULO,
+      input.excludeUserIds ?? []
+    )
+  }
+
+  if (input.evento === NOTIFICATION_EVENTS.SALDO_BAIXO) {
+    return resolverGestoresVerDashboardModulo(
+      db,
+      input.tenantId,
+      input.modulo,
+      PERMISSAO_VER_DASHBOARD_TFD,
       input.excludeUserIds ?? []
     )
   }

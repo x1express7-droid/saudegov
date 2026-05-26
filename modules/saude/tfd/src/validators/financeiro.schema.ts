@@ -59,5 +59,35 @@ export const filtrosExtratoSchema = z.object({
   ...paginacaoExtratoFields,
 })
 
+/** Filtros do extrato para exportação CSV (sem paginação). @see API_CONTRACTS.md §7.4 */
+export const filtrosExtratoExportSchema = z.object({
+  saldoId: z.string().uuid('ID do saldo inválido.'),
+  dataInicio: isoDateField.optional(),
+  dataFim: isoDateField.optional(),
+})
+
+/** @see desativarSaldoTfd — inativa saldo sem apagar extrato. */
+export const desativarSaldoSchema = z.object({
+  saldoId: z.string().uuid('ID do saldo inválido.'),
+})
+
+/** Texto mínimo para justificativas operacionais — BUSINESS_RULES.md §1.13. */
+export const MIN_TEXTO_JUSTIFICATIVA_CHARS = 20
+
+/** @see estornarMovimentacaoSaldoTfd — BUSINESS_RULES.md §1.8 */
+export const estornarMovimentacaoSaldoSchema = z.object({
+  movimentacaoId: z.string().uuid('ID da movimentação inválido.'),
+  justificativa: z
+    .string()
+    .trim()
+    .min(
+      MIN_TEXTO_JUSTIFICATIVA_CHARS,
+      `A justificativa deve ter pelo menos ${MIN_TEXTO_JUSTIFICATIVA_CHARS} caracteres.`
+    ),
+})
+
 export type CriarSaldoInput = z.infer<typeof criarSaldoSchema>
 export type FiltrosExtratoInput = z.infer<typeof filtrosExtratoSchema>
+export type FiltrosExtratoExportInput = z.infer<typeof filtrosExtratoExportSchema>
+export type DesativarSaldoInput = z.infer<typeof desativarSaldoSchema>
+export type EstornarMovimentacaoSaldoInput = z.infer<typeof estornarMovimentacaoSaldoSchema>

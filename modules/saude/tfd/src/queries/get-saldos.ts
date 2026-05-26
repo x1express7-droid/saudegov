@@ -3,6 +3,7 @@ import { getPrismaForTenant } from '@saude/core-db'
 import type { PrismaClient } from '@saude/core-db'
 import { TFD_PERMISSIONS } from '../permissions'
 import type { SaldoListItem, TfdFonteRecursoValor } from '../types/tfd.types'
+import { sumValorConsumidoLiquidoPorSaldo } from '../utils/saldo-movimentacao'
 import { calcSaldoDisponivel } from '../utils/saldo'
 
 export interface GetSaldosFiltros {
@@ -28,7 +29,7 @@ function formatDateOnly(date: Date): string {
   return date.toISOString().slice(0, 10)
 }
 
-async function buildSaldoListItems(
+export async function buildSaldoListItems(
   db: PrismaClient,
   tenantId: string,
   rows: SaldoRowSelect[]
@@ -39,7 +40,7 @@ async function buildSaldoListItems(
 
   const saldoIds = rows.map((row) => row.id)
 
-  const [reservasAgg, consumosAgg] = await Promise.all([
+  const [reservasAgg, consumidoPorSaldo] = await Promise.all([
     db.tfdReservaSaldo.groupBy({
       by: ['saldo_id'],
       where: {
@@ -49,22 +50,11 @@ async function buildSaldoListItems(
       },
       _sum: { valor_estimado: true },
     }),
-    db.tfdMovimentacaoSaldo.groupBy({
-      by: ['saldo_id'],
-      where: {
-        tenant_id: tenantId,
-        saldo_id: { in: saldoIds },
-        tipo: 'CONSUMO',
-      },
-      _sum: { valor: true },
-    }),
+    sumValorConsumidoLiquidoPorSaldo(db, tenantId, saldoIds),
   ])
 
   const reservadoPorSaldo = new Map(
     reservasAgg.map((item) => [item.saldo_id, Number(item._sum.valor_estimado ?? 0)])
-  )
-  const consumidoPorSaldo = new Map(
-    consumosAgg.map((item) => [item.saldo_id, Number(item._sum.valor ?? 0)])
   )
 
   return rows.map((row) => {

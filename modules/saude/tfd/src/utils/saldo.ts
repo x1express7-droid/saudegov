@@ -1,13 +1,16 @@
 /**
  * Agregados de reservas e consumo para cálculo de saldo disponível.
- * Queries devem somar reservas com status ATIVA e movimentações tipo CONSUMO.
+ * `valorConsumido` deve ser o líquido de CONSUMO + impacto dos ESTORNOs
+ * (ver `sumValorConsumidoLiquido` em saldo-movimentacao.ts).
  * @see docs/BUSINESS_RULES.md §1.8
  */
 export interface CalcSaldoDisponivelInput {
   valorTotal: number
   /** SUM(reservas_saldo.valor_estimado WHERE status = 'ATIVA') */
   valorReservado: number
-  /** SUM(movimentacoes_saldo.valor WHERE tipo = 'CONSUMO') */
+  /**
+   * Consumo líquido: SUM(CONSUMO) + ajustes de ESTORNO sobre CONSUMO/CREDITO/LIBERACAO.
+   */
   valorConsumido: number
 }
 
@@ -29,7 +32,7 @@ function roundPercentual(value: number): number {
  * Calcula saldo disponível, percentual e flag de alerta visual.
  * Função pura — sem I/O.
  *
- * Disponível = valor_total - reservado (ATIVA) - consumido (CONSUMO)
+ * Disponível = valor_total - reservado (ATIVA) - consumido (líquido, inclui efeito de ESTORNO)
  */
 export function calcSaldoDisponivel(input: CalcSaldoDisponivelInput): CalcSaldoDisponivelResult {
   const { valorTotal, valorReservado, valorConsumido } = input

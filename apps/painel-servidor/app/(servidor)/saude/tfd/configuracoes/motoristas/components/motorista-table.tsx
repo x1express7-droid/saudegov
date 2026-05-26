@@ -1,6 +1,10 @@
 'use client'
 
-import { type TfdMotoristaListItem, type TfdServidorMotoristaOption } from '@saude/mod-saude-tfd/client'
+import {
+  formatCnhCategorias,
+  type TfdMotoristaListItem,
+  type TfdServidorMotoristaOption,
+} from '@saude/mod-saude-tfd/client'
 import { desativarMotoristaTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import { DeactivateDialog } from '@/app/(admin)/configuracoes/organograma/components/deactivate-dialog'
 
@@ -126,7 +130,9 @@ export function MotoristaTable({
         id: 'categoria',
         header: 'Categoria',
         cell: ({ row }) => (
-          <span className="font-medium text-[var(--color-text)]">{row.original.cnhCategoria}</span>
+          <span className="font-medium text-[var(--color-text)]">
+            {formatCnhCategorias(row.original.cnhCategoria)}
+          </span>
         ),
       },
       {
