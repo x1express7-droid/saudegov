@@ -70,8 +70,12 @@ export async function GET(
     return jsonForbidden('Link inválido ou expirado.')
   }
 
+  const fmtParam = url.searchParams.get('fmt')
+  const formato =
+    fmtParam === 'csv' ? 'csv' : fmtParam === 'json' ? 'json' : 'pdf'
+
   try {
-    const absolutePath = resolveLocalExportPath(tenantId, exportId)
+    const absolutePath = resolveLocalExportPath(tenantId, exportId, formato)
 
     try {
       await access(absolutePath)
@@ -82,11 +86,24 @@ export async function GET(
     const nodeStream = createReadStream(absolutePath)
     const webStream = Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>
 
+    const contentType =
+      formato === 'csv'
+        ? 'text/csv; charset=utf-8'
+        : formato === 'json'
+          ? 'application/json; charset=utf-8'
+          : 'application/pdf'
+    const filename =
+      formato === 'csv'
+        ? `exportacao-${exportId}.csv`
+        : formato === 'json'
+          ? `exportacao-${exportId}.json`
+          : `relatorio-tfd-${exportId}.pdf`
+
     return new NextResponse(webStream, {
       status: 200,
       headers: {
-        'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="relatorio-tfd-${exportId}.pdf"`,
+        'Content-Type': contentType,
+        'Content-Disposition': `attachment; filename="${filename}"`,
         'Cache-Control': 'private, no-store',
       },
     })

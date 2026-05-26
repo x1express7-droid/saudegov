@@ -2,12 +2,10 @@ import 'server-only'
 
 import PDFDocument from 'pdfkit'
 
-export interface PdfRelatorioRodape {
-  municipio: string
-  competencia: string
-  dataEmissao: string
-  usuario: string
-}
+import { formatRodapeExport, type ExportRelatorioRodape } from '../utils/export-rodape'
+
+/** @deprecated Use `ExportRelatorioRodape` — mantido como alias de tipo. */
+export type PdfRelatorioRodape = ExportRelatorioRodape
 
 export interface PdfTabelaColuna {
   header: string
@@ -22,7 +20,7 @@ export interface GerarPdfRelatorioInput {
   colunas: PdfTabelaColuna[]
   linhas: Array<Record<string, string | number>>
   totais?: Array<{ label: string; value: string }>
-  rodape: PdfRelatorioRodape
+  rodape: ExportRelatorioRodape
 }
 
 function formatMoeda(valor: number): string {
@@ -38,14 +36,9 @@ function formatCelula(value: string | number): string {
 
 type PdfDoc = InstanceType<typeof PDFDocument>
 
-function desenharRodape(doc: PdfDoc, rodape: PdfRelatorioRodape): void {
+function desenharRodape(doc: PdfDoc, rodape: ExportRelatorioRodape): void {
   const y = doc.page.height - 50
-  const texto = [
-    rodape.municipio,
-    `Competência: ${rodape.competencia}`,
-    `Emitido em ${rodape.dataEmissao}`,
-    `Relatório gerado por ${rodape.usuario} — saudegov`,
-  ].join(' · ')
+  const texto = formatRodapeExport(rodape)
 
   doc
     .fontSize(8)

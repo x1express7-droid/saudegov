@@ -41,13 +41,28 @@ export {
   type PdfTabelaColuna,
 } from './pdf/gerador-pdf-relatorio'
 
+export { formatDataHoraBr, DEFAULT_EXPORT_TIMEZONE } from './utils/format-data-hora'
+
+export {
+  formatRodapeExport,
+  type ExportRelatorioRodape,
+} from './utils/export-rodape'
+
+export {
+  gerarCsvRelatorio,
+  type GerarCsvRelatorioInput,
+} from './csv/gerador-csv-relatorio'
+
 export {
   salvarExportTemporarioPdf,
+  salvarExportTemporarioCsv,
+  salvarExportTemporarioJson,
   gerarUrlDownloadExportTemporario,
   validarUrlAssinadaExport,
   resolveLocalExportPath,
   EXPORT_URL_EXPIRES_MINUTES,
   ExportStorageConfigError,
+  type ExportArquivoFormato,
   type SalvarExportTemporarioOutput,
   type GerarUrlDownloadExportOutput,
 } from './export-storage'

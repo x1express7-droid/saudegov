@@ -1,6 +1,8 @@
 'use client'
 
+import { exportarSolicitacoesTfdCsv } from '@saude/mod-saude-tfd/actions/exportacao'
 import { TfdSolicitacaoListItem } from '@saude/mod-saude-tfd/client'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   Button,
   DataTable,
@@ -17,8 +19,27 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 
+import { TfdExportCsvButton } from './tfd-export-csv-button'
+
 const TFD_DETAIL_BASE = '/saude/tfd'
 const DEFAULT_PER_PAGE = 20
+
+const STATUS_VALUES = new Set<string>([
+  'RASCUNHO',
+  'ENVIADO',
+  'EM_ANALISE',
+  'PENDENTE',
+  'APROVADO',
+  'NEGADO',
+  'AGENDADO',
+  'EM_VIAGEM',
+  'AGUARDANDO_PC',
+  'PC_EM_ANALISE',
+  'CONCLUIDO',
+  'CANCELADO',
+])
+
+const URGENCIA_VALUES = new Set<string>(['BAIXA', 'INTERMEDIARIA', 'GRAVE', 'MUITO_URGENTE'])
 
 const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
   CONSULTA: 'Consulta',
@@ -69,9 +90,22 @@ function buildQueryString(
 export interface SolicitacaoListaProps {
   items: TfdSolicitacaoListItem[]
   total: number
+  session: SaudeMunicSession
 }
 
-export function SolicitacaoLista({ items, total }: SolicitacaoListaProps) {
+function buildExportFiltros(searchParams: URLSearchParams) {
+  const status = searchParams.get('status')?.trim()
+  const urgencia = searchParams.get('urgencia')?.trim()
+  const protocolo = searchParams.get('protocolo')?.trim()
+
+  return {
+    ...(status && STATUS_VALUES.has(status) ? { status } : {}),
+    ...(urgencia && URGENCIA_VALUES.has(urgencia) ? { urgencia } : {}),
+    ...(protocolo ? { protocolo } : {}),
+  }
+}
+
+export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -174,19 +208,27 @@ export function SolicitacaoLista({ items, total }: SolicitacaoListaProps) {
   )
 
   return (
-    <DataTable
-      data={items}
-      columns={columns}
-      pagination={{ page, perPage, total }}
-      onPaginationChange={handlePaginationChange}
-      onRowClick={handleRowClick}
-      emptyMessage="Nenhuma solicitação encontrada"
-      emptyDescription="Ajuste os filtros ou abra uma nova solicitação para iniciar o fluxo TFD."
-      emptyCta={
-        <Button variant="primary" asChild>
-          <Link href="/saude/tfd/nova">Nova solicitação</Link>
-        </Button>
-      }
-    />
+    <div className="flex flex-col gap-[var(--space-4)]">
+      <div className="flex justify-end">
+        <TfdExportCsvButton
+          session={session}
+          onExport={() => exportarSolicitacoesTfdCsv(buildExportFiltros(searchParams))}
+        />
+      </div>
+      <DataTable
+        data={items}
+        columns={columns}
+        pagination={{ page, perPage, total }}
+        onPaginationChange={handlePaginationChange}
+        onRowClick={handleRowClick}
+        emptyMessage="Nenhuma solicitação encontrada"
+        emptyDescription="Ajuste os filtros ou abra uma nova solicitação para iniciar o fluxo TFD."
+        emptyCta={
+          <Button variant="primary" asChild>
+            <Link href="/saude/tfd/nova">Nova solicitação</Link>
+          </Button>
+        }
+      />
+    </div>
   )
 }

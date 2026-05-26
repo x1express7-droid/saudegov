@@ -109,37 +109,32 @@ const rodape = `Relatório gerado por ${session.user.name} em ${formatData(new D
 
 ## Passo 5 — Exportação completa por município (Painel Dev)
 
-```typescript
-// Apenas SUPERADMIN — via Painel Dev
-// Exporta TODOS os dados do município filtrados por tenant_id
+**Local:** `apps/painel-dev/lib/actions/exportar-dados-municipio.ts` (não colocar no módulo TFD).
 
-export async function exportarDadosMunicipio(tenantId: string) {
-  // Verificar SUPERADMIN antes de qualquer coisa
-  const session = await requireTenantRole('SUPERADMIN')
+```typescript
+// SUPERADMIN — tenantId no input validado, NÃO na sessão
+export async function exportarDadosMunicipio(rawInput: unknown) {
+  // 1) Validar tenant existe e active (getPrismaAdmin)
+  // 2) requireSuperAdmin()
+  // 3) exportacaoMunicipioSchema (formato json|csv, modulos?, período?)
 
   const db = await getPrismaForTenant(tenantId)
+  const coleta = await coletarDadosMunicipioExport({ tenantId, modulos, ... })
 
-  // Exportar por módulo — cada query com tenant_id explícito
-  const pacientes = await db.saudeBasePaciente.findMany({
-    where: { tenant_id: tenantId },
-    select: {
-      // CPF mascarado — dados identificáveis requerem autorização explícita
-      nome: true,
-      cns: true,
-      // cpf: false — não incluir por padrão
-    }
-  })
+  // TFD completo; outros módulos → modulosSemDados (DT-004)
+  // JSON: metadados + dados + formatRodapeExport
+  // CSV: gerarCsvRelatorio + rodapé §1.12
 
-  // Registrar exportação
   await createAuditLog({
     tenantId,
-    userId: session.user.id,
     acao: 'EXPORT',
-    entidade: 'tenant_completo',
-    payloadDepois: { solicitadoPor: session.user.email, timestamp: new Date() },
+    entidade: 'plataforma_exportacao_municipio',
+    payloadDepois: { tenantId, modulos, formato, totalRegistros, expiresAt },
   })
 }
 ```
+
+Ver `API_CONTRACTS.md` §3.5 e `BUSINESS_RULES.md` §1.12.
 
 ---
 

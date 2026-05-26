@@ -118,7 +118,7 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
       {protocoloRascunho ? (
         <Alert variant="info" role="status">
           Rascunho salvo com protocolo <strong>{protocoloRascunho}</strong>. Você pode
-          localizá-lo na fila e concluir o envio quando o laudo estiver pronto.
+          localizá-lo na fila e concluir o envio quando desejar.
         </Alert>
       ) : null}
 
@@ -139,7 +139,7 @@ export default async function TfdFilaPage({ searchParams }: TfdFilaPageProps) {
           </p>
         }
       >
-        <SolicitacaoLista items={items} total={total} />
+        <SolicitacaoLista items={items} total={total} session={session} />
       </Suspense>
     </div>
   )

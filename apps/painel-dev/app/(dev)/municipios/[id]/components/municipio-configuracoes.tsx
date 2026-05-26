@@ -6,6 +6,7 @@ import { useState, useTransition } from 'react'
 import { alterarModulo } from '../../../../../lib/actions/alterar-modulo'
 import { alterarStatusMunicipio } from '../../../../../lib/actions/alterar-status-municipio'
 import type { MunicipioDetalhe } from '../../../../../lib/queries/get-municipio'
+import { MunicipioExportacaoDialog } from './municipio-exportacao-dialog'
 import { TfdSaldoLista } from './tfd-saldo-lista'
 
 const MODULOS_DISPONIVEIS = [
@@ -262,6 +263,8 @@ export function MunicipioConfiguracoes({
           ))}
         </ul>
       </section>
+
+      <MunicipioExportacaoDialog municipio={municipio} />
 
       <section className="flex flex-col gap-4 rounded-lg border border-neutral-200 p-6 dark:border-neutral-800">
         <h2 className="text-lg font-medium">Status</h2>

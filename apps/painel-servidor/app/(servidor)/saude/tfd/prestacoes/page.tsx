@@ -42,7 +42,7 @@ export default async function TfdPrestacoesPage({ searchParams }: TfdPrestacoesP
   }
 
   await assertModuleActive('saude', 'tfd')
-  await requireTenantRole('SERVIDOR')
+  const session = await requireTenantRole('SERVIDOR')
 
   const params = await searchParams
   const page = parsePositiveInt(params.page, 1)
@@ -82,7 +82,7 @@ export default async function TfdPrestacoesPage({ searchParams }: TfdPrestacoesP
           </p>
         }
       >
-        <PrestacaoLista items={items} total={total} />
+        <PrestacaoLista items={items} total={total} session={session} />
       </Suspense>
     </div>
   )

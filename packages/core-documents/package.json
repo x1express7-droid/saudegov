@@ -9,6 +9,7 @@
     "./storage": "./src/storage.ts",
     "./storage-types": "./src/storage.types.ts",
     "./pdf": "./src/pdf/gerador-pdf-relatorio.ts",
+    "./csv": "./src/csv/gerador-csv-relatorio.ts",
     "./export-storage": "./src/export-storage.ts"
   },
   "scripts": {

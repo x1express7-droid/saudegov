@@ -1,12 +1,21 @@
 'use client'
 
 import {
+  TFD_PERMISSIONS,
+  type RelatorioSelectOption,
+} from '@saude/mod-saude-tfd/client'
+import {
   buscarPacienteRelatorioTfdAction,
   gerarRelatorioCompetenciaTfd,
+  gerarRelatorioMotoristaTfd,
   gerarRelatorioPacienteTfd,
+  gerarRelatorioPrestadorTfd,
+  gerarRelatorioProducaoMensalTfd,
 } from '@saude/mod-saude-tfd/actions/relatorio'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import { Alert, Button, Card, Input, Select } from '@saude/ui'
-import { useCallback, useState } from 'react'
+import { PermissionGate } from '@saude/ui/permission-gate'
+import { useCallback, useMemo, useState } from 'react'
 
 const MESES = [
   { value: 1, label: 'Janeiro' },
@@ -28,14 +37,53 @@ interface PacienteOpcao {
   nome: string
 }
 
-export function TfdRelatoriosPanel() {
+export interface TfdRelatoriosPanelProps {
+  session: SaudeMunicSession
+  prestadoresOpcoes: RelatorioSelectOption[]
+  motoristasOpcoes: RelatorioSelectOption[]
+}
+
+function defaultPeriodoMesAtual(): { dataInicio: string; dataFim: string } {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return {
+    dataInicio: `${year}-${month}-01`,
+    dataFim: `${year}-${month}-${day}`,
+  }
+}
+
+export function TfdRelatoriosPanel({
+  session,
+  prestadoresOpcoes,
+  motoristasOpcoes,
+}: TfdRelatoriosPanelProps) {
   const anoAtual = new Date().getFullYear()
   const mesAtual = new Date().getMonth() + 1
+  const periodoInicial = useMemo(() => defaultPeriodoMesAtual(), [])
 
   const [mes, setMes] = useState(String(mesAtual))
   const [ano, setAno] = useState(String(anoAtual))
   const [loadingCompetencia, setLoadingCompetencia] = useState(false)
   const [erroCompetencia, setErroCompetencia] = useState<string | null>(null)
+
+  const [mesProducao, setMesProducao] = useState(String(mesAtual))
+  const [anoProducao, setAnoProducao] = useState(String(anoAtual))
+  const [loadingProducao, setLoadingProducao] = useState(false)
+  const [erroProducao, setErroProducao] = useState<string | null>(null)
+
+  const [dataInicioPrestador, setDataInicioPrestador] = useState(periodoInicial.dataInicio)
+  const [dataFimPrestador, setDataFimPrestador] = useState(periodoInicial.dataFim)
+  const [prestadorId, setPrestadorId] = useState('')
+  const [loadingPrestador, setLoadingPrestador] = useState(false)
+  const [erroPrestador, setErroPrestador] = useState<string | null>(null)
+
+  const [dataInicioMotorista, setDataInicioMotorista] = useState(periodoInicial.dataInicio)
+  const [dataFimMotorista, setDataFimMotorista] = useState(periodoInicial.dataFim)
+  const [motoristaId, setMotoristaId] = useState('')
+  const [loadingMotorista, setLoadingMotorista] = useState(false)
+  const [erroMotorista, setErroMotorista] = useState<string | null>(null)
 
   const [termoPaciente, setTermoPaciente] = useState('')
   const [buscandoPaciente, setBuscandoPaciente] = useState(false)
@@ -43,6 +91,22 @@ export function TfdRelatoriosPanel() {
   const [pacienteSelecionado, setPacienteSelecionado] = useState<PacienteOpcao | null>(null)
   const [loadingPaciente, setLoadingPaciente] = useState(false)
   const [erroPaciente, setErroPaciente] = useState<string | null>(null)
+
+  const prestadorSelectOptions = useMemo(
+    () => [
+      { value: '', label: 'Todos os prestadores' },
+      ...prestadoresOpcoes.map((item) => ({ value: item.id, label: item.nome })),
+    ],
+    [prestadoresOpcoes]
+  )
+
+  const motoristaSelectOptions = useMemo(
+    () => [
+      { value: '', label: 'Todos os motoristas' },
+      ...motoristasOpcoes.map((item) => ({ value: item.id, label: item.nome })),
+    ],
+    [motoristasOpcoes]
+  )
 
   const abrirDownload = useCallback((url: string) => {
     window.open(url, '_blank', 'noopener,noreferrer')
@@ -67,6 +131,74 @@ export function TfdRelatoriosPanel() {
       abrirDownload(result.data.downloadUrl)
     } finally {
       setLoadingCompetencia(false)
+    }
+  }
+
+  async function handleGerarProducao(event: React.FormEvent) {
+    event.preventDefault()
+    setErroProducao(null)
+    setLoadingProducao(true)
+
+    try {
+      const result = await gerarRelatorioProducaoMensalTfd({
+        mes: Number.parseInt(mesProducao, 10),
+        ano: Number.parseInt(anoProducao, 10),
+      })
+
+      if (!result.success) {
+        setErroProducao(result.error)
+        return
+      }
+
+      abrirDownload(result.data.downloadUrl)
+    } finally {
+      setLoadingProducao(false)
+    }
+  }
+
+  async function handleGerarPrestador(event: React.FormEvent) {
+    event.preventDefault()
+    setErroPrestador(null)
+    setLoadingPrestador(true)
+
+    try {
+      const result = await gerarRelatorioPrestadorTfd({
+        dataInicio: dataInicioPrestador,
+        dataFim: dataFimPrestador,
+        ...(prestadorId ? { prestadorId } : {}),
+      })
+
+      if (!result.success) {
+        setErroPrestador(result.error)
+        return
+      }
+
+      abrirDownload(result.data.downloadUrl)
+    } finally {
+      setLoadingPrestador(false)
+    }
+  }
+
+  async function handleGerarMotorista(event: React.FormEvent) {
+    event.preventDefault()
+    setErroMotorista(null)
+    setLoadingMotorista(true)
+
+    try {
+      const result = await gerarRelatorioMotoristaTfd({
+        dataInicio: dataInicioMotorista,
+        dataFim: dataFimMotorista,
+        ...(motoristaId ? { motoristaId } : {}),
+      })
+
+      if (!result.success) {
+        setErroMotorista(result.error)
+        return
+      }
+
+      abrirDownload(result.data.downloadUrl)
+    } finally {
+      setLoadingMotorista(false)
     }
   }
 
@@ -172,9 +304,193 @@ export function TfdRelatoriosPanel() {
                 {erroCompetencia}
               </Alert>
             ) : null}
-            <Button type="submit" variant="primary" disabled={loadingCompetencia} aria-busy={loadingCompetencia}>
-              {loadingCompetencia ? 'Gerando PDF…' : 'Gerar relatório'}
-            </Button>
+            <PermissionGate session={session} permission={TFD_PERMISSIONS.EXPORTAR_RELATORIO}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={loadingCompetencia}
+                aria-busy={loadingCompetencia}
+              >
+                {loadingCompetencia ? 'Gerando PDF…' : 'Gerar relatório'}
+              </Button>
+            </PermissionGate>
+          </form>
+        </Card>
+
+        <Card
+          header={
+            <h3 className="text-[length:var(--text-base)] font-semibold text-[var(--color-text)]">
+              Produção mensal
+            </h3>
+          }
+        >
+          <form className="flex flex-col gap-[var(--space-4)]" onSubmit={handleGerarProducao}>
+            <div className="grid gap-[var(--space-3)] sm:grid-cols-2">
+              <Select
+                id="relatorio-producao-mes"
+                label="Mês"
+                value={mesProducao}
+                onValueChange={setMesProducao}
+                disabled={loadingProducao}
+                options={MESES.map((item) => ({
+                  value: String(item.value),
+                  label: item.label,
+                }))}
+              />
+              <div className="flex flex-col gap-[var(--space-1)]">
+                <label
+                  htmlFor="relatorio-producao-ano"
+                  className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]"
+                >
+                  Ano
+                </label>
+                <Input
+                  id="relatorio-producao-ano"
+                  type="number"
+                  min={2000}
+                  max={2100}
+                  value={anoProducao}
+                  onChange={(event) => setAnoProducao(event.target.value)}
+                  disabled={loadingProducao}
+                />
+              </div>
+            </div>
+            {erroProducao ? (
+              <Alert variant="error" role="alert">
+                {erroProducao}
+              </Alert>
+            ) : null}
+            <PermissionGate session={session} permission={TFD_PERMISSIONS.EXPORTAR_RELATORIO}>
+              <Button type="submit" variant="primary" disabled={loadingProducao} aria-busy={loadingProducao}>
+                {loadingProducao ? 'Gerando PDF…' : 'Gerar relatório'}
+              </Button>
+            </PermissionGate>
+          </form>
+        </Card>
+
+        <Card
+          header={
+            <h3 className="text-[length:var(--text-base)] font-semibold text-[var(--color-text)]">
+              Por prestador
+            </h3>
+          }
+        >
+          <form className="flex flex-col gap-[var(--space-4)]" onSubmit={handleGerarPrestador}>
+            <div className="grid gap-[var(--space-3)] sm:grid-cols-2">
+              <div className="flex flex-col gap-[var(--space-1)]">
+                <label
+                  htmlFor="relatorio-prestador-inicio"
+                  className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]"
+                >
+                  Data início
+                </label>
+                <Input
+                  id="relatorio-prestador-inicio"
+                  type="date"
+                  value={dataInicioPrestador}
+                  onChange={(event) => setDataInicioPrestador(event.target.value)}
+                  disabled={loadingPrestador}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-[var(--space-1)]">
+                <label
+                  htmlFor="relatorio-prestador-fim"
+                  className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]"
+                >
+                  Data fim
+                </label>
+                <Input
+                  id="relatorio-prestador-fim"
+                  type="date"
+                  value={dataFimPrestador}
+                  onChange={(event) => setDataFimPrestador(event.target.value)}
+                  disabled={loadingPrestador}
+                  required
+                />
+              </div>
+            </div>
+            <Select
+              id="relatorio-prestador-id"
+              label="Prestador"
+              value={prestadorId}
+              onValueChange={setPrestadorId}
+              disabled={loadingPrestador}
+              options={prestadorSelectOptions}
+            />
+            {erroPrestador ? (
+              <Alert variant="error" role="alert">
+                {erroPrestador}
+              </Alert>
+            ) : null}
+            <PermissionGate session={session} permission={TFD_PERMISSIONS.EXPORTAR_RELATORIO}>
+              <Button type="submit" variant="primary" disabled={loadingPrestador} aria-busy={loadingPrestador}>
+                {loadingPrestador ? 'Gerando PDF…' : 'Gerar relatório'}
+              </Button>
+            </PermissionGate>
+          </form>
+        </Card>
+
+        <Card
+          header={
+            <h3 className="text-[length:var(--text-base)] font-semibold text-[var(--color-text)]">
+              Por motorista
+            </h3>
+          }
+        >
+          <form className="flex flex-col gap-[var(--space-4)]" onSubmit={handleGerarMotorista}>
+            <div className="grid gap-[var(--space-3)] sm:grid-cols-2">
+              <div className="flex flex-col gap-[var(--space-1)]">
+                <label
+                  htmlFor="relatorio-motorista-inicio"
+                  className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]"
+                >
+                  Data início
+                </label>
+                <Input
+                  id="relatorio-motorista-inicio"
+                  type="date"
+                  value={dataInicioMotorista}
+                  onChange={(event) => setDataInicioMotorista(event.target.value)}
+                  disabled={loadingMotorista}
+                  required
+                />
+              </div>
+              <div className="flex flex-col gap-[var(--space-1)]">
+                <label
+                  htmlFor="relatorio-motorista-fim"
+                  className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]"
+                >
+                  Data fim
+                </label>
+                <Input
+                  id="relatorio-motorista-fim"
+                  type="date"
+                  value={dataFimMotorista}
+                  onChange={(event) => setDataFimMotorista(event.target.value)}
+                  disabled={loadingMotorista}
+                  required
+                />
+              </div>
+            </div>
+            <Select
+              id="relatorio-motorista-id"
+              label="Motorista"
+              value={motoristaId}
+              onValueChange={setMotoristaId}
+              disabled={loadingMotorista}
+              options={motoristaSelectOptions}
+            />
+            {erroMotorista ? (
+              <Alert variant="error" role="alert">
+                {erroMotorista}
+              </Alert>
+            ) : null}
+            <PermissionGate session={session} permission={TFD_PERMISSIONS.EXPORTAR_RELATORIO}>
+              <Button type="submit" variant="primary" disabled={loadingMotorista} aria-busy={loadingMotorista}>
+                {loadingMotorista ? 'Gerando PDF…' : 'Gerar relatório'}
+              </Button>
+            </PermissionGate>
           </form>
         </Card>
 
@@ -242,14 +558,16 @@ export function TfdRelatoriosPanel() {
               </Alert>
             ) : null}
 
-            <Button
-              type="submit"
-              variant="primary"
-              disabled={loadingPaciente || !pacienteSelecionado}
-              aria-busy={loadingPaciente}
-            >
-              {loadingPaciente ? 'Gerando PDF…' : 'Gerar relatório'}
-            </Button>
+            <PermissionGate session={session} permission={TFD_PERMISSIONS.EXPORTAR_RELATORIO}>
+              <Button
+                type="submit"
+                variant="primary"
+                disabled={loadingPaciente || !pacienteSelecionado}
+                aria-busy={loadingPaciente}
+              >
+                {loadingPaciente ? 'Gerando PDF…' : 'Gerar relatório'}
+              </Button>
+            </PermissionGate>
           </form>
         </Card>
       </div>

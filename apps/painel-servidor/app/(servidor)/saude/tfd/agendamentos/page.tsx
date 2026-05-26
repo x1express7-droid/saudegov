@@ -67,7 +67,7 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
   }
 
   await assertModuleActive('saude', 'tfd')
-  await requireTenantRole('SERVIDOR')
+  const session = await requireTenantRole('SERVIDOR')
 
   const params = await searchParams
 
@@ -136,7 +136,7 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
           </p>
         }
       >
-        <AgendamentoLista items={items} total={total} />
+        <AgendamentoLista items={items} total={total} session={session} />
       </Suspense>
     </div>
   )

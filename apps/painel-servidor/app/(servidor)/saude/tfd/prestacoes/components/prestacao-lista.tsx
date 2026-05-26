@@ -1,6 +1,8 @@
 'use client'
 
+import { exportarPrestacoesTfdCsv } from '@saude/mod-saude-tfd/actions/exportacao'
 import { TfdPrestacaoListItem } from '@saude/mod-saude-tfd/client'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   Badge,
   DataTable,
@@ -12,8 +14,12 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 
+import { TfdExportCsvButton } from '../../components/tfd-export-csv-button'
+
 const TFD_DETAIL_BASE = '/saude/tfd'
 const DEFAULT_PER_PAGE = 20
+
+const PRESTACAO_STATUS_VALUES = new Set<string>(['PENDENTE', 'ENVIADA', 'APROVADA', 'REJEITADA'])
 
 const PRESTACAO_STATUS_LABEL: Record<string, string> = {
   PENDENTE: 'Pendente',
@@ -72,9 +78,17 @@ function buildQueryString(
 export interface PrestacaoListaProps {
   items: TfdPrestacaoListItem[]
   total: number
+  session: SaudeMunicSession
 }
 
-export function PrestacaoLista({ items, total }: PrestacaoListaProps) {
+function buildExportFiltros(searchParams: URLSearchParams) {
+  const status = searchParams.get('status')?.trim()
+  return {
+    ...(status && PRESTACAO_STATUS_VALUES.has(status) ? { status } : {}),
+  }
+}
+
+export function PrestacaoLista({ items, total, session }: PrestacaoListaProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -164,20 +178,36 @@ export function PrestacaoLista({ items, total }: PrestacaoListaProps) {
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        titulo="Nenhuma prestação de contas encontrada"
-        descricao="Ajuste os filtros ou registre o retorno de viagens para iniciar prestações."
-      />
+      <div className="flex flex-col gap-[var(--space-4)]">
+        <div className="flex justify-end">
+          <TfdExportCsvButton
+            session={session}
+            onExport={() => exportarPrestacoesTfdCsv(buildExportFiltros(searchParams))}
+          />
+        </div>
+        <EmptyState
+          titulo="Nenhuma prestação de contas encontrada"
+          descricao="Ajuste os filtros ou registre o retorno de viagens para iniciar prestações."
+        />
+      </div>
     )
   }
 
   return (
-    <DataTable
-      data={items}
-      columns={columns}
-      pagination={{ page, perPage, total }}
-      onPaginationChange={handlePaginationChange}
-      emptyMessage="Nenhuma prestação de contas encontrada."
-    />
+    <div className="flex flex-col gap-[var(--space-4)]">
+      <div className="flex justify-end">
+        <TfdExportCsvButton
+          session={session}
+          onExport={() => exportarPrestacoesTfdCsv(buildExportFiltros(searchParams))}
+        />
+      </div>
+      <DataTable
+        data={items}
+        columns={columns}
+        pagination={{ page, perPage, total }}
+        onPaginationChange={handlePaginationChange}
+        emptyMessage="Nenhuma prestação de contas encontrada."
+      />
+    </div>
   )
 }

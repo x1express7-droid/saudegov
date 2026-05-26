@@ -1,6 +1,8 @@
 'use client'
 
+import { exportarAgendamentosTfdCsv } from '@saude/mod-saude-tfd/actions/exportacao'
 import { TfdAgendamentoListItem } from '@saude/mod-saude-tfd/client'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   DataTable,
   EmptyState,
@@ -12,8 +14,15 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 
+import { TfdExportCsvButton } from '../../components/tfd-export-csv-button'
+
 const TFD_DETAIL_BASE = '/saude/tfd'
 const DEFAULT_PER_PAGE = 20
+
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
+
+const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/
 
 const VIAGEM_STATUS_LABEL: Record<string, string> = {
   AGENDADA: 'Agendada',
@@ -95,9 +104,24 @@ function Lembrete48hIcon({ item }: { item: TfdAgendamentoListItem }) {
 export interface AgendamentoListaProps {
   items: TfdAgendamentoListItem[]
   total: number
+  session: SaudeMunicSession
 }
 
-export function AgendamentoLista({ items, total }: AgendamentoListaProps) {
+function buildExportFiltros(searchParams: URLSearchParams) {
+  const dataInicio = searchParams.get('dataInicio')?.trim()
+  const dataFim = searchParams.get('dataFim')?.trim()
+  const motoristaId = searchParams.get('motoristaId')?.trim()
+  const veiculoId = searchParams.get('veiculoId')?.trim()
+
+  return {
+    ...(dataInicio && DATE_REGEX.test(dataInicio) ? { dataInicio } : {}),
+    ...(dataFim && DATE_REGEX.test(dataFim) ? { dataFim } : {}),
+    ...(motoristaId && UUID_REGEX.test(motoristaId) ? { motoristaId } : {}),
+    ...(veiculoId && UUID_REGEX.test(veiculoId) ? { veiculoId } : {}),
+  }
+}
+
+export function AgendamentoLista({ items, total, session }: AgendamentoListaProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -206,22 +230,38 @@ export function AgendamentoLista({ items, total }: AgendamentoListaProps) {
 
   if (items.length === 0) {
     return (
-      <EmptyState
-        icon={<Calendar className="size-6" aria-hidden="true" />}
-        titulo="Nenhum agendamento encontrado."
-        descricao="Ajuste o período dos filtros ou limpe-os para ver mais viagens."
-      />
+      <div className="flex flex-col gap-[var(--space-4)]">
+        <div className="flex justify-end">
+          <TfdExportCsvButton
+            session={session}
+            onExport={() => exportarAgendamentosTfdCsv(buildExportFiltros(searchParams))}
+          />
+        </div>
+        <EmptyState
+          icon={<Calendar className="size-6" aria-hidden="true" />}
+          titulo="Nenhum agendamento encontrado."
+          descricao="Ajuste o período dos filtros ou limpe-os para ver mais viagens."
+        />
+      </div>
     )
   }
 
   return (
-    <DataTable
-      data={items}
-      columns={columns}
-      pagination={{ page, perPage, total }}
-      onPaginationChange={handlePaginationChange}
-      onRowClick={handleRowClick}
-      emptyMessage="Nenhum agendamento encontrado."
-    />
+    <div className="flex flex-col gap-[var(--space-4)]">
+      <div className="flex justify-end">
+        <TfdExportCsvButton
+          session={session}
+          onExport={() => exportarAgendamentosTfdCsv(buildExportFiltros(searchParams))}
+        />
+      </div>
+      <DataTable
+        data={items}
+        columns={columns}
+        pagination={{ page, perPage, total }}
+        onPaginationChange={handlePaginationChange}
+        onRowClick={handleRowClick}
+        emptyMessage="Nenhum agendamento encontrado."
+      />
+    </div>
   )
 }

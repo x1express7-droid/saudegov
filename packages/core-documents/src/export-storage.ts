@@ -46,8 +46,14 @@ function signExportPayload(payload: string): string {
   return createHmac('sha256', secret).update(payload).digest('base64url')
 }
 
-function buildExportStoragePath(tenantId: string, exportId: string): string {
-  return `${tenantId}/exports/${exportId}.pdf`
+export type ExportArquivoFormato = 'pdf' | 'csv' | 'json'
+
+function buildExportStoragePath(
+  tenantId: string,
+  exportId: string,
+  formato: ExportArquivoFormato = 'pdf'
+): string {
+  return `${tenantId}/exports/${exportId}.${formato}`
 }
 
 function resolveAbsolutePath(storagePath: string): string {
@@ -72,11 +78,55 @@ export async function salvarExportTemporarioPdf(
   }
 
   const exportId = randomUUID()
-  const storagePath = buildExportStoragePath(tenantId, exportId)
+  const storagePath = buildExportStoragePath(tenantId, exportId, 'pdf')
   const absolutePath = resolveAbsolutePath(storagePath)
 
   await mkdir(path.dirname(absolutePath), { recursive: true })
   await writeFile(absolutePath, buffer)
+
+  return { exportId, storagePath }
+}
+
+/** Persiste CSV de exportação em storage local temporário (path por tenant). */
+export async function salvarExportTemporarioCsv(
+  tenantId: string,
+  conteudo: string
+): Promise<SalvarExportTemporarioOutput> {
+  const provider = process.env.STORAGE_PROVIDER?.trim().toLowerCase() ?? 'local'
+  if (provider !== 'local') {
+    throw new ExportStorageConfigError(
+      'Exportação temporária disponível apenas com STORAGE_PROVIDER=local nesta sprint.'
+    )
+  }
+
+  const exportId = randomUUID()
+  const storagePath = buildExportStoragePath(tenantId, exportId, 'csv')
+  const absolutePath = resolveAbsolutePath(storagePath)
+
+  await mkdir(path.dirname(absolutePath), { recursive: true })
+  await writeFile(absolutePath, Buffer.from(conteudo, 'utf-8'))
+
+  return { exportId, storagePath }
+}
+
+/** Persiste JSON de exportação em storage local temporário (path por tenant). */
+export async function salvarExportTemporarioJson(
+  tenantId: string,
+  conteudo: string
+): Promise<SalvarExportTemporarioOutput> {
+  const provider = process.env.STORAGE_PROVIDER?.trim().toLowerCase() ?? 'local'
+  if (provider !== 'local') {
+    throw new ExportStorageConfigError(
+      'Exportação temporária disponível apenas com STORAGE_PROVIDER=local nesta sprint.'
+    )
+  }
+
+  const exportId = randomUUID()
+  const storagePath = buildExportStoragePath(tenantId, exportId, 'json')
+  const absolutePath = resolveAbsolutePath(storagePath)
+
+  await mkdir(path.dirname(absolutePath), { recursive: true })
+  await writeFile(absolutePath, Buffer.from(conteudo, 'utf-8'))
 
   return { exportId, storagePath }
 }
@@ -90,15 +140,22 @@ export interface GerarUrlDownloadExportOutput {
 export function gerarUrlDownloadExportTemporario(
   tenantId: string,
   exportId: string,
-  expiresInMinutes: number = EXPORT_URL_EXPIRES_MINUTES
+  options?: {
+    expiresInMinutes?: number
+    formato?: ExportArquivoFormato
+  }
 ): GerarUrlDownloadExportOutput {
+  const expiresInMinutes = options?.expiresInMinutes ?? EXPORT_URL_EXPIRES_MINUTES
+  const formato = options?.formato ?? 'pdf'
   const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000)
   const expiresAtUnix = Math.floor(expiresAt.getTime() / 1000)
   const payload = `export:${tenantId}:${exportId}:${expiresAtUnix}`
   const signature = signExportPayload(payload)
   const baseUrl = getPublicBaseUrl()
 
-  const downloadUrl = `${baseUrl}/api/storage/export-download/${exportId}?tenant=${tenantId}&exp=${expiresAtUnix}&sig=${signature}`
+  const fmtParam =
+    formato === 'csv' ? '&fmt=csv' : formato === 'json' ? '&fmt=json' : ''
+  const downloadUrl = `${baseUrl}/api/storage/export-download/${exportId}?tenant=${tenantId}&exp=${expiresAtUnix}&sig=${signature}${fmtParam}`
 
   return { downloadUrl, expiresAt }
 }
@@ -129,7 +186,11 @@ export function validarUrlAssinadaExport(params: {
   }
 }
 
-/** Caminho absoluto do PDF de export (somente storage local). */
-export function resolveLocalExportPath(tenantId: string, exportId: string): string {
-  return resolveAbsolutePath(buildExportStoragePath(tenantId, exportId))
+/** Caminho absoluto do arquivo de export (somente storage local). */
+export function resolveLocalExportPath(
+  tenantId: string,
+  exportId: string,
+  formato: ExportArquivoFormato = 'pdf'
+): string {
+  return resolveAbsolutePath(buildExportStoragePath(tenantId, exportId, formato))
 }

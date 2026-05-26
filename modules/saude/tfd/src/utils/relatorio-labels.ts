@@ -1,3 +1,5 @@
+import { formatDataHoraBr as formatDataHoraBrCore } from '@saude/core-documents'
+
 const STATUS_LABEL: Record<string, string> = {
   RASCUNHO: 'Rascunho',
   ENVIADO: 'Enviado',
@@ -22,15 +24,11 @@ export function formatCompetenciaLabel(mes: number, ano: number): string {
   return `${mesFormatado}/${ano}`
 }
 
-export function formatDataHoraBr(isoOrDate: string | Date): string {
-  const date = typeof isoOrDate === 'string' ? new Date(isoOrDate) : isoOrDate
-  return date.toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+/**
+ * Data/hora pt-BR para relatórios TFD; repassa timezone do município quando disponível.
+ */
+export function formatDataHoraBr(isoOrDate: string | Date, timezone?: string): string {
+  return formatDataHoraBrCore(isoOrDate, timezone)
 }
 
 export function formatMoedaBrl(valor: number): string {
