@@ -31,8 +31,8 @@ function applyTenantHeaders(
   return nextWithRequestHeaders(req, {
     'x-tenant-id': tenant.id,
     'x-tenant-slug': tenant.slug,
-    'x-tenant-modules': JSON.stringify(tenant.modules),
-    'x-tenant-theme': JSON.stringify(tenant.theme),
+    'x-tenant-modules': JSON.stringify(tenant.modules ?? {}),
+    'x-tenant-theme': JSON.stringify(tenant.theme ?? {}),
     'x-pathname': req.nextUrl.pathname,
     ...extra,
   })

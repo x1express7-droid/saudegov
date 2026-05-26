@@ -18,14 +18,15 @@ export default async function AdminLayout({
 
   const tenant = await getTenantContext()
 
+  const theme = tenant.theme ?? {}
   const municipalityName =
-    tenant.theme.municipalityName ?? tenant.theme.municipality_name ?? 'Município'
+    (theme.municipalityName ?? theme.municipality_name ?? tenant.name) || 'Município'
 
   const tfdConfigHref = resolveTfdConfiguracoesHref(session)
   const showTfdConfigNav = tfdConfigHref !== null
   const tfdFinanceiroNav = attachTfdFinanceiroNavIcons(getTfdFinanceiroVisibleNav(session))
 
-  const themeCssVars = themeToCssVarsStyle(tenant.theme)
+  const themeCssVars = themeToCssVarsStyle(theme)
 
   return (
     <div className="min-h-screen" style={themeCssVars}>
@@ -34,7 +35,7 @@ export default async function AdminLayout({
       modules={tenant.modules}
       municipalityName={municipalityName}
       userName={session.user.name}
-      logoUrl={tenant.theme.logoUrl ?? tenant.theme.logo_url}
+      logoUrl={theme.logoUrl ?? theme.logo_url}
       showAdminNav
       showTfdConfigNav={showTfdConfigNav}
       tfdConfigHref={tfdConfigHref ?? undefined}
