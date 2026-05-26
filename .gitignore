@@ -18,3 +18,6 @@ packages/core-db/prisma/seed-dist/
 
 # OS
 .DS_Store
+
+# Cursor IDE
+.cursor/
