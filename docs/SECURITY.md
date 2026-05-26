@@ -190,8 +190,12 @@ PROCESSO:   SOLICITACAO_CRIADA, STATUS_ALTERADO, CANCELADO
 TFD:        LAUDO_VISUALIZADO (READ_SENSITIVE), DECISAO_REGISTRADA
             AGENDAMENTO_CRIADO, PRESTACAO_APROVADA, SALDO_CADASTRADO
 FINANCEIRO: RESERVA_CRIADA, SALDO_CONSUMIDO, SALDO_LIBERADO
-EXPORT:     DADOS_EXPORTADOS (com filtros e escopo registrados)
+EXPORT:     DADOS_EXPORTADOS (com filtros, formato, totalRegistros, expiresAt)
+            — relatórios PDF TFD, CSV de listagens/extrato (Painel Servidor)
+            — exportação municipal JSON/CSV (Painel Dev / SUPERADMIN)
 ```
+
+**Exportações TFD (Sprint 2.1):** usar sempre `getPrismaForTenant(tenantId)` nas queries de dados; `getPrismaAdmin` apenas para metadados do tenant (ex.: timezone) ou validação de existência no Painel Dev. Nunca incluir `cid_principal` ou `diagnostico` em selects de exportação. Ver `BUSINESS_RULES.md` §1.12.
 
 ### Campos removidos antes de auditar
 

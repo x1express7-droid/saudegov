@@ -88,20 +88,43 @@ CANCELADO (motivo obrigatório)
 Alertas que exigem ação ou visão do **gestor** no módulo TFD têm como **destino principal**
 o **dashboard TFD** (`/saude/tfd/dashboard`), acessível com permissão `saude.tfd.ver_dashboard`.
 
-| Alerta | Gatilho (resumo) | Destino principal | Implementação atual (até Sprint 1.8) |
-|--------|------------------|-------------------|----------------------------------------|
-| PENDENTE há 30 dias | Complemento solicitado sem retorno em 30 dias | Dashboard TFD | Provisório na fila `/saude/tfd` |
-| Falha notificação 48h (viagem) | Ambos os canais falham antes da viagem | Dashboard TFD | Provisório na fila `/saude/tfd` |
-| Saldo disponível &lt; 20% | `disponível` abaixo de 20% do `valor_total` | Dashboard TFD | Previsto na Sprint 1.8 |
-| PCs vencendo / vencidas | Prazo de prestação em até 48h ou vencido | Dashboard TFD | Provisório na fila `/saude/tfd` (Sprint 1.7) |
-| Solicitações `MUITO_URGENTE` | Envio com urgência máxima | Dashboard TFD (painel operacional) | Fila (prioridade visual) + notificação in-app |
+| Alerta | Gatilho (resumo) | Destino principal | Canal / UI (referência) |
+|--------|------------------|-------------------|-------------------------|
+| PENDENTE há 30 dias | Complemento solicitado sem retorno em 30 dias | Dashboard TFD | Painel de alertas no dashboard |
+| Falha notificação 48h (viagem) | Ambos os canais falham antes da viagem | Dashboard TFD | Painel de alertas no dashboard |
+| Saldo disponível &lt; 20% | `disponível` abaixo de 20% do `valor_total` | Dashboard TFD | Bloco Financeiro + notificação in-app `SALDO_BAIXO` (ver abaixo) |
+| PCs vencendo / vencidas | Prazo de prestação em até 48h ou vencido | Dashboard TFD | Painel de alertas no dashboard |
+| Solicitações `MUITO_URGENTE` | Envio com urgência máxima | Dashboard TFD (painel operacional) | Painel de alertas no dashboard + notificação in-app |
 
 A **fila de solicitações** (`/saude/tfd`) permanece para operação da fila (listagem, filtros,
 abertura de processos). Pode exibir **resumo** dos alertas ou **link** para o dashboard, mas
 **não** é o destino principal dos alertas operacionais do gestor.
 
-> **DT-002:** documentação alinhada na abertura da Sprint 1.8; encerramento do débito quando
-> o dashboard TFD for entregue com os alertas consolidados.
+**Consolidação no dashboard (Sprint 2.2):** os alertas operacionais do TFD — incluindo saldo
+baixo (&lt; 20% do `valor_total` disponível) — estão consolidados no **dashboard do gestor** em
+`/saude/tfd/dashboard` (permissão `saude.tfd.ver_dashboard`). Gestores com essa permissão não
+dependem da fila `/saude/tfd` como destino principal desses alertas.
+
+**Bloco Financeiro do dashboard:** na mesma rota, o bloco **Financeiro** exibe:
+
+- KPI de **saldo disponível consolidado** (soma dos saldos ativos);
+- **lista de saldos em alerta** (disponível &lt; 20% do respectivo `valor_total`);
+- **extrato resumido** com as **últimas 5 movimentações** (todas os saldos ativos, ordenadas por data).
+
+**Notificação in-app `SALDO_BAIXO` (§1.14):** disparada **automaticamente** quando o saldo
+disponível de um saldo **ativo** entra em estado de alerta (&lt; 20%) — ou seja, na **transição**
+para alerta após reserva na aprovação da solicitação ou consumo na aprovação da prestação de
+contas. Canal: **in-app apenas** (e-mail na Sprint 2.4). Destinatários: gestores do setor TFD
+com permissão `saude.tfd.ver_dashboard`. A mensagem informa apenas o **nome do saldo** e o
+**percentual disponível** (sem valores monetários nem dados sensíveis). Não dispara para saldo
+inativo nem reenvia enquanto o saldo já estava em alerta antes da mesma operação.
+
+**Navegação Financeiro (sidebar TFD):** acesso direto via submenu **Financeiro** no accordion
+do módulo TFD (itens filtrados por permissão): **Saldos** (`/saude/tfd/configuracoes/saldos`),
+**Prestações de contas** (`/saude/tfd/prestacoes`), **Relatórios** (`/saude/tfd/dashboard`).
+
+> **DT-002:** encerrado na Sprint 2.2 — dashboard com alertas consolidados, bloco Financeiro
+> e documentação §1.2.1 alinhada ao código.
 
 ### 1.3 Tabela de Transições de Status Permitidas
 
@@ -182,6 +205,12 @@ abertura de processos). Pode exibir **resumo** dos alertas ou **link** para o da
 **Complemento (status PENDENTE):**
 - Após 30 dias sem retorno do complemento → alerta no **dashboard TFD** do gestor (§1.2.1)
 - Após 60 dias → gestor pode cancelar com motivo "prazo esgotado" (§1.9)
+
+**Vedações na aprovação (Portaria 55/1999):**
+- **Bloqueio** (impede aprovação): procedimento marcado como PAB no cadastro; distância menor que 50 km quando calculável ou informada na decisão
+- **Alerta** (exige confirmação explícita do gestor): tratamento experimental, região metropolitana, paciente hospitalizado no destino
+- Campos persistidos na solicitação: `distancia_km`, flags subjetivas, `vedacoes_confirmadas_por_id` / `vedacoes_confirmadas_at`
+- Município de origem em `tenants.settings` (`municipio_origem_cidade`, `municipio_origem_estado`) habilita cálculo automático de distância quando cidade/UF do prestador coincidem
 
 **Vedações legais (Art. 1º §3º e §5º, Portaria 55/1999):**
 - Não autorizar TFD para procedimentos do **PAB (Piso de Atenção Básica)**
@@ -272,8 +301,10 @@ abertura de processos). Pode exibir **resumo** dos alertas ou **link** para o da
 ```
 Disponível = valor_total
            - SUM(reservas_saldo.valor_estimado WHERE status = 'ATIVA')
-           - SUM(movimentacoes_saldo.valor WHERE tipo = 'CONSUMO')
+           - consumo líquido (CONSUMO + impacto dos ESTORNOs sobre movimentações estornáveis)
 ```
+
+O consumo líquido considera registros `ESTORNO` vinculados a `CONSUMO`, `CREDITO` ou `LIBERACAO` via `movimentacao_origem_id`.
 
 **Alerta de saldo baixo:**
 - Se `disponível < 20%` do `valor_total` → alerta no **dashboard TFD** do gestor (§1.2.1)
@@ -289,6 +320,8 @@ Disponível = valor_total
 **Imutabilidade do extrato:**
 - Registros em `movimentacoes_saldo` são imutáveis (sem `updated_at`)
 - Correções são feitas com novo registro tipo `ESTORNO`
+- Tipos estornáveis: `CONSUMO`, `CREDITO`, `LIBERACAO` (não `RESERVA` nem outro `ESTORNO`)
+- Cada estorno referencia a movimentação original (`movimentacao_origem_id`); não é permitido estornar duas vezes o mesmo lançamento
 - Toda movimentação registra quem executou (`usuario_id` obrigatório)
 
 ---
@@ -360,20 +393,53 @@ Dados clínicos do TFD são **dados sensíveis** conforme LGPD Art. 11:
 
 ---
 
-### 1.12 Relatórios Obrigatórios
+### 1.12 Relatórios e Exportações Obrigatórios
 
-Todo relatório deve:
-- Registrar em `audit_logs` quem gerou, com quais filtros e quando
-- Excluir CID e diagnóstico por padrão
-- Incluir no rodapé do PDF: `"Relatório gerado por [Nome] em [data/hora] — saudegov"`
+Todo relatório ou arquivo de exportação (PDF, CSV, JSON) deve:
+- Registrar em `audit_logs` com `acao = EXPORT` quem gerou, filtros/escopo e formato
+- Excluir **CID**, **diagnóstico** e demais dados clínicos sensíveis por padrão
+- Incluir rodapé via `formatRodapeExport` (implementado em `@saude/core-documents`):
+  `"Relatório gerado por [Nome] em [data/hora] — saudegov"` (timezone do município quando configurado)
+- URL de download temporária com expiração máxima de **24 horas**
+- Rate limit de exportação: **3 por hora por tenant** (relatórios e CSV do Painel Servidor)
 
-**Relatórios disponíveis:**
-- Por competência (mês/ano): totais, status, valores gastos
-- Por paciente: histórico de solicitações (sem dados clínicos)
-- Por prestador: volume por hospital/clínica de destino
-- Por motorista: viagens realizadas no período
-- Extrato financeiro: movimentações de saldo por período
-- Produção mensal: aprovadas, negadas, concluídas, canceladas
+**CPF/CNS em exportações:** mascarados quando incluídos (`maskCPF` / `maskCNS`); exportações operacionais padrão não incluem identificadores completos de paciente.
+
+**Audit EXPORT apenas na action de exportação** — leituras paginadas na UI (fila, agendamentos, prestações, saldos, extrato) **não** registram `EXPORT`.
+
+#### Painel Servidor — relatórios PDF (GESTOR + `saude.tfd.exportar_relatorio`)
+
+| Relatório | Conteúdo resumido |
+|-----------|-------------------|
+| Por competência (1.8) | Totais por status, valores reservado/consumido, protocolos |
+| Por paciente (1.8) | Histórico de solicitações sem dados clínicos |
+| Por prestador (2.1) | Volume e gastos no período por prestador |
+| Por motorista (2.1) | Viagens e custos (despesas município) no período |
+| Produção mensal (2.1) | Contagem e valores: APROVADO, NEGADO, CONCLUIDO, CANCELADO |
+
+UI: `/saude/tfd/dashboard` — painel de relatórios com filtros por schema.
+
+#### Painel Servidor — exportação CSV
+
+| Exportação | Permissão | Audit `entidade` (ex.) |
+|------------|-----------|-------------------------|
+| Extrato completo do saldo | `gerenciar_saldo` | `saude_tfd_extrato_saldo` |
+| Fila de solicitações | `exportar_relatorio` | `saude_tfd_listagem_solicitacoes` |
+| Agendamentos | `exportar_relatorio` | `saude_tfd_listagem_agendamentos` |
+| Prestações de contas | `exportar_relatorio` | `saude_tfd_listagem_prestacoes` |
+| Lista de saldos | `exportar_relatorio` | `saude_tfd_listagem_saldos` |
+
+Limite de segurança: **50.000 linhas** por exportação (refinar filtros se exceder).
+
+Contratos: `docs/API_CONTRACTS.md` §7.4–7.8.
+
+#### Painel Dev — exportação do município (SUPERADMIN)
+
+- Action em `apps/painel-dev/lib/` (não no módulo TFD): `exportarDadosMunicipio`
+- `tenantId` vem do **parâmetro validado**, não da sessão
+- Formatos: **JSON** (estruturado) ou **CSV** (linhas Modulo/Entidade/…)
+- Coleta completa do módulo **TFD**; demais módulos ativos retornam aviso até implementação futura (**DT-004**)
+- Paridade: `painel_dev = true`, `painel_servidor = false` — correto por design
 
 ---
 
@@ -424,7 +490,11 @@ Todo relatório deve:
 | Prestação rejeitada | Servidor responsável | In-app + e-mail |
 | Processo cancelado | Servidor responsável | In-app |
 | PENDENTE há 30 dias | Gestor | In-app |
-| Saldo < 20% disponível | Gestor | In-app |
+| Saldo < 20% disponível | Gestor com `saude.tfd.ver_dashboard` (setor TFD) | In-app (`SALDO_BAIXO`) |
+
+**Implementação `SALDO_BAIXO` (Sprint 2.2):** evento `SALDO_BAIXO` em `core-notifications`; disparo automático na
+**transição** para alerta após reserva (aprovação da solicitação) ou consumo (aprovação da prestação); mensagem com
+nome do saldo e percentual disponível apenas; sem e-mail até Sprint 2.4. Detalhes de UI e deduplicação: §1.2.1.
 
 **Regra de fallback:**
 - Se envio de e-mail falhar → registra `status = 'FALHOU'` + tenta novamente após 15min

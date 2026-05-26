@@ -13,11 +13,11 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/_storage/upload/:anexoId',
-        destination: '/api/storage/upload/:anexoId',
+        destination: '/api/storage/upload/:anexoId?:query*',
       },
       {
         source: '/_storage/download/:anexoId',
-        destination: '/api/storage/download-file/:anexoId',
+        destination: '/api/storage/download-file/:anexoId?:query*',
       },
     ]
   },

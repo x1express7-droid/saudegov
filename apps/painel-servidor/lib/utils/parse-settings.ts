@@ -8,6 +8,8 @@ export interface DadosMunicipioFormValues {
   cnpj: string
   timezone: BrazilTimezone
   notificationEmail: string
+  municipioOrigemCidade: string
+  municipioOrigemEstado: string
 }
 
 export interface CadsusConfigFormValues {
@@ -46,6 +48,16 @@ export function settingsToFormValues(settings: TenantSettings): DadosMunicipioFo
     cnpj: cnpjRaw,
     timezone: isBrazilTimezone(timezoneRaw) ? timezoneRaw : DEFAULT_BRAZIL_TIMEZONE,
     notificationEmail: emailRaw,
+    municipioOrigemCidade: pickString(
+      settings,
+      'municipio_origem_cidade',
+      'municipioOrigemCidade'
+    ),
+    municipioOrigemEstado: pickString(
+      settings,
+      'municipio_origem_estado',
+      'municipioOrigemEstado'
+    ),
   }
 }
 
@@ -55,6 +67,8 @@ export function mergeSettingsDadosMunicipio(
     cnpj?: string
     timezone: BrazilTimezone
     notificationEmail?: string
+    municipioOrigemCidade?: string
+    municipioOrigemEstado?: string
   }
 ): TenantSettings {
   const merged: TenantSettings = { ...existing, timezone: dados.timezone }
@@ -72,6 +86,16 @@ export function mergeSettingsDadosMunicipio(
   }
 
   delete merged.notificationEmail
+
+  if (dados.municipioOrigemCidade && dados.municipioOrigemEstado) {
+    merged.municipio_origem_cidade = dados.municipioOrigemCidade
+    merged.municipio_origem_estado = dados.municipioOrigemEstado
+  } else {
+    delete merged.municipio_origem_cidade
+    delete merged.municipio_origem_estado
+    delete merged.municipioOrigemCidade
+    delete merged.municipioOrigemEstado
+  }
 
   return merged
 }
@@ -122,11 +146,15 @@ export function dadosMunicipioForAudit(settings: TenantSettings): {
   cnpj: string | null
   timezone: string
   notificationEmail: string | null
+  municipioOrigemCidade: string | null
+  municipioOrigemEstado: string | null
 } {
   const form = settingsToFormValues(settings)
   return {
     cnpj: form.cnpj || null,
     timezone: form.timezone,
     notificationEmail: form.notificationEmail || null,
+    municipioOrigemCidade: form.municipioOrigemCidade || null,
+    municipioOrigemEstado: form.municipioOrigemEstado || null,
   }
 }

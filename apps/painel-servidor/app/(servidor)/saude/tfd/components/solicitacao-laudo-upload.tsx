@@ -68,7 +68,7 @@ const STATE_LABEL: Record<LaudoUploadState, string> = {
   solicitando_url: 'Preparando envio…',
   enviando: 'Enviando arquivo…',
   confirmando: 'Confirmando laudo…',
-  concluido: 'Laudo confirmado e pronto para envio da solicitação.',
+  concluido: 'Laudo confirmado. Será vinculado à solicitação ao salvar ou enviar.',
   erro: '',
 }
 

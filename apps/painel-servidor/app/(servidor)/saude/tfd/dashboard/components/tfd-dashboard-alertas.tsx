@@ -1,6 +1,7 @@
 import type {
   AlertaLembreteViagemFalhou,
   AlertaPendente30Dias,
+  AlertaPendente60Dias,
   AlertaPrestacaoPrazo,
   TfdAlertaUrgente,
   TfdDashboardSaldoItem,
@@ -14,6 +15,7 @@ export interface TfdDashboardAlertasProps {
   saldosBaixo: TfdDashboardSaldoItem[]
   alertasPrestacao: AlertaPrestacaoPrazo[]
   alertasPendente30: AlertaPendente30Dias[]
+  alertasPendente60: AlertaPendente60Dias[]
   alertasLembreteViagem: AlertaLembreteViagemFalhou[]
 }
 
@@ -61,6 +63,7 @@ export function TfdDashboardAlertas({
   saldosBaixo,
   alertasPrestacao,
   alertasPendente30,
+  alertasPendente60,
   alertasLembreteViagem,
 }: TfdDashboardAlertasProps) {
   const totalAlertas =
@@ -68,6 +71,7 @@ export function TfdDashboardAlertas({
     saldosBaixo.length +
     alertasPrestacao.length +
     alertasPendente30.length +
+    alertasPendente60.length +
     alertasLembreteViagem.length
 
   return (
@@ -195,7 +199,44 @@ export function TfdDashboardAlertas({
                     >
                       {item.protocolo}
                     </Link>
-                    <span className="text-[var(--color-text)]"> — aguardando complemento</span>
+                    <span className="text-[var(--color-text)]">
+                      {' '}
+                      — aguardando complemento ({item.diasPendente} dias)
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </Alert>
+          ) : null}
+
+          {alertasPendente60.length > 0 ? (
+            <Alert
+              variant="error"
+              titulo={
+                alertasPendente60.length === 1
+                  ? '1 complemento pendente há 60 dias ou mais — cancelamento permitido'
+                  : `${alertasPendente60.length} complementos pendentes há 60 dias ou mais — cancelamento permitido`
+              }
+              role="alert"
+            >
+              <ul className="mt-[var(--space-2)] list-none space-y-[var(--space-2)] p-0">
+                {alertasPendente60.map((item) => (
+                  <li key={item.id} className="flex flex-wrap items-baseline gap-x-[var(--space-2)]">
+                    <Link
+                      href={`/saude/tfd/${item.id}`}
+                      className="font-medium text-[var(--color-error)] underline-offset-2 hover:underline"
+                    >
+                      {item.protocolo}
+                    </Link>
+                    <span className="text-[var(--color-text)]">
+                      — {item.diasPendente} dias sem retorno
+                    </span>
+                    <Link
+                      href={`/saude/tfd/${item.id}?cancelar=prazo`}
+                      className="text-[length:var(--text-xs)] font-medium text-[var(--color-error)] underline-offset-2 hover:underline"
+                    >
+                      Cancelar por prazo esgotado
+                    </Link>
                   </li>
                 ))}
               </ul>

@@ -1,6 +1,10 @@
 'use client'
 
-import { type TfdMotoristaAgendamentoItem, type TfdVeiculoAgendamentoItem } from '@saude/mod-saude-tfd/client'
+import {
+  formatCnhCategorias,
+  type TfdMotoristaAgendamentoItem,
+  type TfdVeiculoAgendamentoItem,
+} from '@saude/mod-saude-tfd/client'
 import { criarAgendamentoTfd, listarMotoristasAgendamentoTfd } from '@saude/mod-saude-tfd/actions/viagem'
 import { Button, Input, Select, Spinner, Textarea } from '@saude/ui'
 import { useRouter } from 'next/navigation'
@@ -47,7 +51,7 @@ export function AgendamentoForm({
 
   const motoristaOptions = motoristas.map((motorista) => ({
     value: motorista.id,
-    label: `${motorista.nome} — CNH ${motorista.cnhCategoria} (válida até ${motorista.cnhValidade})`,
+    label: `${motorista.nome} — CNH ${formatCnhCategorias(motorista.cnhCategoria)} (válida até ${motorista.cnhValidade})`,
   }))
 
   useEffect(() => {

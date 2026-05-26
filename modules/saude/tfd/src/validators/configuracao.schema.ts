@@ -60,12 +60,43 @@ const cnhField = z
   .min(5, 'CNH inválida.')
   .max(20, 'CNH deve ter no máximo 20 caracteres.')
 
+export const CNH_CATEGORIA_LETTERS = ['A', 'B', 'C', 'D', 'E'] as const
+export type CnhCategoriaLetter = (typeof CNH_CATEGORIA_LETTERS)[number]
+
+/** Serializa categorias selecionadas para VARCHAR(5), ex.: ['B','C'] → "BC". */
+export function serializeCnhCategorias(categories: readonly CnhCategoriaLetter[]): string {
+  return [...new Set(categories)]
+    .sort((a, b) => a.localeCompare(b))
+    .join('')
+}
+
+/** Interpreta valor persistido (ex.: "BC") como lista de categorias. */
+export function parseCnhCategorias(value: string): CnhCategoriaLetter[] {
+  const allowed = new Set<string>(CNH_CATEGORIA_LETTERS)
+  const result: CnhCategoriaLetter[] = []
+  for (const char of value.toUpperCase()) {
+    if (allowed.has(char) && !result.includes(char as CnhCategoriaLetter)) {
+      result.push(char as CnhCategoriaLetter)
+    }
+  }
+  return result
+}
+
+export function formatCnhCategorias(value: string): string {
+  const parsed = parseCnhCategorias(value)
+  return parsed.length > 0 ? parsed.join(', ') : value
+}
+
 const cnhCategoriaField = z
   .string()
   .trim()
   .min(1, 'Categoria da CNH é obrigatória.')
   .max(5, 'Categoria da CNH deve ter no máximo 5 caracteres.')
   .transform((value) => value.toUpperCase())
+  .refine((value) => parseCnhCategorias(value).length > 0, {
+    message: 'Categoria da CNH inválida.',
+  })
+  .transform((value) => serializeCnhCategorias(parseCnhCategorias(value)))
 
 const cnhValidadeField = z
   .string()
@@ -97,6 +128,7 @@ export const criarProcedimentoSchema = z.object({
   especialidadeId: z.string().uuid('Especialidade inválida.'),
   nome: nomeField,
   codigoSigtap: codigoSigtapField,
+  ehPab: z.boolean(),
 })
 
 export const atualizarProcedimentoSchema = z.object({
@@ -104,6 +136,7 @@ export const atualizarProcedimentoSchema = z.object({
   especialidadeId: z.string().uuid('Especialidade inválida.').optional(),
   nome: nomeField.optional(),
   codigoSigtap: codigoSigtapField.nullable().optional(),
+  ehPab: z.boolean().optional(),
   ativo: z.boolean().optional(),
 })
 

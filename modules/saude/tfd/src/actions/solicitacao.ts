@@ -26,9 +26,14 @@ import {
   TFD_STATUS_BLOQUEIA_CANCELAMENTO,
 } from '../utils/cancelamento'
 import {
+  DIAS_CANCELAMENTO_PENDENTE_COMPLEMENTO,
+  isElegivelCancelamentoPrazoEsgotado,
+} from '../utils/pendente-prazo'
+import {
   abrirSolicitacaoSchema,
   cancelarSolicitacaoSchema,
   enviarSolicitacaoSchema,
+  resolveMotivoCancelamentoTexto,
 } from '../validators/solicitacao.schema'
 
 const MODULO_TFD = 'saude.tfd'
@@ -465,25 +470,20 @@ export async function enviarSolicitacaoTfd(
       }
     }
 
-    if (!solicitacao.laudo_anexo_id) {
-      return {
-        success: false,
-        error: 'Anexe o laudo médico antes de enviar a solicitação.',
-      }
-    }
+    if (solicitacao.laudo_anexo_id) {
+      const laudo = await db.anexo.findFirst({
+        where: {
+          id: solicitacao.laudo_anexo_id,
+          tenant_id: tenantId,
+        },
+        select: { confirmado: true },
+      })
 
-    const laudo = await db.anexo.findFirst({
-      where: {
-        id: solicitacao.laudo_anexo_id,
-        tenant_id: tenantId,
-      },
-      select: { confirmado: true },
-    })
-
-    if (!laudo?.confirmado) {
-      return {
-        success: false,
-        error: 'O laudo médico precisa estar confirmado no storage antes do envio.',
+      if (!laudo?.confirmado) {
+        return {
+          success: false,
+          error: 'O laudo médico precisa estar confirmado no storage antes do envio.',
+        }
       }
     }
 
@@ -634,10 +634,42 @@ export async function cancelarSolicitacaoTfd(
       return { success: false, error: mensagemStatusNaoCancelavel(solicitacao.status) }
     }
 
+    const motivoPreset = data.motivoPreset ?? 'OUTRO'
+
+    if (solicitacao.status === 'PENDENTE') {
+      const tramitacaoComplemento = await db.tramitacao.findFirst({
+        where: {
+          tenant_id: tenantId,
+          processo_id: solicitacao.processo_id,
+          tipo: 'COMPLEMENTO_SOLICITADO',
+        },
+        orderBy: { created_at: 'desc' },
+        select: { created_at: true },
+      })
+
+      if (
+        !isElegivelCancelamentoPrazoEsgotado(tramitacaoComplemento?.created_at ?? null)
+      ) {
+        return {
+          success: false,
+          error: `Cancelamento permitido apenas após ${DIAS_CANCELAMENTO_PENDENTE_COMPLEMENTO} dias sem retorno do complemento solicitado.`,
+        }
+      }
+    } else if (motivoPreset === 'PRAZO_ESGOTADO') {
+      return {
+        success: false,
+        error:
+          'O motivo "prazo esgotado" só se aplica a solicitações pendentes há 60 dias ou mais.',
+      }
+    }
+
     const protocolo = solicitacao.processo.protocolo
     const especialidadeNome = solicitacao.especialidade?.nome ?? 'Não informada'
     const canceladoAt = new Date()
-    const motivo = data.motivo.trim()
+    const motivo = resolveMotivoCancelamentoTexto({
+      motivoPreset,
+      motivo: data.motivo,
+    })
 
     const resultado = await db.$transaction(async (tx) => {
       const reservaLocked = await lockReservaAtivaForUpdate(tx, tenantId, solicitacao.id)

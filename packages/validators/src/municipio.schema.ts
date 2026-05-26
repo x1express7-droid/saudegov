@@ -49,12 +49,38 @@ const notificationEmailField = z
   })
   .pipe(z.string().email('E-mail de notificação inválido.').max(255).optional())
 
+const municipioOrigemCidadeField = z
+  .string()
+  .trim()
+  .max(200, 'Cidade deve ter no máximo 200 caracteres.')
+  .optional()
+  .or(z.literal(''))
+  .transform((value) => (value && value.trim() !== '' ? value.trim() : undefined))
+
+const municipioOrigemEstadoField = z
+  .string()
+  .trim()
+  .optional()
+  .or(z.literal(''))
+  .transform((value) => {
+    if (!value || value.trim() === '') {
+      return undefined
+    }
+    const uf = value.trim().toUpperCase()
+    if (uf.length !== 2) {
+      return undefined
+    }
+    return uf
+  })
+
 export const atualizarDadosMunicipioSchema = z.object({
   cnpj: cnpjField,
   timezone: z.enum(BRAZIL_TIMEZONES, {
     errorMap: () => ({ message: 'Selecione um fuso horário válido.' }),
   }),
   notificationEmail: notificationEmailField,
+  municipioOrigemCidade: municipioOrigemCidadeField,
+  municipioOrigemEstado: municipioOrigemEstadoField,
 })
 
 export type AtualizarDadosMunicipioInput = z.infer<typeof atualizarDadosMunicipioSchema>

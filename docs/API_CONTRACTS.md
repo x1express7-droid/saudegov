@@ -123,13 +123,35 @@ Output: ActionResponse<void>
 
 ### 3.5 Exportar Dados do Município
 ```typescript
-// Server Action: exportarDadosMunicipio
+// Server Action: exportarDadosMunicipio (apps/painel-dev/lib/actions/exportar-dados-municipio.ts)
+// Papel: SUPERADMIN (requireSuperAdmin) — sem permissão granular de tenant
+// Paridade: painel_dev = true, painel_servidor = false
+// tenantId vem do input validado (operação sobre tenant alheio), não da sessão
 Input: {
-  tenantId: string; formato: 'json' | 'csv'
-  modulos?: string[]; dataInicio?: string; dataFim?: string
+  tenantId: string          // UUID do município alvo
+  formato: 'json' | 'csv'
+  modulos?: string[]        // chaves saude.* (tfd, regul, …); omitido = todos os ativos do tenant
+  dataInicio?: string       // AAAA-MM-DD — filtra created_at onde aplicável
+  dataFim?: string
 }
-Output: ActionResponse<{ downloadUrl: string; totalRegistros: number }>
-// Exclui CID e diagnóstico por padrão — registra EXPORT em audit_logs
+Output: ActionResponse<{
+  downloadUrl: string
+  expiresAt: string         // ISO — link pré-assinado (24h)
+  totalRegistros: number
+}>
+// Camada 1: tenant existe e active = true (getPrismaAdmin)
+// Camada 2: requireSuperAdmin()
+// Camada 3: exportacaoMunicipioSchema (apps/painel-dev/lib/validators/exportacao-municipio.schema.ts)
+// Coleta: coletarDadosMunicipioExport via getPrismaForTenant(tenantId) + tenant_id explícito em cada query
+// Módulo tfd: solicitações, viagens, prestações, saldos, pacientes (CPF/CNS mascarados)
+// Demais módulos ativos: entrada em modulosSemDados até implementação futura
+// ❌ Nunca: cid_principal, diagnostico, laudo, fundamentacao clínica
+// JSON: metadados + dados + rodape (formatRodapeExport)
+// CSV: colunas Modulo, Entidade, Referência, Status, Data, Detalhe + rodapé §1.12
+// Audit EXPORT: entidade plataforma_exportacao_municipio
+//   payloadDepois: { tenantId, tenantNome, modulos, formato, dataInicio, dataFim, totalRegistros, expiresAt }
+// platform_features: sistema plataforma, funcionalidade exportar_dados_municipio
+// Download: GET /api/storage/export-download/[exportId]?fmt=json|csv (Painel Dev)
 ```
 
 ---
@@ -219,6 +241,26 @@ Input: {
 }
 Output: ActionResponse<{ id: string }>
 // Registra movimentacao_saldo tipo CREDITO
+
+// Server Action: desativarSaldoTfd
+// Papel: GESTOR + saude.tfd.gerenciar_saldo
+Input: { saldoId: string }
+Output: ActionResponse<void>
+// saldo.ativo → false; extrato e movimentações preservados
+// Não dispara SALDO_BAIXO (saldo inativo não gera alerta)
+
+// Server Action: estornarMovimentacaoSaldoTfd (Sprint 2.3 — §1.8)
+// Papel: GESTOR + saude.tfd.gerenciar_saldo
+Input: {
+  movimentacaoId: string
+  justificativa: string  // mínimo 20 caracteres (§1.13)
+}
+Output: ActionResponse<{ movimentacaoId: string }>
+// Cria novo registro movimentacoes_saldo tipo ESTORNO (imutável — sem UPDATE no original)
+// movimentacao_origem_id → lançamento estornado
+// Tipos estornáveis: CONSUMO, CREDITO, LIBERACAO (não RESERVA nem ESTORNO)
+// Erro 422 se movimentação inexistente, já estornada ou tipo não estornável
+// Audit CREATE + revalidatePath saldos/dashboard; notificação saldo baixo se aplicável
 ```
 
 ---
@@ -314,13 +356,23 @@ Input: {
   fundamentacao: string  // mínimo 20 chars
   saldoId?: string       // obrigatório se APROVADO
   valorEstimado?: number // obrigatório se APROVADO — positivo
+  // Sprint 2.3 — vedações Portaria 55/1999 (§1.5), persistidas na solicitação:
+  distanciaKm?: number           // calculada (settings + prestador) ou informada pelo gestor
+  tratamentoExperimental?: boolean
+  regiaoMetropolitana?: boolean
+  pacienteHospitalizadoDestino?: boolean
+  confirmacaoVedacoes?: boolean  // obrigatório true se qualquer flag subjetiva marcada
 }
 Output: ActionResponse<void>
 // Se APROVADO:
+//   avaliarVedacoesTfd — bloqueio PAB / distância < 50 km; alertas com confirmação
+//   Erro 422 se vedação bloqueante ou confirmação ausente
+//   Persiste distancia_km, flags e vedacoes_confirmadas_por_id / _at
 //   Verifica saldo atomicamente (SELECT FOR UPDATE)
 //   Erro 422 se insuficiente
 //   Cria reserva_saldo + movimentacao RESERVA
 //   EM_ANALISE → APROVADO
+//   Se transição para alerta (< 20% disponível): notificação in-app SALDO_BAIXO → gestores ver_dashboard
 // Se NEGADO: EM_ANALISE → NEGADO
 // Notifica servidor com fundamentação
 ```
@@ -403,6 +455,7 @@ Output: ActionResponse<void>
 //   prestacao → APROVADA | reserva → CONSUMIDA
 //   Registra movimentacao CONSUMO (+ LIBERACAO se valor real < estimado)
 //   solicitacao + processo → CONCLUIDO
+//   Se transição para alerta (< 20% disponível): notificação in-app SALDO_BAIXO → gestores ver_dashboard
 // Se REJEITADO:
 //   prestacao → REJEITADA | solicitacao → AGUARDANDO_PC
 //   Notifica servidor para corrigir
@@ -412,11 +465,48 @@ Output: ActionResponse<void>
 ```typescript
 // Server Action: cancelarSolicitacaoTfd
 // Papel: GESTOR + saude.tfd.cancelar_processo
-Input: { solicitacaoId: string; motivo: string }  // motivo: mínimo 20 chars
+Input: {
+  solicitacaoId: string
+  motivoPreset?: 'PRAZO_ESGOTADO' | 'OUTRO'  // default OUTRO
+  motivo: string  // mínimo 20 chars (ou texto canônico se PRAZO_ESGOTADO e motivo curto)
+}
 Output: ActionResponse<void>
 // Erro 422 se status >= AGENDADO
+// Sprint 2.3: se status PENDENTE, exige complemento há ≥ 60 dias para cancelar com PRAZO_ESGOTADO
+// resolveMotivoCancelamentoTexto() → motivo gravado
 // Se reserva ATIVA → LIBERADA + movimentacao LIBERACAO
 // Notifica servidor responsável
+```
+
+---
+
+### 6.14 Job — Transição automática EM_VIAGEM (Sprint 2.3)
+
+Invocado por cron (`GET /api/cron/tfd-transicao-em-viagem`, `Authorization: Bearer CRON_SECRET`).
+
+```typescript
+// Função: processarTransicaoEmViagemTfd (modules/saude/tfd/src/jobs/)
+Output: {
+  processadas: number      // viagens elegíveis pela data (timezone do tenant)
+  transicionadas: number   // solicitações AGENDADO → EM_VIAGEM
+  ignoradas: number        // viagem marcada; solicitação já EM_VIAGEM (outra viagem)
+  erros: Array<{ viagemId: string; mensagem: string }>
+}
+// Para cada viagem AGENDADA com data_viagem <= hoje (timezone do tenant):
+//   Grava viagem.em_viagem_transicionado_at (idempotência)
+//   solicitacao AGENDADO → EM_VIAGEM (se ainda não estiver EM_VIAGEM)
+//   Tramitação OBSERVACAO_INTERNA + audit log
+// Sem notificação nesta sprint (§1.10)
+```
+
+### 6.15 Contexto de vedações para decisão (Sprint 2.3)
+
+```typescript
+// Query: getContextoDecisaoTfd(solicitacaoId)
+// Papel: GESTOR + saude.tfd.decidir_solicitacao
+// Solicitação em EM_ANALISE
+Output: ContextoDecisaoTfd | null
+// { possuiProcedimentoPab, distanciaKmCalculada, origemMunicipioConfigurada, prestadorCidade, prestadorEstado }
 ```
 
 ---
@@ -483,9 +573,33 @@ Output: ActionResponse<{
     id: string; descricao: string; fonte: string
     valorTotal: number; valorReservado: number
     valorUtilizado: number; valorDisponivel: number
+    percentualDisponivel: number
     alertaBaixo: boolean  // disponível < 20% do total
   }>
 }>
+```
+
+### 7.3.1 Dashboard — bloco Financeiro (Sprint 2.2)
+
+```typescript
+// Query: getDashboardFinanceiroTfd
+// Papel: GESTOR + saude.tfd.ver_dashboard
+// Rota UI: /saude/tfd/dashboard (componente tfd-dashboard-financeiro)
+Input: void
+Output: {
+  totalDisponivelConsolidado: number
+  quantidadeSaldosAtivos: number
+  saldosEmAlerta: Array<{
+    id: string; descricao: string; fonte: string
+    valorTotal: number; valorReservado: number; valorUtilizado: number
+    valorDisponivel: number; percentualDisponivel: number; alertaBaixo: boolean
+  }>
+  extratoResumido: Array<{
+    id: string; criadoEm: string; tipo: string; descricao: string
+    valor: number; saldoId: string; saldoDescricao: string
+  }>  // últimas 5 movimentações (todos os saldos ativos)
+}
+// Cálculo via calcSaldoDisponivel() — ver dashboard-saldos-shared.ts
 ```
 
 ### 7.4 Extrato de Saldo
@@ -497,9 +611,82 @@ Output: ActionResponse<PaginatedResult<{
   tipo: string; valor: number; descricao: string
   protocolo: string | null; usuarioNome: string; criadoEm: string
 }>>
-// Visualização paginada na UI — sem registro em audit_logs nesta sprint
-// Audit EXPORT: apenas na exportação CSV do extrato (Sprint 2.1)
+// Visualização paginada na UI — sem registro em audit_logs
+// Server Action: buscarExtratoSaldoTfd — encapsula getExtratoSaldo (sem audit EXPORT)
+
+// Server Action: exportarExtratoSaldoTfdCsv
+// Papel: GESTOR + saude.tfd.gerenciar_saldo
+Input: { saldoId: string; dataInicio?: string; dataFim?: string }
+Output: ActionResponse<{ downloadUrl: string; expiresAt: string; totalRegistros: number }>
+// getExtratoSaldoCompleto — todas as movimentações no período (sem paginação)
+// Audit EXPORT apenas nesta action (entidade saude_tfd_extrato_saldo, formato csv)
+// Rate limit: 3 exportações/hora por tenant
 ```
+
+### 7.5 Relatório por prestador
+```typescript
+// Server Action: gerarRelatorioPrestadorTfd
+// Papel: GESTOR + saude.tfd.exportar_relatorio
+Input: { dataInicio: string; dataFim: string; prestadorId?: string }  // AAAA-MM-DD
+Output: ActionResponse<{ downloadUrl: string; expiresAt: string; totalRegistros: number }>
+// Agregação por prestador: volume, valores reservado/consumido — sem CID/diagnóstico
+// Audit EXPORT: entidade saude_tfd_relatorio_prestador
+```
+
+### 7.6 Relatório por motorista
+```typescript
+// Server Action: gerarRelatorioMotoristaTfd
+// Papel: GESTOR + saude.tfd.exportar_relatorio
+Input: { dataInicio: string; dataFim: string; motoristaId?: string }
+Output: ActionResponse<{ downloadUrl: string; expiresAt: string; totalRegistros: number }>
+// Viagens no período com despesas do município — sem dados clínicos do paciente
+// Audit EXPORT: entidade saude_tfd_relatorio_motorista
+```
+
+### 7.7 Relatório de produção mensal
+```typescript
+// Server Action: gerarRelatorioProducaoMensalTfd
+// Papel: GESTOR + saude.tfd.exportar_relatorio
+Input: { mes: number; ano: number }
+Output: ActionResponse<{ downloadUrl: string; expiresAt: string; totalRegistros: number }>
+// Contagem e valores por APROVADO, NEGADO, CONCLUIDO, CANCELADO no mês
+// Audit EXPORT: entidade saude_tfd_relatorio_producao_mensal
+```
+
+### 7.8 Exportação CSV — listagens TFD
+
+Todas as exportações abaixo: **GESTOR** + `saude.tfd.exportar_relatorio`, rate limit 3/hora por tenant, rodapé §1.12 via `formatRodapeExport`, máximo 50.000 linhas. Leituras paginadas (`getSolicitacoesTfd`, etc.) **não** registram audit EXPORT.
+
+```typescript
+// Server Action: exportarSolicitacoesTfdCsv
+// getSolicitacoesCompleto — sem paginação
+Input: { status?: TfdStatusSolicitacao; urgencia?: TfdUrgencia; protocolo?: string }
+Output: ActionResponse<{ downloadUrl: string; expiresAt: string; totalRegistros: number }>
+// Colunas: protocolo, status, urgência, especialidade, prestador, tipo de atendimento, datas (criado/decidido/cancelado/atualizado)
+// ❌ sem CID, diagnóstico, nome ou CPF do paciente
+// Audit EXPORT: entidade saude_tfd_listagem_solicitacoes
+
+// Server Action: exportarAgendamentosTfdCsv
+// getAgendamentosCompleto
+Input: { dataInicio?: string; dataFim?: string; motoristaId?: string; veiculoId?: string }
+// Colunas: protocolo, data da viagem, motorista, veículo, destino (cidade/UF do prestador), status
+// ❌ sem dados clínicos ou identificação do paciente além do protocolo
+// Audit EXPORT: entidade saude_tfd_listagem_agendamentos
+
+// Server Action: exportarPrestacoesTfdCsv
+// getPrestacoesCompleto
+Input: { status?: TfdPrestacaoStatus }
+// Colunas: protocolo, status da prestação, valor total, data de envio, data de aprovação
+// Audit EXPORT: entidade saude_tfd_listagem_prestacoes
+
+// Server Action: exportarSaldosTfdCsv
+// getSaldosCompleto
+Input: { incluirInativos?: boolean }
+// Colunas: fonte, competência, valor total, reservado, consumido, disponível, status (ativo/inativo)
+// Audit EXPORT: entidade saude_tfd_listagem_saldos
+```
+
+Schemas: `modules/saude/tfd/src/validators/exportacao.schema.ts` (`LISTAGEM_EXPORT_MAX_LINHAS = 50_000`).
 
 ---
 
@@ -533,6 +720,15 @@ Output: ActionResponse<{ downloadUrl: string }>
 ---
 
 ## 9. Notificações
+
+**Eventos TFD registrados em `packages/core-notifications`** (canal in-app na Fase 1–2; e-mail na Sprint 2.4):
+
+| Evento | Disparo (resumo) | Destinatários |
+|--------|------------------|---------------|
+| `SALDO_BAIXO` | Transição para disponível &lt; 20% após RESERVA (aprovação) ou CONSUMO (PC aprovada) | Gestores do setor TFD com `saude.tfd.ver_dashboard` |
+| Demais eventos §1.14 | Ver `BUSINESS_RULES.md` | Conforme tabela §1.14 |
+
+Contexto `SALDO_BAIXO`: `nomeSaldo`, `percentualDisponivel` (sem valores monetários). Deduplicação: não reenvia se o saldo já estava em alerta antes da operação.
 
 ```typescript
 // Server Action: getMinhasNotificacoes

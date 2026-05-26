@@ -192,6 +192,7 @@ export async function getExtratoSaldoByTenant(
     db.tfdMovimentacaoSaldo.findMany({
       where: whereMovimentacoes,
       select: {
+        id: true,
         tipo: true,
         valor: true,
         descricao: true,
@@ -234,6 +235,7 @@ export async function getExtratoSaldoByTenant(
   }
 
   const items: ExtratoMovimentacaoItem[] = movimentacoes.map((row) => ({
+    id: row.id,
     tipo: row.tipo,
     valor: Number(row.valor),
     descricao: row.descricao,
@@ -242,6 +244,9 @@ export async function getExtratoSaldoByTenant(
       : null,
     usuarioNome: row.usuario.name,
     criadoEm: row.created_at.toISOString(),
+    movimentacaoOrigem: null,
+    podeEstornar: false,
+    jaEstornada: false,
   }))
 
   return { items, total, saldo }

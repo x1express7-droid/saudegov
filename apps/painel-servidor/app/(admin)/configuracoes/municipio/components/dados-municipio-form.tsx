@@ -22,6 +22,12 @@ export function DadosMunicipioForm({ name, slug, initialValores }: DadosMunicipi
   const [cnpj, setCnpj] = useState(initialValores.cnpj)
   const [timezone, setTimezone] = useState<BrazilTimezone>(initialValores.timezone)
   const [notificationEmail, setNotificationEmail] = useState(initialValores.notificationEmail)
+  const [municipioOrigemCidade, setMunicipioOrigemCidade] = useState(
+    initialValores.municipioOrigemCidade
+  )
+  const [municipioOrigemEstado, setMunicipioOrigemEstado] = useState(
+    initialValores.municipioOrigemEstado
+  )
 
   function handleSubmit(event: React.FormEvent) {
     event.preventDefault()
@@ -34,6 +40,8 @@ export function DadosMunicipioForm({ name, slug, initialValores }: DadosMunicipi
         cnpj: cnpj || undefined,
         timezone,
         notificationEmail: notificationEmail || undefined,
+        municipioOrigemCidade: municipioOrigemCidade || undefined,
+        municipioOrigemEstado: municipioOrigemEstado || undefined,
       })
 
       if (!res.success) {
@@ -102,6 +110,36 @@ export function DadosMunicipioForm({ name, slug, initialValores }: DadosMunicipi
           disabled={isPending}
           hint="Opcional. E-mail institucional para alertas do sistema."
         />
+
+        <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
+          <h3 className="text-[length:var(--text-sm)] font-semibold text-[var(--color-text)]">
+            Município de origem (TFD)
+          </h3>
+          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
+            Cidade sede do gestor usada para calcular a distância mínima de 50 km na aprovação de
+            solicitações TFD. Informe cidade e UF juntos; se omitir, o gestor deverá informar a
+            distância manualmente na decisão.
+          </p>
+          <div className="mt-[var(--space-3)] grid gap-[var(--space-3)] sm:grid-cols-[1fr_120px]">
+            <Input
+              label="Cidade de origem"
+              value={municipioOrigemCidade}
+              onChange={(e) => setMunicipioOrigemCidade(e.target.value)}
+              placeholder="Ex.: Campo Grande"
+              error={fieldErrors.municipioOrigemCidade?.[0]}
+              disabled={isPending}
+            />
+            <Input
+              label="UF"
+              value={municipioOrigemEstado}
+              onChange={(e) => setMunicipioOrigemEstado(e.target.value.toUpperCase())}
+              placeholder="MS"
+              maxLength={2}
+              error={fieldErrors.municipioOrigemEstado?.[0]}
+              disabled={isPending}
+            />
+          </div>
+        </div>
 
         {error ? (
           <p role="alert" className="text-[length:var(--text-sm)] text-[var(--color-error)]">

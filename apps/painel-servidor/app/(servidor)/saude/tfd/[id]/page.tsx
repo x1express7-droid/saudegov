@@ -5,11 +5,13 @@ import {
   requireTenantRole,
 } from '@saude/core-auth/server'
 import {
+  getContextoDecisaoTfd,
   getSaldosTfd,
   getSolicitacaoTfd,
   getVeiculosAgendamentoTfd,
   getViagensSolicitacaoTfd,
   TFD_PERMISSIONS,
+  type ContextoDecisaoTfd,
   type SaldoListItem,
   type TfdVeiculoAgendamentoItem,
   type TfdViagemSolicitacaoItem,
@@ -32,6 +34,7 @@ import { SolicitacaoTimeline } from './components/solicitacao-timeline'
 
 interface TfdDetalhePageProps {
   params: Promise<{ id: string }>
+  searchParams: Promise<{ cancelar?: string }>
 }
 
 export async function generateMetadata({ params }: TfdDetalhePageProps): Promise<Metadata> {
@@ -85,7 +88,7 @@ async function loadSaldosParaDecisao(
   }
 }
 
-export default async function TfdDetalhePage({ params }: TfdDetalhePageProps) {
+export default async function TfdDetalhePage({ params, searchParams }: TfdDetalhePageProps) {
   const tenant = await getTenantContext()
   if (!tenant.modules?.saude?.tfd) {
     notFound()
@@ -95,7 +98,9 @@ export default async function TfdDetalhePage({ params }: TfdDetalhePageProps) {
   const session = await requireTenantRole('SERVIDOR')
 
   const { id } = await params
+  const { cancelar: cancelarQuery } = await searchParams
   const solicitacao = await getSolicitacaoTfd(id)
+  const abrirCancelamentoInicial = cancelarQuery === 'prazo'
 
   if (!solicitacao) {
     notFound()
@@ -107,6 +112,18 @@ export default async function TfdDetalhePage({ params }: TfdDetalhePageProps) {
     session.user.role === 'SUPERADMIN'
 
   const saldosAtivos = await loadSaldosParaDecisao(solicitacao.status, canLoadSaldos)
+
+  let contextoDecisao: ContextoDecisaoTfd | null = null
+  if (
+    solicitacao.status === 'EM_ANALISE' &&
+    hasPermission(session, TFD_PERMISSIONS.DECIDIR_SOLICITACAO)
+  ) {
+    try {
+      contextoDecisao = await getContextoDecisaoTfd(id)
+    } catch {
+      contextoDecisao = null
+    }
+  }
 
   const statusAgendavel =
     solicitacao.status === 'APROVADO' || solicitacao.status === 'AGENDADO'
@@ -179,8 +196,10 @@ export default async function TfdDetalhePage({ params }: TfdDetalhePageProps) {
             solicitacao={solicitacao}
             saldosAtivos={saldosAtivos}
             canLoadSaldos={canLoadSaldos}
+            contextoDecisao={contextoDecisao}
             veiculosAgendamento={veiculosAgendamento}
             viagens={viagens}
+            abrirCancelamentoInicial={abrirCancelamentoInicial}
           />
         </aside>
       </div>

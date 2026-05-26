@@ -144,6 +144,18 @@ apps/painel-dev/
 │       └── platform-features/
 │           └── page.tsx         → registro de funcionalidades
 │
+├── lib/                         → Server Actions exclusivas do SUPERADMIN (não vão ao módulo TFD)
+│   ├── actions/
+│   │   ├── exportar-dados-municipio.ts
+│   │   ├── alterar-modulo.ts
+│   │   └── criar-municipio.ts
+│   ├── queries/
+│   │   └── coletar-dados-municipio.ts
+│   └── validators/
+│       └── exportacao-municipio.schema.ts
+│
+├── app/api/storage/export-download/[exportId]/route.ts
+│
 ├── middleware.ts                → IP allowlist + Auth Guard
 └── ...
 ```
@@ -186,7 +198,14 @@ packages/core-documents/
 │   ├── protocol.ts              → gerarProtocolo (formato: 2025-SAUDE-TFD-000001)
 │   ├── tramitacao.ts            → registrarTramitacao, getTramitacoes
 │   ├── audit.ts                 → createAuditLog com sanitização
-│   └── storage.ts               → solicitarUrlUpload, confirmarUpload (S3/R2)
+│   ├── storage.ts               → solicitarUrlUpload, confirmarUpload (S3/R2)
+│   ├── export-storage.ts        → salvar export temporário (pdf/csv/json), URL assinada 24h
+│   ├── export-rate-limit.ts     → assertTenantExportRateLimit (3/h por tenant)
+│   ├── csv/gerador-csv-relatorio.ts
+│   ├── pdf/gerador-pdf-relatorio.ts
+│   └── utils/
+│       ├── export-rodape.ts       → formatRodapeExport (§1.12)
+│       └── format-data-hora.ts
 ├── package.json
 └── tsconfig.json
 
@@ -255,7 +274,9 @@ modules/saude/tfd/
 │   │   ├── decisao.ts           → aprovar, negar
 │   │   ├── viagem.ts            → criar agendamento, registrar retorno
 │   │   ├── financeiro.ts        → registrar despesa, enviar/aprovar prestação
-│   │   └── configuracao.ts      → CRUD especialidades, prestadores, frota, saldo
+│   │   ├── configuracao.ts      → CRUD especialidades, prestadores, frota, saldo
+│   │   ├── relatorio.ts         → PDFs (competência, paciente, prestador, motorista, produção)
+│   │   └── exportacao.ts        → CSV (extrato, fila, agendamentos, prestações, saldos)
 │   │
 │   ├── queries/                 → leitura de dados (sem efeito colateral)
 │   │   ├── get-solicitacoes.ts  → listagem com filtros e paginação
@@ -264,13 +285,19 @@ modules/saude/tfd/
 │   │   ├── get-prestacoes.ts
 │   │   ├── get-saldos.ts
 │   │   ├── get-dashboard.ts     → KPIs e métricas
-│   │   └── get-extrato.ts       → extrato financeiro do saldo
+│   │   ├── get-extrato.ts       → extrato paginado (sem audit EXPORT)
+│   │   ├── get-extrato-completo.ts
+│   │   ├── get-*-completo.ts    → exportação CSV (sem paginação)
+│   │   └── get-relatorio-*.ts   → dados para PDFs analíticos
 │   │
 │   ├── validators/              → schemas Zod específicos do módulo
 │   │   ├── solicitacao.schema.ts
 │   │   ├── agendamento.schema.ts
 │   │   ├── despesa.schema.ts
-│   │   └── configuracao.schema.ts
+│   │   ├── configuracao.schema.ts
+│   │   ├── financeiro.schema.ts → filtros extrato (paginado e export)
+│   │   ├── relatorio.schema.ts
+│   │   └── exportacao.schema.ts
 │   │
 │   ├── types/                   → tipos TypeScript do módulo
 │   │   └── tfd.types.ts

@@ -55,6 +55,7 @@ export function ProcedimentoForm({
       especialidadeId: '',
       nome: '',
       codigoSigtap: '',
+      ehPab: false,
     },
   })
 
@@ -69,6 +70,7 @@ export function ProcedimentoForm({
         especialidadeId: procedimento.especialidadeId,
         nome: procedimento.nome,
         codigoSigtap: procedimento.codigoSigtap ?? '',
+        ehPab: procedimento.ehPab,
       })
       return
     }
@@ -77,6 +79,7 @@ export function ProcedimentoForm({
       especialidadeId: defaultEspecialidadeId ?? especialidadeOptions[0]?.value ?? '',
       nome: '',
       codigoSigtap: '',
+      ehPab: false,
     })
   }, [open, mode, procedimento, defaultEspecialidadeId, especialidadeOptions, reset])
 
@@ -108,6 +111,7 @@ export function ProcedimentoForm({
         especialidadeId: values.especialidadeId,
         nome: values.nome,
         codigoSigtap: values.codigoSigtap ?? null,
+        ehPab: values.ehPab,
       })
 
       if (!response.success) {
@@ -170,6 +174,23 @@ export function ProcedimentoForm({
             disabled={isPending || semEspecialidades}
             {...register('codigoSigtap')}
           />
+
+          <label className="flex cursor-pointer items-start gap-[var(--space-2)] text-[length:var(--text-sm)]">
+            <input
+              type="checkbox"
+              className="mt-[var(--space-1)] size-4 accent-[var(--color-primary)]"
+              disabled={isPending || semEspecialidades}
+              {...register('ehPab')}
+            />
+            <span>
+              <span className="font-medium text-[var(--color-text)]">
+                Procedimento do Piso de Atenção Básica (PAB)
+              </span>
+              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
+                Procedimentos PAB não podem ser aprovados para TFD (Portaria 55/1999).
+              </span>
+            </span>
+          </label>
 
           <DialogFooter>
             <Button

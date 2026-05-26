@@ -111,6 +111,9 @@ CREATE INDEX idx_tenants_active        ON public.tenants(active);
   "cadsus_enabled": false,
   "cadsus_token": null,
   "notification_email": "saude@campogrande.ms.gov.br",
+  "municipio_origem_cidade": "Campo Grande",
+  "municipio_origem_estado": "MS",
+  "municipio_origem_codigo_ibge": "5002704",
   "smtp_custom_enabled": false,
   "smtp_host": null,
   "smtp_port": 587,
@@ -121,6 +124,14 @@ CREATE INDEX idx_tenants_active        ON public.tenants(active);
 ```
 
 > **SMTP:** `smtp_password` não é persistido em texto claro — ver `DECISIONS.md` D12. Campo reservado para Sprint 2.x: `smtp_password_enc` (ciphertext). Enquanto `smtp_custom_enabled` for `false`, o envio usa o SMTP padrão da plataforma (variáveis `SMTP_PLATFORM_*` no `.env`).
+
+**Município de origem TFD (Sprint 2.3 — `BUSINESS_RULES.md` §1.5):** chaves opcionais em `settings` para cálculo de distância mínima (50 km) na aprovação. Não exige migration em `tenants` — o JSONB já suporta extensão.
+
+| Chave | Tipo | Uso |
+|-------|------|-----|
+| `municipio_origem_cidade` | string | Cidade sede do município gestor |
+| `municipio_origem_estado` | string (UF, 2 chars) | Estado |
+| `municipio_origem_codigo_ibge` | string (7 dígitos) | Código IBGE do município — preferencial para cálculo automatizado |
 
 ---
 
@@ -498,6 +509,13 @@ CREATE TABLE public.platform_features (
 -- Sem RLS e sem tenant_id — é dado global da plataforma, não por município
 ```
 
+**Seeds por sprint (referência):**
+
+| Sprint | Script (`packages/core-db`) | Exemplos de `funcionalidade` |
+|--------|-----------------------------|------------------------------|
+| 1.8 | `npm run db:seed:sprint-1-8-features` | `relatorio_competencia`, `relatorio_paciente`, `dashboard_tfd` |
+| 2.1 | `npm run db:seed:sprint-2-1-features` | `relatorio_prestador`, `export_csv_fila`, `exportar_dados_municipio`, … (9 entradas) |
+
 ---
 
 ## 3. Schema `saude_base` — Compartilhado entre Módulos de Saúde
@@ -612,6 +630,7 @@ CREATE TABLE saude_tfd.procedimentos (
   especialidade_id UUID NOT NULL REFERENCES saude_tfd.especialidades(id) ON DELETE CASCADE,
   nome             VARCHAR(200) NOT NULL,
   codigo_sigtap    VARCHAR(20),    -- código na Tabela SIGTAP do DATASUS
+  eh_pab           BOOLEAN NOT NULL DEFAULT false,  -- Piso de Atenção Básica — vedação TFD (§1.5)
   ativo            BOOLEAN NOT NULL DEFAULT true,
   created_at       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -741,9 +760,14 @@ CREATE TABLE saude_tfd.movimentacoes_saldo (
   solicitacao_id UUID,
   descricao      TEXT NOT NULL,
   usuario_id     UUID NOT NULL REFERENCES public.users(id),
+  -- Sprint 2.3: FK para o lançamento corrigido (registros ESTORNO apenas; sem UPDATE no original)
+  movimentacao_origem_id UUID REFERENCES saude_tfd.movimentacoes_saldo(id) ON DELETE RESTRICT,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
   -- Imutável — sem updated_at
 );
+
+CREATE INDEX idx_tfd_movimentacoes_origem ON saude_tfd.movimentacoes_saldo(movimentacao_origem_id)
+  WHERE movimentacao_origem_id IS NOT NULL;
 
 -- RLS
 ALTER TABLE saude_tfd.saldos ENABLE ROW LEVEL SECURITY;
@@ -826,6 +850,14 @@ CREATE TABLE saude_tfd.solicitacoes (
   motivo_cancelamento     TEXT,
   cancelado_por_id        UUID REFERENCES public.users(id) ON DELETE SET NULL,
   cancelado_at            TIMESTAMPTZ,
+  observacoes_abertura    TEXT,
+  -- Vedações Portaria 55/1999 — preenchidas na aprovação (Sprint 2.3, §1.5)
+  distancia_km                     DECIMAL(8,2),   -- distância origem→destino quando calculável
+  tratamento_experimental          BOOLEAN NOT NULL DEFAULT false,
+  regiao_metropolitana             BOOLEAN NOT NULL DEFAULT false,
+  paciente_hospitalizado_destino   BOOLEAN NOT NULL DEFAULT false,
+  vedacoes_confirmadas_por_id      UUID REFERENCES public.users(id) ON DELETE SET NULL,
+  vedacoes_confirmadas_at          TIMESTAMPTZ,
   created_at              TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
@@ -898,11 +930,16 @@ CREATE TABLE saude_tfd.viagens (
   observacoes           TEXT,
   status                saude_tfd.viagem_status NOT NULL DEFAULT 'AGENDADA',
   retorno_registrado_at TIMESTAMPTZ,
+  lembrete_48h_enviado_at TIMESTAMPTZ,   -- Sprint 1.6 — job lembrete 48h
+  lembrete_48h_falhou_at  TIMESTAMPTZ,
+  em_viagem_transicionado_at TIMESTAMPTZ, -- Sprint 2.3 — job AGENDADO→EM_VIAGEM (§1.10)
   created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_tfd_viagens_solicitacao ON saude_tfd.viagens(solicitacao_id);
+CREATE INDEX idx_tfd_viagens_em_viagem_pendente ON saude_tfd.viagens(tenant_id, data_viagem)
+  WHERE em_viagem_transicionado_at IS NULL AND status = 'AGENDADA';
 CREATE INDEX idx_tfd_viagens_data        ON saude_tfd.viagens(tenant_id, data_viagem);
 CREATE INDEX idx_tfd_viagens_motorista   ON saude_tfd.viagens(motorista_id);
 CREATE INDEX idx_tfd_viagens_status      ON saude_tfd.viagens(tenant_id, status);

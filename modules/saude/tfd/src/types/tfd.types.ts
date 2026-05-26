@@ -38,6 +38,7 @@ export interface TfdProcedimentoListItem {
   especialidadeNome: string
   nome: string
   codigoSigtap: string | null
+  ehPab: boolean
   ativo: boolean
   createdAt: string
 }
@@ -48,9 +49,19 @@ export interface TfdProcedimentoOutput {
   especialidadeId: string
   nome: string
   codigoSigtap: string | null
+  ehPab: boolean
   ativo: boolean
   createdAt: string
   updatedAt: string
+}
+
+/** Contexto para vedações na decisão de aprovação (§1.5). */
+export interface ContextoDecisaoTfd {
+  possuiProcedimentoPab: boolean
+  distanciaKmCalculada: number | null
+  origemMunicipioConfigurada: boolean
+  prestadorCidade: string
+  prestadorEstado: string
 }
 
 // --- Prestadores ---
@@ -236,14 +247,27 @@ export interface SaldoListItem {
   createdAt: string
 }
 
+/** Referência resumida à movimentação de origem (extrato — sem dados sensíveis). */
+export interface ExtratoMovimentacaoOrigemRef {
+  tipo: string
+  descricaoResumo: string
+}
+
 /** Linha do extrato de movimentações de um saldo. @see docs/API_CONTRACTS.md §7.4 */
 export interface ExtratoMovimentacaoItem {
+  id: string
   tipo: string
   valor: number
   descricao: string
   protocolo: string | null
   usuarioNome: string
   criadoEm: string
+  /** Preenchido quando `tipo === 'ESTORNO'`. */
+  movimentacaoOrigem: ExtratoMovimentacaoOrigemRef | null
+  /** CONSUMO, CREDITO ou LIBERACAO sem estorno registrado. */
+  podeEstornar: boolean
+  /** Já possui registro ESTORNO vinculado. */
+  jaEstornada: boolean
 }
 
 // --- Solicitações TFD (Sprint 1.4) ---
@@ -314,6 +338,8 @@ export interface TfdSolicitacaoDetalhe {
   laudoAnexoId: string | null
   solicitacaoOrigemId: string | null
   reservaSaldo: { id: string; valor: number; status: string } | null
+  /** `true` quando status `PENDENTE` e complemento solicitado há ≥ 60 dias (§1.9). */
+  elegivelCancelamentoPrazoEsgotado: boolean
   cidPrincipal?: string | null
   diagnostico?: string | null
   observacoesClinicas?: string | null
@@ -360,12 +386,44 @@ export interface AlertaLembreteViagemFalhou {
   }
 }
 
-/** Alerta operacional — complemento pendente há mais de 30 dias (gestor). */
-export interface AlertaPendente30Dias {
+/** Alerta operacional — complemento pendente (gestor). */
+export interface AlertaPendenteComplemento {
   id: string
   protocolo: string
   paciente: { nome: string }
   complementoSolicitadoEm: string
+  diasPendente: number
+}
+
+/** Complemento pendente há mais de 30 dias — dashboard §1.2.1. */
+export type AlertaPendente30Dias = AlertaPendenteComplemento
+
+/** Complemento pendente há mais de 60 dias — cancelamento permitido §1.9. */
+export type AlertaPendente60Dias = AlertaPendenteComplemento
+
+/** Códigos de vedação Portaria 55/1999 na decisão (§1.5). */
+export type TfdVedacaoCodigo =
+  | 'PAB'
+  | 'DISTANCIA_MINIMA'
+  | 'TRATAMENTO_EXPERIMENTAL'
+  | 'REGIAO_METROPOLITANA'
+  | 'PACIENTE_HOSPITALIZADO'
+
+export type TfdVedacaoSeveridade = 'BLOQUEIO' | 'ALERTA'
+
+export interface TfdVedacaoItem {
+  codigo: TfdVedacaoCodigo
+  severidade: TfdVedacaoSeveridade
+  mensagem: string
+}
+
+/** Resultado da avaliação de vedações antes da aprovação. */
+export interface TfdVedacoesResultado {
+  itens: TfdVedacaoItem[]
+  possuiBloqueio: boolean
+  possuiAlerta: boolean
+  exigeConfirmacao: boolean
+  podeAprovar: boolean
 }
 
 /** Opção de solicitação anterior para vínculo de RETORNO — sem dados sensíveis. */
@@ -392,7 +450,27 @@ export interface TfdDashboardSaldoItem {
   valorReservado: number
   valorUtilizado: number
   valorDisponivel: number
+  percentualDisponivel: number
   alertaBaixo: boolean
+}
+
+/** Movimentação no extrato resumido do bloco financeiro do dashboard. */
+export interface TfdDashboardFinanceiroMovimentacao {
+  id: string
+  criadoEm: string
+  tipo: string
+  descricao: string
+  valor: number
+  saldoId: string
+  saldoDescricao: string
+}
+
+/** Bloco financeiro do dashboard gestor TFD. @see docs/SPRINTS.md Sprint 2.2 */
+export interface TfdDashboardFinanceiroOutput {
+  totalDisponivelConsolidado: number
+  saldosEmAlerta: TfdDashboardSaldoItem[]
+  extratoResumido: TfdDashboardFinanceiroMovimentacao[]
+  quantidadeSaldosAtivos: number
 }
 
 /** KPIs e agregados do dashboard TFD. @see docs/API_CONTRACTS.md §7.3 */
@@ -546,6 +624,96 @@ export interface RelatorioPacienteItem {
 }
 
 export interface PacienteRelatorioBuscaItem {
+  id: string
+  nome: string
+}
+
+/** Período para relatórios por prestador/motorista. @see relatorioPrestadorSchema */
+export interface RelatorioPeriodoInput {
+  dataInicio: string
+  dataFim: string
+}
+
+export interface RelatorioPrestadorInput extends RelatorioPeriodoInput {
+  prestadorId?: string
+}
+
+export interface RelatorioPrestadorGrupoItem {
+  prestadorId: string
+  prestadorNome: string
+  cidade: string
+  estado: string
+  volume: number
+  valorReservado: number
+  valorConsumido: number
+}
+
+export interface RelatorioPrestadorDetalheItem {
+  prestadorNome: string
+  protocolo: string
+  status: string
+  valorReservado: number
+  valorConsumido: number
+}
+
+export interface RelatorioPrestadorData {
+  dataInicio: string
+  dataFim: string
+  grupos: RelatorioPrestadorGrupoItem[]
+  detalhes: RelatorioPrestadorDetalheItem[]
+  valorTotalReservado: number
+  valorTotalConsumido: number
+}
+
+export interface RelatorioMotoristaInput extends RelatorioPeriodoInput {
+  motoristaId?: string
+}
+
+export interface RelatorioMotoristaGrupoItem {
+  motoristaId: string
+  motoristaNome: string
+  totalViagens: number
+  valorDespesas: number
+}
+
+export interface RelatorioMotoristaDetalheItem {
+  motoristaNome: string
+  protocolo: string
+  dataViagem: string
+  statusViagem: string
+  valorDespesas: number
+}
+
+export interface RelatorioMotoristaData {
+  dataInicio: string
+  dataFim: string
+  grupos: RelatorioMotoristaGrupoItem[]
+  detalhes: RelatorioMotoristaDetalheItem[]
+  valorTotalDespesas: number
+}
+
+export type RelatorioProducaoStatusChave = 'APROVADO' | 'NEGADO' | 'CONCLUIDO' | 'CANCELADO'
+
+export interface RelatorioProducaoMensalInput {
+  mes: number
+  ano: number
+}
+
+export interface RelatorioProducaoStatusResumo {
+  quantidade: number
+  valorReservado: number
+  valorConsumido: number
+}
+
+export interface RelatorioProducaoMensalData {
+  mes: number
+  ano: number
+  porStatus: Record<RelatorioProducaoStatusChave, RelatorioProducaoStatusResumo>
+  valorTotalReservado: number
+  valorTotalConsumido: number
+}
+
+export interface RelatorioSelectOption {
   id: string
   nome: string
 }

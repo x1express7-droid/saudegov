@@ -80,7 +80,14 @@ export function ProcedimentoTable({
         id: 'nome',
         header: 'Procedimento',
         cell: ({ row }) => (
-          <span className="font-medium text-[var(--color-text)]">{row.original.nome}</span>
+          <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+            <span className="font-medium text-[var(--color-text)]">{row.original.nome}</span>
+            {row.original.ehPab ? (
+              <Badge variant="orange" size="sm">
+                PAB
+              </Badge>
+            ) : null}
+          </div>
         ),
       },
       {

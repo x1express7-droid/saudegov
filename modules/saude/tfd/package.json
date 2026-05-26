@@ -15,8 +15,10 @@
     "./actions/regulacao": "./src/actions/regulacao.ts",
     "./actions/decisao": "./src/actions/decisao.ts",
     "./actions/financeiro": "./src/actions/financeiro.ts",
+    "./utils/saldo-movimentacao": "./src/utils/saldo-movimentacao.ts",
     "./actions/viagem": "./src/actions/viagem.ts",
     "./actions/relatorio": "./src/actions/relatorio.ts",
+    "./actions/exportacao": "./src/actions/exportacao.ts",
     "./utils/cancelamento": "./src/utils/cancelamento.ts"
   },
   "scripts": {

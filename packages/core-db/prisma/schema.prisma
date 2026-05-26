@@ -156,6 +156,7 @@ model User {
   tfd_solicitacoes_solicitante TfdSolicitacao[]        @relation("TfdSolicitante")
   tfd_solicitacoes_decidido    TfdSolicitacao[]        @relation("TfdDecididoPor")
   tfd_solicitacoes_cancelado   TfdSolicitacao[]        @relation("TfdCanceladoPor")
+  tfd_solicitacoes_vedacoes    TfdSolicitacao[]        @relation("TfdVedacoesConfirmadas")
   tfd_prestacoes_aprovadas     TfdPrestacaoConta[]     @relation("TfdPrestacaoAprovado")
 
   @@unique([tenant_id, email], map: "uq_users_tenant_email")
@@ -543,6 +544,7 @@ model TfdProcedimento {
   especialidade_id String           @db.Uuid
   nome             String           @db.VarChar(200)
   codigo_sigtap    String?          @db.VarChar(20)
+  eh_pab           Boolean          @default(false)
   ativo            Boolean          @default(true)
   created_at       DateTime         @default(now()) @db.Timestamptz
   updated_at       DateTime         @updatedAt @db.Timestamptz
@@ -685,20 +687,24 @@ model TfdReservaSaldo {
 }
 
 model TfdMovimentacaoSaldo {
-  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id      String              @db.Uuid
-  saldo_id       String              @db.Uuid
-  tipo           TfdMovimentacaoTipo
-  valor          Decimal             @db.Decimal(12, 2)
-  solicitacao_id String?             @db.Uuid
-  descricao      String              @db.Text
-  usuario_id     String              @db.Uuid
-  created_at     DateTime            @default(now()) @db.Timestamptz
-  tenant         Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  saldo          TfdSaldo            @relation(fields: [saldo_id], references: [id])
-  usuario        User                @relation(fields: [usuario_id], references: [id])
+  id                     String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id              String              @db.Uuid
+  saldo_id               String              @db.Uuid
+  tipo                   TfdMovimentacaoTipo
+  valor                  Decimal             @db.Decimal(12, 2)
+  solicitacao_id         String?             @db.Uuid
+  movimentacao_origem_id String?             @db.Uuid
+  descricao              String              @db.Text
+  usuario_id             String              @db.Uuid
+  created_at             DateTime            @default(now()) @db.Timestamptz
+  tenant                 Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  saldo                  TfdSaldo            @relation(fields: [saldo_id], references: [id])
+  usuario                User                @relation(fields: [usuario_id], references: [id])
+  movimentacao_origem    TfdMovimentacaoSaldo?  @relation("MovimentacaoEstorno", fields: [movimentacao_origem_id], references: [id], onDelete: Restrict)
+  estornos               TfdMovimentacaoSaldo[] @relation("MovimentacaoEstorno")
 
   @@index([tenant_id], map: "idx_tfd_movimentacoes_saldo_tenant")
+  @@index([movimentacao_origem_id], map: "idx_tfd_movimentacoes_origem")
   @@map("movimentacoes_saldo")
   @@schema("saude_tfd")
 }
@@ -775,12 +781,18 @@ model TfdSolicitacao {
   decidido_por_id         String?              @db.Uuid
   decidido_at             DateTime?            @db.Timestamptz
   saldo_id                String?              @db.Uuid
-  motivo_cancelamento     String?              @db.Text
-  cancelado_por_id        String?              @db.Uuid
-  cancelado_at            DateTime?            @db.Timestamptz
-  observacoes_abertura    String?              @db.Text
-  created_at              DateTime             @default(now()) @db.Timestamptz
-  updated_at              DateTime             @updatedAt @db.Timestamptz
+  motivo_cancelamento              String?              @db.Text
+  cancelado_por_id                 String?              @db.Uuid
+  cancelado_at                     DateTime?            @db.Timestamptz
+  observacoes_abertura             String?              @db.Text
+  distancia_km                     Decimal?             @db.Decimal(8, 2)
+  tratamento_experimental          Boolean              @default(false)
+  regiao_metropolitana             Boolean              @default(false)
+  paciente_hospitalizado_destino   Boolean              @default(false)
+  vedacoes_confirmadas_por_id      String?              @db.Uuid
+  vedacoes_confirmadas_at          DateTime?            @db.Timestamptz
+  created_at                       DateTime             @default(now()) @db.Timestamptz
+  updated_at                       DateTime             @updatedAt @db.Timestamptz
   tenant                  Tenant               @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
   processo                Processo             @relation(fields: [processo_id], references: [id], onDelete: Cascade)
   paciente                Paciente             @relation(fields: [paciente_id], references: [id])
@@ -794,6 +806,7 @@ model TfdSolicitacao {
   decidido_por            User?                @relation("TfdDecididoPor", fields: [decidido_por_id], references: [id], onDelete: SetNull)
   saldo                   TfdSaldo?            @relation(fields: [saldo_id], references: [id], onDelete: SetNull)
   cancelado_por           User?                @relation("TfdCanceladoPor", fields: [cancelado_por_id], references: [id], onDelete: SetNull)
+  vedacoes_confirmadas_por User?               @relation("TfdVedacoesConfirmadas", fields: [vedacoes_confirmadas_por_id], references: [id], onDelete: SetNull)
   reservas                TfdReservaSaldo[]
   acompanhantes           TfdAcompanhante[]
   viagens                 TfdViagem[]
@@ -878,8 +891,9 @@ model TfdViagem {
   observacoes           String?         @db.Text
   status                TfdViagemStatus @default(AGENDADA)
   retorno_registrado_at DateTime?       @db.Timestamptz
-  lembrete_48h_enviado_at DateTime?     @db.Timestamptz
-  lembrete_48h_falhou_at  DateTime?     @db.Timestamptz
+  lembrete_48h_enviado_at      DateTime?     @db.Timestamptz
+  lembrete_48h_falhou_at       DateTime?     @db.Timestamptz
+  em_viagem_transicionado_at   DateTime?     @db.Timestamptz
   created_at            DateTime        @default(now()) @db.Timestamptz
   updated_at            DateTime        @updatedAt @db.Timestamptz
   tenant                Tenant          @relation(fields: [tenant_id], references: [id], onDelete: Cascade)

@@ -35,6 +35,7 @@ export type {
   TfdFonteRecursoValor,
   SaldoListItem,
   ExtratoMovimentacaoItem,
+  ExtratoMovimentacaoOrigemRef,
   TfdPacienteVinculadoItem,
   TfdSolicitacaoListItem,
   TfdSolicitacaoDetalhe,
@@ -42,7 +43,16 @@ export type {
   AlertaPrestacaoPrazo,
   AlertaPrestacaoMotivo,
   AlertaPendente30Dias,
+  AlertaPendente60Dias,
+  AlertaPendenteComplemento,
+  TfdVedacaoCodigo,
+  TfdVedacaoSeveridade,
+  TfdVedacaoItem,
+  TfdVedacoesResultado,
+  ContextoDecisaoTfd,
   TfdDashboardSaldoItem,
+  TfdDashboardFinanceiroOutput,
+  TfdDashboardFinanceiroMovimentacao,
   TfdDashboardOutput,
   TfdDashboardOperacionalOutput,
   TfdDashboardOperacionalKpis,
@@ -55,11 +65,18 @@ export type {
   TfdSolicitacaoOrigemRetornoItem,
   AbrirSolicitacaoOutput,
   EnviarSolicitacaoOutput,
+  RelatorioSelectOption,
 } from './types/tfd.types'
+
+export { formatExtratoOrigemLabel, labelTipoMovimentacao } from './utils/extrato-labels'
 
 export {
   abrirSolicitacaoSchema,
   enviarSolicitacaoSchema,
+  cancelarSolicitacaoSchema,
+  motivoCancelamentoPresetValues,
+  TEXTO_MOTIVO_CANCELAMENTO_PRAZO_ESGOTADO,
+  resolveMotivoCancelamentoTexto,
 } from './validators/solicitacao.schema'
 
 export {
@@ -75,6 +92,8 @@ export { criarAgendamentoSchema, registrarRetornoSchema } from './validators/age
 export type {
   AbrirSolicitacaoInput,
   EnviarSolicitacaoInput,
+  CancelarSolicitacaoInput,
+  MotivoCancelamentoPreset,
   TfdTipoAtendimento,
   TfdUrgencia,
   TfdRelacaoAcompanhante,
@@ -106,11 +125,19 @@ export {
   criarMotoristaSchema,
   atualizarMotoristaSchema,
   desativarMotoristaSchema,
+  CNH_CATEGORIA_LETTERS,
+  serializeCnhCategorias,
+  parseCnhCategorias,
+  formatCnhCategorias,
 } from './validators/configuracao.schema'
+
+export type { CnhCategoriaLetter } from './validators/configuracao.schema'
 
 export {
   criarSaldoObjectSchema,
   criarSaldoSchema,
+  estornarMovimentacaoSaldoSchema,
+  MIN_TEXTO_JUSTIFICATIVA_CHARS,
   filtrosExtratoSchema,
 } from './validators/financeiro.schema'
 
@@ -131,6 +158,7 @@ export type {
 
 export type {
   CriarSaldoInput,
+  EstornarMovimentacaoSaldoInput,
   FiltrosExtratoInput,
 } from './validators/financeiro.schema'
 
@@ -187,5 +215,25 @@ export { verificaCapacidadeVeiculo, calcProximaSequenciaViagem } from './utils/v
 export { calcSaldoDisponivel } from './utils/saldo'
 
 export type { CalcSaldoDisponivelInput, CalcSaldoDisponivelResult } from './utils/saldo'
+
+export {
+  MIN_DISTANCIA_TFD_KM,
+  avaliarVedacoesTfd,
+} from './utils/vedacoes-tfd'
+export type { AvaliarVedacoesTfdInput } from './utils/vedacoes-tfd'
+export {
+  DIAS_ALERTA_PENDENTE_30,
+  DIAS_CANCELAMENTO_PENDENTE_COMPLEMENTO,
+  isComplementoPendenteHaPeloMenosDias,
+  buildAlertasPendenteComplemento,
+} from './utils/pendente-prazo'
+export {
+  parseMunicipioOrigemFromSettings,
+  calcDistanciaTfdKm,
+} from './utils/calc-distancia-tfd'
+export type {
+  TenantMunicipioOrigem,
+  TfdPrestadorDestinoLocal,
+} from './utils/calc-distancia-tfd'
 
 export type { TfdServidorMotoristaOption } from './queries/get-servidores-motorista-options'

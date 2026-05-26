@@ -21,14 +21,23 @@ import type { ActionResponse } from '@saude/validators'
 
 import { TFD_PERMISSIONS } from '../permissions'
 import {
+  resolveSaldoEstadoAlerta,
+  tryNotificarSaldoBaixoAposMutacao,
+} from '../utils/saldo-baixo-notificacao'
+import {
   decidirPrestacaoContasSchema,
   enviarPrestacaoContasSchema,
   MIN_VALOR_COMPROVANTE,
   registrarDespesaSchema,
   registrarVisualizacaoComprovanteSchema,
 } from '../validators/despesa.schema'
+import { estornarMovimentacaoSaldoSchema } from '../validators/financeiro.schema'
+import { isTipoMovimentacaoEstornavel } from '../utils/saldo-movimentacao'
 
 const MODULO_TFD = 'saude.tfd'
+
+const SALDOS_PATH = '/saude/tfd/configuracoes/saldos'
+const DASHBOARD_TFD_PATH = '/saude/tfd/dashboard'
 
 const MSG_VIAGEM_NAO_ENCONTRADA = 'Viagem não encontrada.'
 const MSG_PRESTACAO_NAO_ENCONTRADA =
@@ -60,6 +69,12 @@ const MSG_COMPROVANTES_NAO_VISUALIZADOS =
 const MSG_RESERVA_NAO_ENCONTRADA =
   'Reserva financeira ativa não encontrada para esta solicitação.'
 const MSG_TRANSICAO_INVALIDA = 'Transição inválida.'
+const MSG_MOVIMENTACAO_NAO_ENCONTRADA = 'Movimentação não encontrada.'
+const MSG_SALDO_INATIVO = 'Não é possível estornar movimentações de saldo inativo.'
+const MSG_MOVIMENTACAO_JA_ESTORNADA = 'Esta movimentação já possui estorno registrado.'
+const MSG_TIPO_NAO_ESTORNAVEL =
+  'Este tipo de movimentação não pode ser estornado pelo sistema.'
+const MSG_NAO_ESTORNAR_ESTORNO = 'Não é permitido estornar um registro de estorno.'
 
 const COMPROVANTE_DOWNLOAD_EXPIRES_MINUTES = 15
 
@@ -1066,6 +1081,23 @@ export async function decidirPrestacaoContas(
       throw error
     }
 
+    const reservaAtiva = await db.tfdReservaSaldo.findFirst({
+      where: {
+        tenant_id: tenantId,
+        solicitacao_id: prestacao.viagem.solicitacao.id,
+        status: 'ATIVA',
+      },
+      select: { saldo_id: true },
+    })
+
+    const saldoIdAfetado = reservaAtiva?.saldo_id ?? null
+    let jaEstavaEmAlertaBaixo = false
+
+    if (saldoIdAfetado) {
+      const estadoSaldoAntes = await resolveSaldoEstadoAlerta(db, tenantId, saldoIdAfetado)
+      jaEstavaEmAlertaBaixo = estadoSaldoAntes?.alertaBaixo ?? false
+    }
+
     const resultado = await db.$transaction(async (tx) => {
       const prestacaoLocked = await tx.tfdPrestacaoConta.findFirst({
         where: {
@@ -1264,6 +1296,15 @@ export async function decidirPrestacaoContas(
       })
     }
 
+    if (saldoIdAfetado) {
+      await tryNotificarSaldoBaixoAposMutacao({
+        tenantId,
+        saldoId: saldoIdAfetado,
+        jaEstavaEmAlertaBaixo,
+        excludeUserIds: [session.user.id],
+      })
+    }
+
     revalidatePath('/saude/tfd')
     revalidatePath('/saude/tfd/prestacoes')
     revalidatePath(`/saude/tfd/${resultado.solicitacaoId}`)
@@ -1281,6 +1322,144 @@ export async function decidirPrestacaoContas(
     return {
       success: false,
       error: 'Não foi possível registrar a decisão da prestação. Tente novamente.',
+    }
+  }
+}
+
+/** Estorno manual de movimentação — novo registro ESTORNO, extrato imutável (§1.8). */
+export async function estornarMovimentacaoSaldoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<{ movimentacaoId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('GESTOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO)
+
+  const parsed = estornarMovimentacaoSaldoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const { movimentacaoId, justificativa } = parsed.data
+  const tenantId = session.user.tenantId!
+
+  try {
+    const db = await getPrismaForTenant(tenantId)
+
+    const original = await db.tfdMovimentacaoSaldo.findFirst({
+      where: {
+        id: movimentacaoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        saldo_id: true,
+        tipo: true,
+        valor: true,
+        solicitacao_id: true,
+        saldo: {
+          select: { ativo: true, descricao: true },
+        },
+      },
+    })
+
+    if (!original) {
+      return { success: false, error: MSG_MOVIMENTACAO_NAO_ENCONTRADA }
+    }
+
+    if (!original.saldo.ativo) {
+      return { success: false, error: MSG_SALDO_INATIVO }
+    }
+
+    if (original.tipo === 'ESTORNO') {
+      return { success: false, error: MSG_NAO_ESTORNAR_ESTORNO }
+    }
+
+    if (!isTipoMovimentacaoEstornavel(original.tipo)) {
+      return { success: false, error: MSG_TIPO_NAO_ESTORNAVEL }
+    }
+
+    const estornoExistente = await db.tfdMovimentacaoSaldo.findFirst({
+      where: {
+        tenant_id: tenantId,
+        movimentacao_origem_id: original.id,
+        tipo: 'ESTORNO',
+      },
+      select: { id: true },
+    })
+
+    if (estornoExistente) {
+      return { success: false, error: MSG_MOVIMENTACAO_JA_ESTORNADA }
+    }
+
+    const valorOriginal = Number(original.valor)
+    const valorEstorno = roundMoney(-valorOriginal)
+
+    if (valorEstorno === 0) {
+      return {
+        success: false,
+        error: 'Não é possível estornar movimentação com valor zero.',
+      }
+    }
+
+    const estadoAntes = await resolveSaldoEstadoAlerta(db, tenantId, original.saldo_id)
+    const jaEstavaEmAlertaBaixo = estadoAntes?.alertaBaixo ?? false
+
+    const estorno = await db.$transaction(async (tx) => {
+      return tx.tfdMovimentacaoSaldo.create({
+        data: {
+          tenant_id: tenantId,
+          saldo_id: original.saldo_id,
+          tipo: 'ESTORNO',
+          valor: valorEstorno,
+          solicitacao_id: original.solicitacao_id,
+          movimentacao_origem_id: original.id,
+          descricao: justificativa,
+          usuario_id: session.user.id,
+        },
+        select: { id: true },
+      })
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_movimentacao_saldo',
+      entidadeId: estorno.id,
+      payloadDepois: {
+        tipo: 'ESTORNO',
+        movimentacaoOrigemId: original.id,
+        tipoMovimentacaoOrigem: original.tipo,
+        valor: valorEstorno,
+        saldoId: original.saldo_id,
+      },
+    })
+
+    await tryNotificarSaldoBaixoAposMutacao({
+      tenantId,
+      saldoId: original.saldo_id,
+      jaEstavaEmAlertaBaixo,
+      excludeUserIds: [session.user.id],
+    })
+
+    revalidatePath(SALDOS_PATH)
+    revalidatePath(DASHBOARD_TFD_PATH)
+
+    return { success: true, data: { movimentacaoId: estorno.id } }
+  } catch (error) {
+    console.error('[estornarMovimentacaoSaldoTfd] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar o estorno. Tente novamente.',
     }
   }
 }

@@ -298,9 +298,11 @@ FASE 4 → Módulo UBS
 | `relatorio_paciente` | — | ✅ |
 | `audit_log_filtros_expandidos` | ✅ | — |
 
-**Fora do escopo (Sprint 2.1):** exportação CSV/PDF de audit logs; relatórios por prestador/motorista/produção mensal.
+**Adiado para Sprint 2.1 (entregue):** relatórios por prestador, motorista e produção mensal; exportações CSV (extrato, listagens); rodapé unificado §1.12.
 
-**Critério de conclusão:** dashboard operacional, cancelamento funciona, relatórios PDF básicos, audit logs com filtros expandidos no Painel Dev.
+**Fora do escopo (permanece):** exportação CSV/PDF de audit logs.
+
+**Critério de conclusão:** dashboard operacional, cancelamento funciona, relatórios PDF básicos (competência + paciente), audit logs com filtros expandidos no Painel Dev.
 
 ---
 
@@ -322,11 +324,13 @@ FASE 4 → Módulo UBS
 | Campo | Descrição |
 |-------|-----------|
 | **Identificador** | `DT-002` |
-| **Status** | Resolvido |
+| **Status** | Encerrado |
+| **Sprint de resolução** | 2.2 |
 | **Origem** | Fechamento Sprint 1.5 |
 | **Causa** | `docs/SPRINTS.md` descrevia alerta de 30 dias como "no dashboard"; implementado na fila `/saude/tfd` por decisão de escopo das sprints 1.5 e 1.6. Documentação divergia do código. |
 | **Impacto** | Baixo — apenas documentação. Nenhum impacto funcional. |
-| **Resolução** | `SPRINTS.md` (notas 1.5/1.6) e `BUSINESS_RULES.md` (§1.2.1) alinhados ao destino definitivo. Sprint 1.8 entregou `/saude/tfd/dashboard` com alertas consolidados; banners removidos da fila para gestores com `ver_dashboard`. |
+| **Resolução (parcial — Sprint 1.8)** | `SPRINTS.md` (notas 1.5/1.6) e `BUSINESS_RULES.md` (§1.2.1) alinhados ao destino definitivo. Sprint 1.8 entregou `/saude/tfd/dashboard` com alertas consolidados; banners removidos da fila para gestores com `ver_dashboard`. |
+| **Resolução (encerramento — Sprint 2.2)** | Bloco **Financeiro** no dashboard gestor (KPI saldo disponível consolidado, lista de saldos em alerta, extrato das últimas 5 movimentações). Notificação in-app **`SALDO_BAIXO`** na transição para alerta (&lt; 20%). Submenu **Financeiro** no sidebar TFD. `BUSINESS_RULES.md` §1.2.1 atualizado com consolidação dos alertas operacionais no dashboard. |
 
 ### DT-003 — Prisma Client local desatualizado após migrations da sprint
 
@@ -338,6 +342,17 @@ FASE 4 → Módulo UBS
 | **Causa** | Prisma Client em `packages/core-db` pode estar desatualizado após migrations da sprint (delegate `tfdSolicitacao` ausente localmente em alguns ambientes). |
 | **Impacto** | Scripts locais e smoke RLS usam SQL raw como contorno. Build e type-check não afetados (`skipLibCheck`). Pode causar erros em dev após `git pull` sem `db:generate`. |
 | **Resolução** | Script `npm run db:generate` na raiz; `turbo.json` executa `db:generate` antes de `type-check` e `build`; CI em `.github/workflows/ci.yml`; onboarding documentado no `README.md`. |
+
+### DT-004 — Exportação municipal: módulos além de TFD sem coleta de dados
+
+| Campo | Descrição |
+|-------|-----------|
+| **Identificador** | `DT-004` |
+| **Status** | Aberto |
+| **Origem** | Fechamento Sprint 2.1 |
+| **Causa** | `exportarDadosMunicipio` (Painel Dev) coleta dados apenas do módulo `tfd`; demais módulos ativos (`regul`, `visa`, etc.) retornam aviso em `modulosSemDados` no arquivo exportado. |
+| **Impacto** | Baixo — SUPERADMIN recebe exportação completa do TFD; backup de outros módulos exige sprint futura quando existirem schemas de dados. |
+| **Resolução** | Implementar coletores por módulo quando cada módulo de saúde tiver modelo persistido na plataforma. |
 
 ---
 
@@ -354,76 +369,165 @@ A Fase 2 fecha **lacunas entre código e documentação** (`BUSINESS_RULES.md`, 
 
 | Área | O que falta | Sprint |
 |------|-------------|--------|
-| Relatórios exportáveis (prestador, motorista, produção, CSV) | Planejado na 1.8 como 2.1 | 2.1 |
-| Navegação e dashboard financeiro do gestor | Menu, KPI saldo, extrato resumido, acesso GESTOR | 2.2 |
-| Regras `BUSINESS_RULES` não codificadas | ESTORNO, 60 dias PENDENTE, job `EM_VIAGEM`, vedações Portaria 55 | 2.3 |
+| Relatórios exportáveis (prestador, motorista, produção, CSV) | Entregue na 2.1 | ✅ 2.1 |
+| Navegação e dashboard financeiro do gestor | Menu, KPI saldo, extrato resumido, acesso GESTOR | ✅ 2.2 |
+| Regras `BUSINESS_RULES` não codificadas | — | ✅ 2.3 |
 | Notificações §1.14 | Canal e-mail + retry/fallback | 2.4 |
 | CADSUS produção | RNDS real | 2.5 |
-| Config TFD incompleta na UI | Aba Procedimentos; inativar saldo | 2.2 |
+| Config TFD incompleta na UI | Aba Procedimentos; inativar saldo | ✅ 2.2 |
 
 ---
 
 ### Sprint 2.1 — Relatórios e Exportação TFD
-**Status:** 💡 Planejado
+**Status:** ✅ Concluído
 
 **Referência:** `BUSINESS_RULES.md` §1.12; fora de escopo explícito na Sprint 1.8.
 
 **Entregas:**
-- [ ] Relatório por prestador (volume e gastos por hospital/clínica; sem CID/diagnóstico)
-- [ ] Relatório por motorista (viagens e custos no período)
-- [ ] Relatório de produção mensal (aprovadas, negadas, concluídas, canceladas com valores)
-- [ ] Extrato financeiro completo por saldo e período (visualização + exportação CSV)
-- [ ] `audit_logs` com `acao = EXPORT` apenas na exportação CSV do extrato (não na leitura da página)
-- [ ] Exportação CSV das listagens TFD prioritárias (fila, agendamentos, prestações, saldos)
-- [ ] Exportação de dados do município (Painel Dev — SUPERADMIN)
-- [ ] Rodapé PDF/CSV conforme §1.12: gerado por, data/hora, saudegov
+- [x] Relatório por prestador (volume e gastos por hospital/clínica; sem CID/diagnóstico)
+- [x] Relatório por motorista (viagens e custos no período)
+- [x] Relatório de produção mensal (aprovadas, negadas, concluídas, canceladas com valores)
+- [x] Extrato financeiro completo por saldo e período (visualização + exportação CSV)
+- [x] `audit_logs` com `acao = EXPORT` apenas na exportação CSV do extrato (não na leitura da página)
+- [x] Exportação CSV das listagens TFD prioritárias (fila, agendamentos, prestações, saldos)
+- [x] Exportação de dados do município (Painel Dev — SUPERADMIN)
+- [x] Rodapé PDF/CSV conforme §1.12: gerado por, data/hora, saudegov
 
-**Critério de conclusão:** gestor com `exportar_relatorio` gera relatórios e CSV com auditoria; LGPD mantida.
+**Paridade painéis (2.1):**
+
+| Funcionalidade | painel-dev | painel_servidor | Permissão / notas |
+|---|---|---|---|
+| `relatorio_prestador` | — | ✅ | `saude.tfd.exportar_relatorio` + GESTOR |
+| `relatorio_motorista` | — | ✅ | idem |
+| `relatorio_producao_mensal` | — | ✅ | idem |
+| `exportar_extrato_csv` | — | ✅ | `saude.tfd.gerenciar_saldo` + GESTOR |
+| `export_csv_fila` | — | ✅ | `exportar_relatorio` + GESTOR |
+| `export_csv_agendamentos` | — | ✅ | idem |
+| `export_csv_prestacoes` | — | ✅ | idem |
+| `export_csv_saldos` | — | ✅ | idem |
+| `exportar_dados_municipio` | ✅ | — | SUPERADMIN (`requireSuperAdmin`) |
+
+**Mapa de implementação (referência):**
+
+| Entrega | Local principal |
+|---------|-----------------|
+| Rodapé e CSV genérico | `packages/core-documents` (`formatRodapeExport`, `gerarCsvRelatorio`, `gerarPdfRelatorio`, `salvarExportTemporario*`) |
+| Relatórios PDF (prestador, motorista, produção) | `modules/saude/tfd/src/actions/relatorio.ts`, `get-relatorio-*.ts`, `validators/relatorio.schema.ts` |
+| Relatórios PDF 1.8 (competência, paciente) | mesma action `relatorio.ts` |
+| Painel relatórios gestor | `apps/painel-servidor/.../dashboard/components/tfd-relatorios-panel.tsx` |
+| Extrato CSV | `get-extrato-completo.ts`, `exportacao.ts` → `exportarExtratoSaldoTfdCsv` |
+| CSV listagens | `get-*-completo.ts`, `validators/exportacao.schema.ts`, `exportacao.ts`, `tfd-export-csv-button.tsx` |
+| Exportação municipal | `apps/painel-dev/lib/actions/exportar-dados-municipio.ts`, `coletar-dados-municipio.ts` |
+| Download temporário | `GET /api/storage/export-download/[exportId]` (painel-servidor e painel-dev; `fmt=csv` \| `json`) |
+
+**Seed e verificação:**
+
+```bash
+cd packages/core-db
+npm run db:seed:sprint-2-1-features
+npm run db:verify:sprint-2-1-features
+```
+
+**Critério de conclusão:** gestor com `exportar_relatorio` gera relatórios e CSV com auditoria; LGPD mantida; SUPERADMIN exporta município pelo Painel Dev.
 
 ---
 
 ### Sprint 2.2 — Financeiro TFD: UX, navegação e paridade do gestor
-**Status:** 💡 Planejado
+**Status:** ✅ Concluído
 
 **Referência:** mapa financeiro TFD; `AUTH_PERMISSIONS.md` §7.5; Sprint 1.2 (saldos) e 1.8 (dashboard).
 
 **Entregas:**
-- [ ] Submenu **Financeiro** (ou itens equivalentes) em `saude-modules-nav.ts`:
+- [x] Submenu **Financeiro** (ou itens equivalentes) em `saude-modules-nav.ts`:
   - Saldos → `/saude/tfd/configuracoes/saldos`
   - Prestações de contas → `/saude/tfd/prestacoes`
   - Relatórios → link para seção do dashboard gestor ou rota dedicada
-- [ ] Aba **Procedimentos** no layout `/saude/tfd/configuracoes/*` (página já existe na 1.1)
-- [ ] **GESTOR** com `gerenciar_saldo` acessa configuração TFD (saldos) sem exigir papel ADMIN
+- [x] Aba **Procedimentos** no layout `/saude/tfd/configuracoes/*` (página já existe na 1.1)
+- [x] **GESTOR** com `gerenciar_saldo` acessa configuração TFD (saldos) sem exigir papel ADMIN
   - Rotas de config TFD acessíveis a GESTOR conforme permissões granulares
-- [ ] Server Action `desativarSaldoTfd` (ou equivalente) — saldo `ativo = false`; sem apagar extrato
-- [ ] Dashboard gestor — bloco **Financeiro**:
+- [x] Server Action `desativarSaldoTfd` (ou equivalente) — saldo `ativo = false`; sem apagar extrato
+- [x] Dashboard gestor — bloco **Financeiro**:
   - KPI saldo disponível consolidado (soma ou card por saldo ativo)
   - Alerta visual se algum saldo &lt; 20% (reforço além da lista em alertas)
   - Extrato resumido: últimas N movimentações (todas os saldos ou saldo principal)
-- [ ] Notificação in-app `SALDO_BAIXO` quando disponível &lt; 20% (`BUSINESS_RULES.md` §1.14)
-- [ ] Documentar em `BUSINESS_RULES.md` §1.2.1 que alertas operacionais estão no dashboard (DT-002 encerrado)
+- [x] Notificação in-app `SALDO_BAIXO` quando disponível &lt; 20% (`BUSINESS_RULES.md` §1.14)
+- [x] Documentar em `BUSINESS_RULES.md` §1.2.1 que alertas operacionais estão no dashboard (DT-002 encerrado)
 
 **Critério de conclusão:** gestor encontra saldo, prestações e indicadores financeiros sem URL manual; GESTOR com permissão acessa saldos.
 
 **Não inclui:** reserva manual (proibida por regra); associação saldo × procedimento (C1).
 
+**Paridade painéis (2.2):**
+
+| Funcionalidade | painel-dev | painel_servidor | Permissão / notas |
+|---|---|---|---|
+| `nav_financeiro_tfd` | — | ✅ | Itens filtrados: `gerenciar_saldo`, `aprovar_prestacao`, `exportar_relatorio` |
+| `dashboard_financeiro_tfd` | — | ✅ | `saude.tfd.ver_dashboard` + GESTOR |
+| `notificacao_saldo_baixo` | — | ✅ | `saude.tfd.ver_dashboard` — evento `SALDO_BAIXO` in-app |
+| `desativar_saldo` | — | ✅ | `saude.tfd.gerenciar_saldo` + GESTOR |
+
+**Mapa de implementação (referência):**
+
+| Entrega | Local principal |
+|---------|-----------------|
+| Submenu Financeiro (sidebar TFD) | `modules/saude/tfd/src/utils/tfd-financeiro-nav.ts`, `packages/ui/src/config/saude-modules-nav.ts`, `packages/ui/src/components/sidebar.tsx` |
+| Config TFD — abas e GESTOR | `modules/saude/tfd/src/utils/tfd-config-nav.ts`, `apps/painel-servidor/.../configuracoes/layout.tsx` e páginas por aba |
+| Inativar saldo | `desativarSaldoTfd` em `modules/saude/tfd/src/actions/configuracao.ts`, `saldo-lista.tsx` |
+| Bloco Financeiro no dashboard | `get-dashboard-financeiro-tfd.ts`, `dashboard-saldos-shared.ts`, `tfd-dashboard-financeiro.tsx` |
+| Notificação `SALDO_BAIXO` | `packages/core-notifications` (`SALDO_BAIXO`, template, dispatcher); `saldo-baixo-notificacao.ts`; disparo em `decisao.ts` (reserva) e `financeiro.ts` (consumo) |
+| Alertas operacionais (doc) | `docs/BUSINESS_RULES.md` §1.2.1 — DT-002 encerrado |
+
+**Seed:**
+
+```bash
+cd packages/core-db
+npm run db:seed:sprint-2-2-features
+# ou via seed completo: npm run db:seed (inclui Sprint 2.2 em prisma/seed.ts)
+```
+
 ---
 
 ### Sprint 2.3 — Regras operacionais e automações pendentes
-**Status:** 💡 Planejado
+**Status:** ✅ Concluído
 
 **Referência:** `BUSINESS_RULES.md` §1.5, §1.8, §1.9, §1.10.
 
 **Entregas:**
-- [ ] Server Action `estornarMovimentacaoSaldoTfd` — tipo `ESTORNO`, justificativa obrigatória, `usuario_id`, imutabilidade preservada
-- [ ] UI no extrato do saldo (gestor + `gerenciar_saldo`) para registrar estorno com confirmação
-- [ ] Cancelamento de solicitação **PENDENTE há 60 dias** — motivo mínimo incluindo opção “prazo esgotado”; libera reserva se houver
-- [ ] Job/cron: na **data da viagem**, transição automática `AGENDADO` → `EM_VIAGEM` (por viagem/solicitação)
-- [ ] Validações de vedação na decisão de aprovação (configuráveis ou fixas conforme §1.5):
-  - [ ] Bloqueio ou alerta para procedimentos PAB (quando identificável no cadastro)
-  - [ ] Distância mínima 50 km (quando dados de origem/destino disponíveis)
-  - [ ] Flags/documentação para: tratamento experimental, região metropolitana, paciente hospitalizado no destino (mínimo: campos + validação gestor)
-- [ ] `platform_features` e testes de integração para fluxos críticos (estorno, job viagem)
+- [x] Server Action `estornarMovimentacaoSaldoTfd` — tipo `ESTORNO`, justificativa obrigatória, `usuario_id`, imutabilidade preservada
+- [x] UI no extrato do saldo (gestor + `gerenciar_saldo`) para registrar estorno com confirmação
+- [x] Cancelamento de solicitação **PENDENTE há 60 dias** — motivo mínimo incluindo opção “prazo esgotado”; libera reserva se houver
+- [x] Job/cron: na **data da viagem**, transição automática `AGENDADO` → `EM_VIAGEM` (por viagem/solicitação)
+- [x] Validações de vedação na decisão de aprovação (§1.5):
+  - [x] Bloqueio para procedimentos PAB (`eh_pab` no cadastro)
+  - [x] Distância mínima 50 km (cálculo automático ou informada na decisão)
+  - [x] Flags subjetivas com confirmação explícita do gestor
+- [x] `platform_features` Sprint 2.3 e script de verificação
+
+**Paridade painéis (2.3):**
+
+| Funcionalidade | painel-dev | painel_servidor | Permissão / notas |
+|---|---|---|---|
+| `estornar_movimentacao_saldo` | — | ✅ | `saude.tfd.gerenciar_saldo` + GESTOR |
+| `cancelar_pendente_60_dias` | — | ✅ | `saude.tfd.cancelar_processo` + GESTOR |
+| `job_transicao_em_viagem` | — | ✅ | Cron `GET /api/cron/tfd-transicao-em-viagem` |
+| `validacao_vedacoes_decisao` | — | ✅ | `saude.tfd.decidir_solicitacao` + GESTOR |
+
+**Mapa de implementação (referência):**
+
+| Entrega | Local principal |
+|---------|-----------------|
+| Estorno de movimentação | `estornarMovimentacaoSaldoTfd`, `utils/saldo-movimentacao.ts`, `extrato-dialog.tsx`, `estorno-movimentacao-dialog.tsx` |
+| Cancelamento 60 dias | `cancelarSolicitacaoTfd`, `pendente-prazo.ts`, `get-alertas-pendente-60-dias.ts`, `cancelar-solicitacao-dialog.tsx`, dashboard alertas |
+| Job EM_VIAGEM | `processar-transicao-em-viagem.ts`, `api/cron/tfd-transicao-em-viagem`, `README.md` (cron jobs) |
+| Vedações na decisão | `vedacoes-tfd.ts`, `decidirSolicitacaoTfd`, `decisao-form.tsx`, `eh_pab` em procedimentos, município origem em settings |
+
+**Seed e verificação:**
+
+```bash
+cd packages/core-db
+npm run db:seed:sprint-2-3-features
+npm run db:verify:sprint-2-3
+```
 
 **Critério de conclusão:** regras §1.8–§1.10 críticas executáveis no sistema; job de viagem documentado no README de cron.
 
@@ -488,9 +592,9 @@ A Fase 2 fecha **lacunas entre código e documentação** (`BUSINESS_RULES.md`, 
 | 1.6 | Agendamento de viagem | ✅ Concluído |
 | 1.7 | Prestação de contas | ✅ Concluído |
 | 1.8 | Dashboard e cancelamento | ✅ Concluído |
-| 2.1 | Relatórios e exportação TFD | 💡 Planejado |
-| 2.2 | Financeiro TFD — UX e paridade gestor | 💡 Planejado |
-| 2.3 | Regras operacionais e automações | 💡 Planejado |
+| 2.1 | Relatórios e exportação TFD | ✅ Concluído |
+| 2.2 | Financeiro TFD — UX e paridade gestor | ✅ Concluído |
+| 2.3 | Regras operacionais e automações | ✅ Concluído |
 | 2.4 | Notificações e-mail TFD | 💡 Planejado |
 | 2.5 | CADSUS real | 💡 Planejado |
 

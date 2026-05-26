@@ -13,7 +13,17 @@ import { dispararNotificacao, NOTIFICATION_EVENTS } from '@saude/core-notificati
 import type { ActionResponse } from '@saude/validators'
 
 import { TFD_PERMISSIONS } from '../permissions'
+import {
+  resolveSaldoEstadoAlerta,
+  tryNotificarSaldoBaixoAposMutacao,
+} from '../utils/saldo-baixo-notificacao'
+import { sumValorConsumidoLiquido } from '../utils/saldo-movimentacao'
 import { calcSaldoDisponivel } from '../utils/saldo'
+import { avaliarVedacoesTfd } from '../utils/vedacoes-tfd'
+import {
+  loadVedacoesDecisaoContext,
+  resolveDistanciaKmParaDecisao,
+} from '../utils/vedacoes-decisao-context'
 import { decidirSolicitacaoSchema } from '../validators/decisao.schema'
 
 const MODULO_TFD = 'saude.tfd'
@@ -62,7 +72,7 @@ async function calcularSaldoDisponivelLocked(
   saldoId: string,
   valorTotal: number
 ): Promise<number> {
-  const [reservasAgg, consumosAgg] = await Promise.all([
+  const [reservasAgg, valorConsumidoLiquido] = await Promise.all([
     tx.tfdReservaSaldo.aggregate({
       where: {
         tenant_id: tenantId,
@@ -71,18 +81,11 @@ async function calcularSaldoDisponivelLocked(
       },
       _sum: { valor_estimado: true },
     }),
-    tx.tfdMovimentacaoSaldo.aggregate({
-      where: {
-        tenant_id: tenantId,
-        saldo_id: saldoId,
-        tipo: 'CONSUMO',
-      },
-      _sum: { valor: true },
-    }),
+    sumValorConsumidoLiquido(tx, tenantId, saldoId),
   ])
 
   const valorReservado = Number(reservasAgg._sum.valor_estimado ?? 0)
-  const valorConsumido = Number(consumosAgg._sum.valor ?? 0)
+  const valorConsumido = valorConsumidoLiquido
 
   return calcSaldoDisponivel({
     valorTotal,
@@ -226,6 +229,55 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
     const saldoId = data.saldoId!
     const valorEstimado = data.valorEstimado!
 
+    const contextoVedacoes = await loadVedacoesDecisaoContext(db, tenantId, solicitacao.id)
+    if (!contextoVedacoes) {
+      return {
+        success: false,
+        error: 'Não foi possível avaliar as vedações: prestador ou dados da solicitação incompletos.',
+      }
+    }
+
+    const distanciaKm = resolveDistanciaKmParaDecisao(
+      contextoVedacoes.distanciaKmCalculada,
+      data.distanciaKm
+    )
+
+    const vedacoes = avaliarVedacoesTfd({
+      possuiProcedimentoPab: contextoVedacoes.possuiProcedimentoPab,
+      distanciaKm,
+      tratamentoExperimental: data.tratamentoExperimental,
+      regiaoMetropolitana: data.regiaoMetropolitana,
+      pacienteHospitalizadoDestino: data.pacienteHospitalizadoDestino,
+      confirmacaoVedacoes: data.confirmacaoVedacoes,
+    })
+
+    if (vedacoes.possuiBloqueio) {
+      const mensagens = vedacoes.itens
+        .filter((item) => item.severidade === 'BLOQUEIO')
+        .map((item) => item.mensagem)
+        .join(' ')
+      return { success: false, error: mensagens }
+    }
+
+    if (!vedacoes.podeAprovar) {
+      const alertas = vedacoes.itens
+        .filter((item) => item.severidade === 'ALERTA')
+        .map((item) => item.mensagem)
+        .join(' ')
+      return {
+        success: false,
+        error:
+          alertas.length > 0
+            ? `Confirme as vedações antes de aprovar: ${alertas}`
+            : 'Confirme que analisou as vedações indicadas antes de aprovar a solicitação.',
+      }
+    }
+
+    const vedacoesConfirmadas = vedacoes.exigeConfirmacao && data.confirmacaoVedacoes
+
+    const estadoSaldoAntes = await resolveSaldoEstadoAlerta(db, tenantId, saldoId)
+    const jaEstavaEmAlertaBaixo = estadoSaldoAntes?.alertaBaixo ?? false
+
     const resultado = await db.$transaction(async (tx) => {
       const saldoLocked = await lockSaldoForUpdate(tx, tenantId, saldoId)
 
@@ -253,6 +305,12 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
           decidido_por_id: session.user.id,
           decidido_at: decididoAt,
           saldo_id: saldoId,
+          distancia_km: distanciaKm,
+          tratamento_experimental: data.tratamentoExperimental,
+          regiao_metropolitana: data.regiaoMetropolitana,
+          paciente_hospitalizado_destino: data.pacienteHospitalizadoDestino,
+          vedacoes_confirmadas_por_id: vedacoesConfirmadas ? session.user.id : null,
+          vedacoes_confirmadas_at: vedacoesConfirmadas ? decididoAt : null,
         },
       })
 
@@ -315,6 +373,11 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
         decisao: 'APROVADO',
         saldoId,
         valorEstimado,
+        distanciaKm,
+        tratamentoExperimental: data.tratamentoExperimental,
+        regiaoMetropolitana: data.regiaoMetropolitana,
+        pacienteHospitalizadoDestino: data.pacienteHospitalizadoDestino,
+        vedacoesConfirmadas,
         processoStatus: 'EM_ANDAMENTO',
         protocolo,
         modulo: MODULO_TFD,
@@ -333,6 +396,13 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
         urgencia: solicitacao.urgencia,
       },
       recipientUserIds: [resultado.solicitanteId],
+    })
+
+    await tryNotificarSaldoBaixoAposMutacao({
+      tenantId,
+      saldoId,
+      jaEstavaEmAlertaBaixo,
+      excludeUserIds: [session.user.id],
     })
 
     revalidateSolicitacaoPaths(resultado.solicitacaoId)

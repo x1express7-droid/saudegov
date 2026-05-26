@@ -15,6 +15,8 @@
     "db:seed:sprint-2-1-features": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/sprint-2-1-platform-features.ts",
     "db:verify:sprint-2-1-features": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/_verify-sprint-2-1.ts",
     "db:seed:sprint-2-2-features": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/sprint-2-2-platform-features.ts",
+    "db:seed:sprint-2-3-features": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/sprint-2-3-platform-features.ts",
+    "db:verify:sprint-2-3": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/_verify-sprint-2-3.ts",
     "db:validate:rls-sprint-1-5": "tsx prisma/validate-rls-sprint-1-5.ts",
     "db:studio": "prisma studio"
   },

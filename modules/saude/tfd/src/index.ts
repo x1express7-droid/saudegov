@@ -37,6 +37,7 @@ export type {
   TfdFonteRecursoValor,
   SaldoListItem,
   ExtratoMovimentacaoItem,
+  ExtratoMovimentacaoOrigemRef,
   TfdPacienteVinculadoItem,
   TfdSolicitacaoListItem,
   TfdSolicitacaoDetalhe,
@@ -44,11 +45,20 @@ export type {
   AlertaPrestacaoPrazo,
   AlertaPrestacaoMotivo,
   AlertaPendente30Dias,
+  AlertaPendente60Dias,
+  AlertaPendenteComplemento,
+  TfdVedacaoCodigo,
+  TfdVedacaoSeveridade,
+  TfdVedacaoItem,
+  TfdVedacoesResultado,
+  ContextoDecisaoTfd,
   TfdSolicitacaoOrigemRetornoItem,
   AbrirSolicitacaoOutput,
   EnviarSolicitacaoOutput,
   TfdDashboardSaldoItem,
   TfdDashboardOutput,
+  TfdDashboardFinanceiroOutput,
+  TfdDashboardFinanceiroMovimentacao,
   TfdDashboardOperacionalOutput,
   TfdDashboardOperacionalKpis,
   TfdAlertaPrazoAnalise,
@@ -70,11 +80,17 @@ export {
   abrirSolicitacaoSchema,
   enviarSolicitacaoSchema,
   cancelarSolicitacaoSchema,
+  motivoCancelamentoPresetValues,
+  TEXTO_MOTIVO_CANCELAMENTO_PRAZO_ESGOTADO,
+  resolveMotivoCancelamentoTexto,
 } from './validators/solicitacao.schema'
 
 export {
   relatorioCompetenciaSchema,
   relatorioPacienteSchema,
+  relatorioPrestadorSchema,
+  relatorioMotoristaSchema,
+  relatorioProducaoMensalSchema,
 } from './validators/relatorio.schema'
 
 export {
@@ -91,6 +107,7 @@ export type {
   AbrirSolicitacaoInput,
   EnviarSolicitacaoInput,
   CancelarSolicitacaoInput,
+  MotivoCancelamentoPreset,
   TfdTipoAtendimento,
   TfdUrgencia,
   TfdRelacaoAcompanhante,
@@ -127,7 +144,11 @@ export {
 export {
   criarSaldoObjectSchema,
   criarSaldoSchema,
+  desativarSaldoSchema,
+  estornarMovimentacaoSaldoSchema,
+  MIN_TEXTO_JUSTIFICATIVA_CHARS,
   filtrosExtratoSchema,
+  filtrosExtratoExportSchema,
 } from './validators/financeiro.schema'
 
 export {
@@ -147,6 +168,8 @@ export type {
 
 export type {
   CriarSaldoInput,
+  DesativarSaldoInput,
+  EstornarMovimentacaoSaldoInput,
   FiltrosExtratoInput,
 } from './validators/financeiro.schema'
 
@@ -197,6 +220,7 @@ export {
   atualizarMotoristaTfd,
   desativarMotoristaTfd,
   criarSaldoTfd,
+  desativarSaldoTfd,
   buscarExtratoSaldoTfd,
 } from './actions/configuracao'
 
@@ -224,6 +248,7 @@ export {
   enviarPrestacaoContas,
   registrarVisualizacaoComprovante,
   decidirPrestacaoContas,
+  estornarMovimentacaoSaldoTfd,
 } from './actions/financeiro'
 export {
   criarAgendamentoTfd,
@@ -233,13 +258,47 @@ export {
 export {
   gerarRelatorioCompetenciaTfd,
   gerarRelatorioPacienteTfd,
+  gerarRelatorioPrestadorTfd,
+  gerarRelatorioMotoristaTfd,
+  gerarRelatorioProducaoMensalTfd,
   buscarPacienteRelatorioTfdAction,
 } from './actions/relatorio'
 export type { GerarRelatorioTfdOutput } from './actions/relatorio'
+export {
+  exportarExtratoSaldoTfdCsv,
+  exportarSolicitacoesTfdCsv,
+  exportarAgendamentosTfdCsv,
+  exportarPrestacoesTfdCsv,
+  exportarSaldosTfdCsv,
+} from './actions/exportacao'
+export type { ExportarCsvOutput, ExportarExtratoSaldoCsvOutput } from './actions/exportacao'
+export {
+  exportSolicitacoesCsvSchema,
+  exportAgendamentosCsvSchema,
+  exportPrestacoesCsvSchema,
+  exportSaldosCsvSchema,
+  LISTAGEM_EXPORT_MAX_LINHAS,
+} from './validators/exportacao.schema'
+export {
+  LISTAGEM_EXPORT_MAX_REGISTROS,
+  ListagemExportError,
+} from './queries/listagem-export'
+export { getSolicitacoesCompleto } from './queries/get-solicitacoes-completo'
+export type { SolicitacaoExportRow } from './queries/get-solicitacoes-completo'
+export { getAgendamentosCompleto } from './queries/get-agendamentos-completo'
+export type { AgendamentoExportRow } from './queries/get-agendamentos-completo'
+export { getPrestacoesCompleto } from './queries/get-prestacoes-completo'
+export type { PrestacaoExportRow } from './queries/get-prestacoes-completo'
+export { getSaldosCompleto } from './queries/get-saldos-completo'
 export { processarLembretesViagem } from './jobs/processar-lembretes-viagem'
 export type { ProcessarLembretesViagemResult } from './jobs/processar-lembretes-viagem'
 export { processarLembretesPrestacao } from './jobs/processar-lembretes-prestacao'
 export type { ProcessarLembretesPrestacaoResult } from './jobs/processar-lembretes-prestacao'
+export { processarTransicaoEmViagemTfd } from './jobs/processar-transicao-em-viagem'
+export type {
+  ProcessarTransicaoEmViagemResult,
+  ProcessarTransicaoEmViagemErro,
+} from './jobs/processar-transicao-em-viagem'
 
 export { getEspecialidadesTfd } from './queries/get-especialidades'
 export { getProcedimentosTfd } from './queries/get-procedimentos'
@@ -251,24 +310,44 @@ export {
   getServidoresMotoristaOptionsTfd,
 } from './queries/get-servidores-motorista-options'
 export type { TfdServidorMotoristaOption } from './queries/get-servidores-motorista-options'
+export {
+  TFD_CONFIGURACOES_NAV_ITEMS,
+  resolveTfdConfiguracoesHref,
+  getTfdConfiguracoesVisibleNav,
+  matchTfdConfiguracoesPath,
+} from './utils/tfd-config-nav'
+export type { TfdConfiguracoesNavItem } from './utils/tfd-config-nav'
+
+export {
+  TFD_FINANCEIRO_NAV_ITEMS,
+  getTfdFinanceiroVisibleNav,
+  matchTfdFinanceiroConfigPath,
+} from './utils/tfd-financeiro-nav'
+export type { TfdFinanceiroNavItem } from './utils/tfd-financeiro-nav'
+
 export { getSaldosTfd, getSaldoListItemById } from './queries/get-saldos'
 export type { GetSaldosFiltros } from './queries/get-saldos'
 export { getExtratoSaldo, ExtratoSaldoError } from './queries/get-extrato'
 export type { GetExtratoSaldoResult } from './queries/get-extrato'
+export { getExtratoSaldoCompleto, EXTRATO_EXPORT_MAX_REGISTROS } from './queries/get-extrato-completo'
+export type { GetExtratoSaldoCompletoResult } from './queries/get-extrato-completo'
 export { getPacientesTfd } from './queries/get-pacientes'
 export type { GetPacientesFiltros } from './queries/get-pacientes'
 export { getSolicitacoesTfd } from './queries/get-solicitacoes'
 export type { GetSolicitacoesFiltros } from './queries/get-solicitacoes'
 export { getSolicitacaoTfd } from './queries/get-solicitacao'
+export { getContextoDecisaoTfd } from './queries/get-contexto-decisao-tfd'
 export { getMotoristasAgendamentoTfd } from './queries/get-motoristas-agendamento'
 export { getVeiculosAgendamentoTfd } from './queries/get-veiculos-agendamento'
 export { getViagensSolicitacaoTfd } from './queries/get-viagens-solicitacao'
 export { getAgendamentosTfd } from './queries/get-agendamentos'
 export type { GetAgendamentosFiltros } from './queries/get-agendamentos'
 export { getDashboardTfd } from './queries/get-dashboard-tfd'
+export { getDashboardFinanceiroTfd } from './queries/get-dashboard-financeiro-tfd'
 export { getDashboardTfdOperacional } from './queries/get-dashboard-tfd-operacional'
 export { getAlertasUrgentesTfd } from './queries/get-alertas-urgentes'
 export { getAlertasPendente30Dias } from './queries/get-alertas-regulacao'
+export { getAlertasPendente60Dias } from './queries/get-alertas-pendente-60-dias'
 export { getAlertasLembreteViagemTfd } from './queries/get-alertas-lembrete-viagem'
 export { getAlertasPrestacaoTfd } from './queries/get-alertas-prestacao'
 export { getRelatorioCompetenciaTfd } from './queries/get-relatorio-competencia'
@@ -276,6 +355,13 @@ export {
   getRelatorioPacienteTfd,
   buscarPacienteRelatorioTfd,
 } from './queries/get-relatorio-paciente'
+export { getRelatorioPrestadorTfd } from './queries/get-relatorio-prestador'
+export { getRelatorioMotoristaTfd } from './queries/get-relatorio-motorista'
+export { getRelatorioProducaoMensalTfd } from './queries/get-relatorio-producao-mensal'
+export {
+  getPrestadoresRelatorioOpcoesTfd,
+  getMotoristasRelatorioOpcoesTfd,
+} from './queries/get-relatorio-opcoes'
 export { getPrestacoesTfd } from './queries/get-prestacoes'
 export type { GetPrestacoesFiltros } from './queries/get-prestacoes'
 export { getSolicitacoesOrigemRetornoTfd } from './queries/get-solicitacoes-origem-retorno'
@@ -296,3 +382,37 @@ export {
   TFD_STATUS_BLOQUEIA_CANCELAMENTO,
 } from './utils/cancelamento'
 export type { TfdStatusBloqueiaCancelamento } from './utils/cancelamento'
+export {
+  TIPOS_MOVIMENTACAO_ESTORNAVEIS,
+  isTipoMovimentacaoEstornavel,
+  sumValorConsumidoLiquido,
+  sumValorConsumidoLiquidoPorSaldo,
+} from './utils/saldo-movimentacao'
+export {
+  MIN_DISTANCIA_TFD_KM,
+  avaliarVedacoesTfd,
+} from './utils/vedacoes-tfd'
+export type { AvaliarVedacoesTfdInput } from './utils/vedacoes-tfd'
+export {
+  MS_POR_DIA,
+  DIAS_ALERTA_PENDENTE_30,
+  DIAS_CANCELAMENTO_PENDENTE_COMPLEMENTO,
+  subtractDays,
+  diasDesde,
+  isComplementoPendenteHaPeloMenosDias,
+  mapComplementoMaisRecentePorProcesso,
+  buildAlertasPendenteComplemento,
+} from './utils/pendente-prazo'
+export type {
+  TramitacaoComplementoSolicitado,
+  SolicitacaoPendenteComplementoRow,
+  AlertaPendenteComplementoBuilt,
+} from './utils/pendente-prazo'
+export {
+  parseMunicipioOrigemFromSettings,
+  calcDistanciaTfdKm,
+} from './utils/calc-distancia-tfd'
+export type {
+  TenantMunicipioOrigem,
+  TfdPrestadorDestinoLocal,
+} from './utils/calc-distancia-tfd'

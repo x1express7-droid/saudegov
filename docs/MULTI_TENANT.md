@@ -405,33 +405,30 @@ Para **reativar**: `UPDATE public.tenants SET active = true` — na próxima req
 
 ## 11. Exportação de Dados por Município
 
+Implementação (Sprint 2.1): **Painel Dev** apenas — `apps/painel-dev/lib/actions/exportar-dados-municipio.ts`.
+
 ```typescript
-// Filtrar TUDO por tenant_id — nenhum dado de outro município sai junto
-export async function exportarDadosMunicipio(tenantId: string) {
-  const db = await getPrismaForTenant(tenantId)
+// SUPERADMIN — tenantId vem do input validado (município alvo), NÃO da sessão
+export async function exportarDadosMunicipio(rawInput: unknown) {
+  await requireSuperAdmin()
+  const { tenantId, formato, modulos, dataInicio, dataFim } = parse(input)
 
-  // RLS garante isolamento + tenant_id explícito como segunda camada
-  const dados = {
-    pacientes: await db.saudeBasePaciente.findMany({
-      where: { tenant_id: tenantId }
-    }),
-    solicitacoes: await db.saudeTfdSolicitacao.findMany({
-      where: { tenant_id: tenantId }
-    }),
-    // ... demais tabelas
-  }
+  const db = await getPrismaForTenant(tenantId) // RLS + tenant_id explícito em cada query
 
-  // Registrar exportação em audit_logs
+  const coleta = await coletarDadosMunicipioExport({ tenantId, modulos, dataInicio, dataFim })
+  // TFD: solicitações, viagens, prestações, saldos, pacientes (CPF/CNS mascarados)
+  // Sem CID/diagnóstico. Demais módulos: aviso em modulosSemDados (DT-004)
+
   await createAuditLog({
     tenantId,
     acao: 'EXPORT',
-    entidade: 'tenant_completo',
-    payloadDepois: { timestamp: new Date(), solicitadoPor: 'superadmin' }
+    entidade: 'plataforma_exportacao_municipio',
+    payloadDepois: { tenantId, modulos, formato, totalRegistros, expiresAt },
   })
-
-  return dados
 }
 ```
+
+Contrato completo: `API_CONTRACTS.md` §3.5. Seed: `npm run db:seed:sprint-2-1-features` em `packages/core-db`.
 
 ---
 

@@ -315,11 +315,6 @@ export function SolicitacaoForm({
     setServerError(null)
     setLaudoError(null)
 
-    if (!laudoAnexoId) {
-      setLaudoError('Envie e confirme o laudo médico antes de enviar a solicitação.')
-      return
-    }
-
     if (!validateAcompanhanteRegras()) {
       return
     }
@@ -475,7 +470,14 @@ export function SolicitacaoForm({
       ) : null}
 
       <Card
-        header={<CardHeader>Laudo médico</CardHeader>}
+        header={
+          <div>
+            <CardHeader>Laudo médico</CardHeader>
+            <p className="mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              Opcional. PDF, JPEG ou PNG, até 10 MB.
+            </p>
+          </div>
+        }
         bodyClassName={formFieldsStackClassName()}
       >
         <SolicitacaoLaudoUpload

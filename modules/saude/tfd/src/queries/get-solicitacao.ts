@@ -8,6 +8,7 @@ import { createAuditLog } from '@saude/core-documents'
 
 import { TFD_PERMISSIONS } from '../permissions'
 import type { TfdSolicitacaoDetalhe } from '../types/tfd.types'
+import { isElegivelCancelamentoPrazoEsgotado } from '../utils/pendente-prazo'
 
 const MODULO_TFD = 'saude.tfd'
 
@@ -135,6 +136,24 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
 
   const podeVerDadosClinicos = hasPermission(session, TFD_PERMISSIONS.ANALISAR_LAUDO)
 
+  let elegivelCancelamentoPrazoEsgotado = false
+
+  if (row.status === 'PENDENTE') {
+    const tramitacaoComplemento = await db.tramitacao.findFirst({
+      where: {
+        tenant_id: tenantId,
+        processo_id: row.processo.id,
+        tipo: 'COMPLEMENTO_SOLICITADO',
+      },
+      orderBy: { created_at: 'desc' },
+      select: { created_at: true },
+    })
+
+    elegivelCancelamentoPrazoEsgotado = isElegivelCancelamentoPrazoEsgotado(
+      tramitacaoComplemento?.created_at ?? null
+    )
+  }
+
   const detalhe: TfdSolicitacaoDetalhe = {
     id: row.id,
     processoId: row.processo.id,
@@ -182,6 +201,7 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
           status: reserva.status,
         }
       : null,
+    elegivelCancelamentoPrazoEsgotado,
   }
 
   if (podeVerDadosClinicos) {

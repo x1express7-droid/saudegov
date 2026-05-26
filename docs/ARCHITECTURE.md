@@ -105,7 +105,7 @@ São apps separados porque têm propósitos completamente diferentes.
   - Ativar/desativar módulos por município
   - Criar o primeiro ADMIN de cada município
   - Monitorar saúde da plataforma
-  - Exportar dados de qualquer município
+  - Exportar dados de qualquer município (`exportarDadosMunicipio` — JSON/CSV; ver `API_CONTRACTS.md` §3.5)
   - Ver audit logs globais
   - Gerenciar registro de funcionalidades (`platform_features`)
 
@@ -123,6 +123,10 @@ São apps separados porque têm propósitos completamente diferentes.
 > **Regra de paridade:** toda funcionalidade que tem equivalente nos dois painéis
 > deve ser implementada nos dois. O agente do Cursor verifica `platform_features`
 > antes de qualquer implementação e sinaliza lacunas.
+>
+> **Exceção documentada (Sprint 2.1):** `exportar_dados_municipio` é exclusiva do
+> Painel Dev (`painel_dev = true`, `painel_servidor = false`) — não exige espelho no
+> Painel Servidor.
 
 ---
 

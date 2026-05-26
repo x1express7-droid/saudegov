@@ -1,5 +1,14 @@
-import { assertModuleActive, getTenantContext } from '@saude/core-auth/server'
-import { getEspecialidadesTfd, getProcedimentosTfd } from '@saude/mod-saude-tfd'
+import {
+  assertModuleActive,
+  getTenantContext,
+  requirePermission,
+  requireTenantRole,
+} from '@saude/core-auth/server'
+import {
+  getEspecialidadesTfd,
+  getProcedimentosTfd,
+  TFD_PERMISSIONS,
+} from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import { notFound } from 'next/navigation'
 import { ProcedimentoTable } from './components/procedimento-table'
@@ -15,6 +24,8 @@ export default async function ProcedimentosPage({ searchParams }: ProcedimentosP
   }
 
   await assertModuleActive('saude', 'tfd')
+  const session = await requireTenantRole('GESTOR')
+  await requirePermission(session, TFD_PERMISSIONS.CONFIGURAR_PROCEDIMENTOS)
 
   const params = await searchParams
   const page = Math.max(1, Number(params.page) || 1)
