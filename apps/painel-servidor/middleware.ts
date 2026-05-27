@@ -79,6 +79,15 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(new URL('/login?error=credentials', req.url))
   }
 
+  if (req.method === 'GET' && pathname === '/saude/tfd') {
+    const destino = new URL('/saude/tfd/processos', req.url)
+    const query = req.nextUrl.search
+    if (query) {
+      destino.search = query
+    }
+    return NextResponse.redirect(destino)
+  }
+
   return applyTenantHeaders(req, tenant, {
     'x-user-id': userId,
     'x-user-role': role,

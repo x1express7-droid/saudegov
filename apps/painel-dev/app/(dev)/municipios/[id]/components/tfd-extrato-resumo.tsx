@@ -1,4 +1,4 @@
-import type { SaldoListItem } from '@saude/mod-saude-tfd'
+import type { SaldoListItem } from '@saude/mod-saude-tfd/client'
 import { Badge } from '@saude/ui'
 import { formatBrl } from './tfd-saldos-ui'
 

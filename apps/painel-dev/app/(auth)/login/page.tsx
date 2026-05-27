@@ -7,7 +7,7 @@ function loginErrorMessage(error?: string): string | null {
     case 'ip':
       return 'Seu IP não está na lista SUPERADMIN_ALLOWED_IPS. Adicione seu IP no Coolify ou defina SUPERADMIN_ENFORCE_IP=false.'
     case 'session':
-      return 'Login ok, mas a sessão não persistiu. Use a mesma URL (http/https) de AUTH_URL ou defina AUTH_COOKIE_SECURE=false se acessar via HTTP.'
+      return null
     default:
       return null
   }

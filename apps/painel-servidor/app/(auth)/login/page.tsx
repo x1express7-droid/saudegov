@@ -32,13 +32,7 @@ export default async function LoginPage({
       </div>
       <LoginForm
         tenantId={tenantId}
-        errorMessage={
-          error === 'credentials'
-            ? 'E-mail ou senha inválidos.'
-            : error === 'session'
-              ? 'Login ok, mas a sessão não persistiu. Alinhe AUTH_URL com a URL do browser ou use AUTH_COOKIE_SECURE=false em HTTP.'
-              : null
-        }
+        errorMessage={error === 'credentials' ? 'E-mail ou senha inválidos.' : null}
       />
     </main>
   )

@@ -24,6 +24,7 @@ import {
   loadVedacoesDecisaoContext,
   resolveDistanciaKmParaDecisao,
 } from '../utils/vedacoes-decisao-context'
+import { registrarSaidaFila } from '../utils/fila'
 import { decidirSolicitacaoSchema } from '../validators/decisao.schema'
 
 const MODULO_TFD = 'saude.tfd'
@@ -182,6 +183,13 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
           },
           tx
         )
+
+        await registrarSaidaFila(tx, {
+          tenantId,
+          solicitacaoId: solicitacao.id,
+          usuarioId: session.user.id,
+          justificativa: 'Saída da fila — solicitação negada na regulação.',
+        })
 
         return {
           solicitacaoId: solicitacao.id,
@@ -352,6 +360,13 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
         },
         tx
       )
+
+      await registrarSaidaFila(tx, {
+        tenantId,
+        solicitacaoId: solicitacao.id,
+        usuarioId: session.user.id,
+        justificativa: 'Saída da fila — solicitação aprovada na regulação.',
+      })
 
       return {
         solicitacaoId: solicitacao.id,

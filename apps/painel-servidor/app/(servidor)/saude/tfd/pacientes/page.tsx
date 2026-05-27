@@ -1,5 +1,10 @@
-import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
-import { getPacientesTfd, isCadsusEnabledForTenant } from '@saude/mod-saude-tfd'
+import {
+  assertModuleActive,
+  getTenantContext,
+  hasPermission,
+  requireTenantRole,
+} from '@saude/core-auth/server'
+import { getPacientesTfd, isCadsusEnabledForTenant, TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
@@ -32,7 +37,8 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
   }
 
   await assertModuleActive('saude', 'tfd')
-  await requireTenantRole('SERVIDOR')
+  const session = await requireTenantRole('SERVIDOR')
+  const podeVerPerfilPaciente = hasPermission(session, TFD_PERMISSIONS.VER_PERFIL_PACIENTE)
 
   const params = await searchParams
   const page = parsePositiveInt(params.page, 1)
@@ -79,7 +85,11 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
               <PacientesVinculadosFiltro />
             </Suspense>
 
-            <PacientesVinculadosLista items={items} total={total} />
+            <PacientesVinculadosLista
+              items={items}
+              total={total}
+              podeVerPerfilPaciente={podeVerPerfilPaciente}
+            />
           </section>
         </>
       }

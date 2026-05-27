@@ -11,7 +11,6 @@ import {
 import { getPrismaForTenant } from '@saude/core-db'
 import {
   createAuditLog,
-  gerarProtocolo,
   registrarTramitacao,
   type PrismaTransactionClient,
 } from '@saude/core-documents'
@@ -25,10 +24,12 @@ import {
   mensagemStatusNaoCancelavel,
   TFD_STATUS_BLOQUEIA_CANCELAMENTO,
 } from '../utils/cancelamento'
+import { registrarEntradaFila, registrarSaidaFila } from '../utils/fila'
 import {
   DIAS_CANCELAMENTO_PENDENTE_COMPLEMENTO,
   isElegivelCancelamentoPrazoEsgotado,
 } from '../utils/pendente-prazo'
+import { gerarProtocoloTfd } from '../utils/gerar-protocolo-tfd'
 import {
   abrirSolicitacaoSchema,
   cancelarSolicitacaoSchema,
@@ -37,6 +38,12 @@ import {
 } from '../validators/solicitacao.schema'
 
 const MODULO_TFD = 'saude.tfd'
+
+const MSG_PROCESSO_NAO_ENCONTRADO = 'Processo TFD não encontrado.'
+const MSG_PROCESSO_PACIENTE_DIVERGENTE =
+  'O paciente da solicitação deve ser o mesmo vinculado ao processo.'
+const MSG_PROCESSO_ENCERRADO = 'Não é possível abrir solicitação em processo encerrado.'
+const PROCESSO_STATUS_ENCERRADOS = new Set(['CONCLUIDO', 'CANCELADO', 'ARQUIVADO'])
 
 const STATUS_SOLICITACAO_LABEL: Record<string, string> = {
   RASCUNHO: 'Rascunho',
@@ -284,33 +291,79 @@ export async function abrirSolicitacaoTfd(
         acompanhante: data.acompanhante,
       })
 
-      const protocolo = await gerarProtocolo(tenantId, 'SAUDE', 'TFD', tx)
+      let processoId: string
 
-      const moduloResponsavel = await tx.moduloSetorResponsavel.findFirst({
-        where: {
-          tenant_id: tenantId,
-          modulo: MODULO_TFD,
-          ativo: true,
-        },
-        select: { setor_id: true },
-      })
+      if (data.processoId) {
+        const processoExistente = await tx.processo.findFirst({
+          where: {
+            id: data.processoId,
+            tenant_id: tenantId,
+            modulo: MODULO_TFD,
+          },
+          select: {
+            id: true,
+            paciente_id: true,
+            status: true,
+            setor_id: true,
+          },
+        })
 
-      const processo = await tx.processo.create({
-        data: {
-          tenant_id: tenantId,
-          protocolo,
-          modulo: MODULO_TFD,
-          status: 'ABERTO',
-          titulo: `TFD — ${especialidadeNome}`,
-          setor_id: moduloResponsavel?.setor_id ?? null,
-          aberto_por_id: session.user.id,
-        },
-      })
+        if (!processoExistente) {
+          throw new SolicitacaoBusinessError(MSG_PROCESSO_NAO_ENCONTRADO)
+        }
+
+        if (
+          session.user.role === 'SERVIDOR' &&
+          session.user.setorId &&
+          processoExistente.setor_id !== session.user.setorId
+        ) {
+          throw new SolicitacaoBusinessError(MSG_PROCESSO_NAO_ENCONTRADO)
+        }
+
+        if (processoExistente.paciente_id !== data.pacienteId) {
+          throw new SolicitacaoBusinessError(MSG_PROCESSO_PACIENTE_DIVERGENTE)
+        }
+
+        if (PROCESSO_STATUS_ENCERRADOS.has(processoExistente.status)) {
+          throw new SolicitacaoBusinessError(MSG_PROCESSO_ENCERRADO)
+        }
+
+        processoId = processoExistente.id
+      } else {
+        const protocoloProcesso = await gerarProtocoloTfd(tenantId, 'PROCESSO', tx)
+
+        const moduloResponsavel = await tx.moduloSetorResponsavel.findFirst({
+          where: {
+            tenant_id: tenantId,
+            modulo: MODULO_TFD,
+            ativo: true,
+          },
+          select: { setor_id: true },
+        })
+
+        const processoNovo = await tx.processo.create({
+          data: {
+            tenant_id: tenantId,
+            protocolo: protocoloProcesso,
+            modulo: MODULO_TFD,
+            status: 'ABERTO',
+            titulo: `TFD — ${especialidadeNome}`,
+            setor_id: moduloResponsavel?.setor_id ?? null,
+            aberto_por_id: session.user.id,
+            paciente_id: data.pacienteId,
+          },
+        })
+
+        processoId = processoNovo.id
+      }
+
+      const protocolo = await gerarProtocoloTfd(tenantId, 'SOLICITACAO', tx)
 
       const solicitacao = await tx.tfdSolicitacao.create({
         data: {
           tenant_id: tenantId,
-          processo_id: processo.id,
+          processo_id: processoId,
+          protocolo,
           paciente_id: data.pacienteId,
           solicitante_id: session.user.id,
           especialidade_id: data.especialidadeId,
@@ -332,7 +385,7 @@ export async function abrirSolicitacaoTfd(
             id: data.laudoAnexoId,
             tenant_id: tenantId,
           },
-          data: { processo_id: processo.id },
+          data: { processo_id: processoId },
         })
       }
 
@@ -352,7 +405,7 @@ export async function abrirSolicitacaoTfd(
       await registrarTramitacao(
         {
           tenantId,
-          processoId: processo.id,
+          processoId,
           tipo: 'ABERTURA',
           descricao: `Solicitação TFD registrada em rascunho. Protocolo ${protocolo}.`,
           usuarioId: session.user.id,
@@ -360,10 +413,17 @@ export async function abrirSolicitacaoTfd(
         tx
       )
 
+      const posicaoFila = await registrarEntradaFila(tx, {
+        tenantId,
+        solicitacaoId: solicitacao.id,
+        usuarioId: session.user.id,
+      })
+
       return {
         solicitacaoId: solicitacao.id,
         protocolo,
-        processoId: processo.id,
+        processoId,
+        posicaoFila,
       }
     })
 
@@ -437,15 +497,13 @@ export async function enviarSolicitacaoTfd(
       select: {
         id: true,
         status: true,
+        protocolo: true,
         solicitante_id: true,
         processo_id: true,
         laudo_anexo_id: true,
         urgencia: true,
         especialidade: {
           select: { nome: true },
-        },
-        processo: {
-          select: { protocolo: true },
         },
       },
     })
@@ -487,7 +545,7 @@ export async function enviarSolicitacaoTfd(
       }
     }
 
-    const protocolo = solicitacao.processo.protocolo
+    const protocolo = solicitacao.protocolo
     const especialidadeNome = solicitacao.especialidade?.nome ?? 'Não informada'
     const urgencia = solicitacao.urgencia
 
@@ -606,6 +664,7 @@ export async function cancelarSolicitacaoTfd(
       select: {
         id: true,
         status: true,
+        protocolo: true,
         solicitante_id: true,
         processo_id: true,
         urgencia: true,
@@ -663,7 +722,7 @@ export async function cancelarSolicitacaoTfd(
       }
     }
 
-    const protocolo = solicitacao.processo.protocolo
+    const protocolo = solicitacao.protocolo
     const especialidadeNome = solicitacao.especialidade?.nome ?? 'Não informada'
     const canceladoAt = new Date()
     const motivo = resolveMotivoCancelamentoTexto({
@@ -724,6 +783,13 @@ export async function cancelarSolicitacaoTfd(
         },
         tx
       )
+
+      await registrarSaidaFila(tx, {
+        tenantId,
+        solicitacaoId: solicitacao.id,
+        usuarioId: session.user.id,
+        justificativa: `Saída da fila — cancelamento da solicitação. Motivo: ${motivo}`,
+      })
 
       return {
         solicitacaoId: solicitacao.id,

@@ -1,6 +1,9 @@
 'use client'
 
-import { buscarPacientePorCns } from '@saude/mod-saude-tfd/actions/paciente'
+import {
+  atualizarPacienteCompletoTfd,
+  buscarPacientePorCns,
+} from '@saude/mod-saude-tfd/actions/paciente'
 import {
   buscarPacientesAtendimentoTfd,
   carregarPacienteAtendimentoTfd,
@@ -23,6 +26,9 @@ import { buscarEnderecoPorCep } from '../../../../../../lib/viacep'
 export type PacienteAtendimentoFormState = {
   pacienteId?: string
   nome: string
+  nomeSocial: string
+  email: string
+  telefoneCelular: string
   cpf: string
   cns: string
   dataNascimento: string
@@ -42,6 +48,9 @@ export type PacienteAtendimentoFormState = {
 
 const EMPTY_STATE: PacienteAtendimentoFormState = {
   nome: '',
+  nomeSocial: '',
+  email: '',
+  telefoneCelular: '',
   cpf: '',
   cns: '',
   dataNascimento: '',
@@ -75,10 +84,40 @@ function onlyDigits(value: string): string {
   return value.replace(/\D/g, '')
 }
 
+async function salvarCamposComplementaresPaciente(form: PacienteAtendimentoFormState): Promise<string | null> {
+  if (!form.pacienteId) {
+    return null
+  }
+
+  const nomeSocial = form.nomeSocial.trim()
+  const email = form.email.trim()
+  const telefoneCelular = form.telefoneCelular.trim()
+
+  if (!nomeSocial && !email && !telefoneCelular) {
+    return null
+  }
+
+  const result = await atualizarPacienteCompletoTfd({
+    pacienteId: form.pacienteId,
+    ...(nomeSocial ? { nomeSocial } : {}),
+    ...(email ? { email } : {}),
+    ...(telefoneCelular ? { telefoneCelular } : {}),
+  })
+
+  if (!result.success) {
+    return result.error ?? 'Não foi possível salvar os dados complementares do paciente.'
+  }
+
+  return null
+}
+
 function detalheToFormState(detalhe: TfdPacienteAtendimentoDetalhe): PacienteAtendimentoFormState {
   return {
     pacienteId: detalhe.id,
     nome: detalhe.nome,
+    nomeSocial: '',
+    email: '',
+    telefoneCelular: '',
     cpf: detalhe.cpf ?? '',
     cns: detalhe.cns ?? '',
     dataNascimento: detalhe.dataNascimento ?? '',
@@ -158,7 +197,17 @@ export function PacienteAtendimentoSection({
         setErro(response.error)
         return
       }
-      const next = detalheToFormState(response.data)
+      const next: PacienteAtendimentoFormState = {
+        ...detalheToFormState(response.data),
+        nomeSocial: form.nomeSocial,
+        email: form.email,
+        telefoneCelular: form.telefoneCelular,
+      }
+      const complementarErro = await salvarCamposComplementaresPaciente(next)
+      if (complementarErro) {
+        setErro(complementarErro)
+        return
+      }
       setForm(next)
       setResultados([])
       onPacienteSalvo(response.data.id, next)
@@ -265,6 +314,11 @@ export function PacienteAtendimentoSection({
       }
 
       const next = { ...form, pacienteId: response.data.pacienteId }
+      const complementarErro = await salvarCamposComplementaresPaciente(next)
+      if (complementarErro) {
+        setErro(complementarErro)
+        return
+      }
       setForm(next)
       onPacienteSalvo(response.data.pacienteId, next)
     })
@@ -360,6 +414,28 @@ export function PacienteAtendimentoSection({
             onChange={(event) => updateField('nome', event.target.value)}
             disabled={disabled || isPending}
             required
+          />
+          <Input
+            id="paciente-nome-social"
+            label="Nome social (opcional)"
+            value={form.nomeSocial}
+            onChange={(event) => updateField('nomeSocial', event.target.value)}
+            disabled={disabled || isPending}
+          />
+          <Input
+            id="paciente-email"
+            label="E-mail (opcional)"
+            type="email"
+            value={form.email}
+            onChange={(event) => updateField('email', event.target.value)}
+            disabled={disabled || isPending}
+          />
+          <Input
+            id="paciente-celular"
+            label="Telefone celular (opcional)"
+            value={form.telefoneCelular}
+            onChange={(event) => updateField('telefoneCelular', event.target.value)}
+            disabled={disabled || isPending}
           />
           <Input
             id="paciente-cpf"

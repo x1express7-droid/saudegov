@@ -8,6 +8,7 @@ import {
   getEspecialidadesTfd,
   getPacienteAtendimentoTfd,
   getPrestadoresTfd,
+  getProcessoTfdDetalhe,
   getProcedimentosTfd,
   getSolicitacoesOrigemRetornoTfd,
   isCadsusEnabledForTenant,
@@ -26,7 +27,7 @@ export const metadata: Metadata = {
 const CATALOGO_PER_PAGE = 100
 
 interface NovaSolicitacaoPageProps {
-  searchParams: Promise<{ pacienteId?: string }>
+  searchParams: Promise<{ pacienteId?: string; processoId?: string }>
 }
 
 function isUuid(value: string): boolean {
@@ -47,8 +48,24 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
 
   const params = await searchParams
   const pacienteIdParam = params.pacienteId?.trim()
+  const processoIdParam = params.processoId?.trim()
 
   let initialPaciente = null
+  let processoId: string | undefined
+
+  if (processoIdParam && isUuid(processoIdParam)) {
+    const processo = await getProcessoTfdDetalhe(processoIdParam)
+    if (!processo) {
+      notFound()
+    }
+    processoId = processo.id
+    if (processo.paciente?.id) {
+      initialPaciente = await getPacienteAtendimentoTfd(processo.paciente.id)
+      if (!initialPaciente) {
+        notFound()
+      }
+    }
+  }
 
   if (pacienteIdParam && isUuid(pacienteIdParam)) {
     initialPaciente = await getPacienteAtendimentoTfd(pacienteIdParam)
@@ -78,13 +95,17 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
         titulo="Atendimento da Solicitação TFD"
         subtitulo="Identifique o paciente, revise os dados cadastrais e registre a solicitação de Tratamento Fora de Domicílio."
         breadcrumbs={[
-          { label: 'Fila TFD', href: '/saude/tfd' },
+          { label: 'Processos TFD', href: '/saude/tfd/processos' },
+          ...(processoId
+            ? [{ label: 'Processo', href: `/saude/tfd/processos/${processoId}` }]
+            : []),
           { label: 'Nova solicitação' },
         ]}
       />
 
       <AtendimentoTfdForm
         initialPaciente={initialPaciente}
+        processoId={processoId}
         cadsusEnabled={cadsusEnabled}
         especialidades={especialidadesResult.items}
         procedimentos={procedimentosResult.items}

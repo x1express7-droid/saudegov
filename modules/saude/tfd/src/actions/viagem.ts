@@ -15,6 +15,7 @@ import type { ActionResponse } from '@saude/validators'
 import { TFD_PERMISSIONS } from '../permissions'
 import { calcMinDataAgendamento72h, calcPrazoEnvioPrestacao, isCnhVencida } from '../utils/prazos'
 import { calcProximaSequenciaViagem, verificaCapacidadeVeiculo } from '../utils/viagem'
+import { gerarProtocoloTfd } from '../utils/gerar-protocolo-tfd'
 import { getMotoristasAgendamentoTfd } from '../queries/get-motoristas-agendamento'
 import type { TfdMotoristaAgendamentoItem } from '../types/tfd.types'
 import { criarAgendamentoSchema, registrarRetornoSchema } from '../validators/agendamento.schema'
@@ -129,9 +130,9 @@ export async function criarAgendamentoTfd(
         status: true,
         acompanhante_necessario: true,
         processo_id: true,
+        protocolo: true,
         urgencia: true,
         especialidade: { select: { nome: true } },
-        processo: { select: { protocolo: true } },
       },
     })
 
@@ -193,7 +194,7 @@ export async function criarAgendamentoTfd(
       return { success: false, error: MSG_ANTECEDENCIA_72H }
     }
 
-    const protocolo = solicitacao.processo.protocolo
+    const protocoloSolicitacao = solicitacao.protocolo
     const especialidadeNome = solicitacao.especialidade?.nome ?? 'Não informada'
     const dataViagemDb = parseDataViagemUtc(data.dataViagem)
     const horaSaidaDb = parseHoraSaidaUtc(data.horaSaida)
@@ -227,11 +228,13 @@ export async function criarAgendamentoTfd(
       })
 
       const sequencia = calcProximaSequenciaViagem(viagensExistentes)
+      const protocolo = await gerarProtocoloTfd(tenantId, 'VIAGEM', tx)
 
       const viagem = await tx.tfdViagem.create({
         data: {
           tenant_id: tenantId,
           solicitacao_id: solicitacaoLocked.id,
+          protocolo,
           sequencia,
           data_viagem: dataViagemDb,
           hora_saida: horaSaidaDb,
@@ -285,6 +288,7 @@ export async function criarAgendamentoTfd(
         processoId: solicitacaoLocked.processo_id,
         statusAnterior,
         statusNovo: statusAnterior === 'APROVADO' ? ('AGENDADO' as const) : statusAnterior,
+        protocolo,
       }
     })
 
@@ -303,7 +307,7 @@ export async function criarAgendamentoTfd(
         motoristaId: motorista.id,
         statusSolicitacaoAnterior: resultado.statusAnterior,
         statusSolicitacaoNovo: resultado.statusNovo,
-        protocolo,
+        protocolo: resultado.protocolo,
         modulo: MODULO_TFD,
         processoId: resultado.processoId,
       },
@@ -315,7 +319,7 @@ export async function criarAgendamentoTfd(
       modulo: MODULO_TFD,
       processoId: resultado.processoId,
       context: {
-        protocolo,
+        protocolo: resultado.protocolo,
         especialidade: especialidadeNome,
         urgencia: solicitacao.urgencia,
       },

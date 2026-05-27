@@ -110,7 +110,7 @@ export function Select({
               position="popper"
               sideOffset={4}
               className={cn(
-                'z-[var(--z-dropdown)] max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-text)_12%,transparent)]'
+                'pointer-events-auto z-[var(--z-dropdown)] max-h-60 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-text)_12%,transparent)]'
               )}
             >
               <SelectPrimitive.Viewport className="p-[var(--space-1)]">

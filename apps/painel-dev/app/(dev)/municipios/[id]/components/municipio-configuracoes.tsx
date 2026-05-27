@@ -1,6 +1,6 @@
 'use client'
 
-import type { SaldoListItem } from '@saude/mod-saude-tfd'
+import type { SaldoListItem } from '@saude/mod-saude-tfd/client'
 import Link from 'next/link'
 import { useState, useTransition } from 'react'
 import { alterarModulo } from '../../../../../lib/actions/alterar-modulo'

@@ -19,6 +19,7 @@ import {
 
 export interface AtendimentoTfdFormProps {
   initialPaciente?: TfdPacienteAtendimentoDetalhe | null
+  processoId?: string
   cadsusEnabled?: boolean
   especialidades: TfdEspecialidadeListItem[]
   procedimentos: TfdProcedimentoListItem[]
@@ -28,6 +29,7 @@ export interface AtendimentoTfdFormProps {
 
 export function AtendimentoTfdForm({
   initialPaciente,
+  processoId,
   cadsusEnabled = false,
   especialidades,
   procedimentos,
@@ -66,6 +68,7 @@ export function AtendimentoTfdForm({
             nome: pacienteNome,
             possuiCpf: pacienteCpf.length === 11,
           }}
+          processoId={processoId}
           especialidades={especialidades}
           procedimentos={procedimentos}
           prestadores={prestadores}

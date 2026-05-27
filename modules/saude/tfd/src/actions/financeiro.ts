@@ -25,12 +25,16 @@ import {
   tryNotificarSaldoBaixoAposMutacao,
 } from '../utils/saldo-baixo-notificacao'
 import {
+  decidirPrestacaoContasAgendamentoSchema,
   decidirPrestacaoContasSchema,
   enviarPrestacaoContasSchema,
   MIN_VALOR_COMPROVANTE,
+  registrarDespesaAgendamentoSchema,
   registrarDespesaSchema,
+  registrarDespesaTransporteSchema,
   registrarVisualizacaoComprovanteSchema,
 } from '../validators/despesa.schema'
+import { buscarItensDespesaDoAgendamento } from '../utils/itens-despesa-agendamento'
 import { estornarMovimentacaoSaldoSchema } from '../validators/financeiro.schema'
 import { isTipoMovimentacaoEstornavel } from '../utils/saldo-movimentacao'
 
@@ -52,6 +56,16 @@ const MSG_COMPROVANTE_NAO_ENCONTRADO =
 const MSG_COMPROVANTE_TIPO_INVALIDO =
   'Comprovante deve ser PDF, JPEG ou PNG (máx. 10 MB).'
 const MSG_PRESTACAO_ID_NAO_ENCONTRADA = 'Prestação de contas não encontrada.'
+const MSG_PRESTACAO_SEM_VIAGEM_LEGADA =
+  'Esta prestação está vinculada a um agendamento; o fluxo financeiro por viagem não se aplica.'
+const MSG_PRESTACAO_SEM_AGENDAMENTO =
+  'Esta prestação não está vinculada a um agendamento; use o fluxo por viagem.'
+const MSG_PRESTACAO_FLUXO_VIAGEM =
+  'Esta prestação está vinculada a uma viagem; use o fluxo de prestação por viagem.'
+const MSG_AGENDAMENTO_NAO_ENCONTRADO = 'Agendamento não encontrado.'
+const MSG_AGENDAMENTO_NAO_REALIZADO =
+  'Registre o retorno do agendamento antes de lançar despesas.'
+const MSG_TRANSPORTE_NAO_ENCONTRADO = 'Segmento de transporte não encontrado.'
 const MSG_SOLICITACAO_STATUS_INVALIDO_ENVIO =
   'A solicitação precisa estar aguardando prestação de contas para enviar.'
 const MSG_SEM_ITENS_DESPESA =
@@ -507,17 +521,22 @@ export async function enviarPrestacaoContas(
       return { success: false, error: MSG_PRESTACAO_ID_NAO_ENCONTRADA }
     }
 
+    if (!prestacao.viagem) {
+      return { success: false, error: MSG_PRESTACAO_SEM_VIAGEM_LEGADA }
+    }
+    const viagem = prestacao.viagem
+
     const statusPc = prestacao.status
     if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
       return { success: false, error: MSG_PRESTACAO_STATUS_INVALIDO }
     }
 
-    if (prestacao.viagem.solicitacao.status !== 'AGUARDANDO_PC') {
+    if (viagem.solicitacao.status !== 'AGUARDANDO_PC') {
       return { success: false, error: MSG_SOLICITACAO_STATUS_INVALIDO_ENVIO }
     }
 
     try {
-      validarItensDespesaComComprovante(prestacao.viagem.itens_despesa)
+      validarItensDespesaComComprovante(viagem.itens_despesa)
     } catch (error) {
       if (error instanceof FinanceiroBusinessError) {
         return { success: false, error: error.message }
@@ -525,8 +544,8 @@ export async function enviarPrestacaoContas(
       throw error
     }
 
-    const protocolo = prestacao.viagem.solicitacao.processo.protocolo
-    const especialidadeNome = prestacao.viagem.solicitacao.especialidade?.nome ?? 'Não informada'
+    const protocolo = viagem.solicitacao.processo.protocolo
+    const especialidadeNome = viagem.solicitacao.especialidade?.nome ?? 'Não informada'
 
     const resultado = await db.$transaction(async (tx) => {
       const prestacaoLocked = await tx.tfdPrestacaoConta.findFirst({
@@ -563,18 +582,23 @@ export async function enviarPrestacaoContas(
         throw new FinanceiroBusinessError(MSG_PRESTACAO_ID_NAO_ENCONTRADA)
       }
 
+      if (!prestacaoLocked.viagem) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_VIAGEM_LEGADA)
+      }
+      const viagemLocked = prestacaoLocked.viagem
+
       const statusLocked = prestacaoLocked.status
       if (statusLocked !== 'PENDENTE' && statusLocked !== 'REJEITADA') {
         throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
       }
 
-      if (prestacaoLocked.viagem.solicitacao.status !== 'AGUARDANDO_PC') {
+      if (viagemLocked.solicitacao.status !== 'AGUARDANDO_PC') {
         throw new FinanceiroBusinessError(MSG_SOLICITACAO_STATUS_INVALIDO_ENVIO)
       }
 
-      validarItensDespesaComComprovante(prestacaoLocked.viagem.itens_despesa)
+      validarItensDespesaComComprovante(viagemLocked.itens_despesa)
 
-      const valorTotal = prestacaoLocked.viagem.itens_despesa.reduce(
+      const valorTotal = viagemLocked.itens_despesa.reduce(
         (acc, item) => acc + Number(item.valor),
         0
       )
@@ -589,22 +613,22 @@ export async function enviarPrestacaoContas(
       })
 
       await tx.tfdSolicitacao.update({
-        where: { id: prestacaoLocked.viagem.solicitacao.id },
+        where: { id: viagemLocked.solicitacao.id },
         data: { status: 'PC_EM_ANALISE' },
       })
 
       await registrarTramitacao(
         {
           tenantId,
-          processoId: prestacaoLocked.viagem.solicitacao.processo_id,
+          processoId: viagemLocked.solicitacao.processo_id,
           tipo: 'PRESTACAO_ENVIADA',
-          descricao: `Prestação de contas da viagem ${prestacaoLocked.viagem.sequencia} enviada para análise (total ${formatValorBrl(valorTotal)}).`,
+          descricao: `Prestação de contas da viagem ${viagemLocked.sequencia} enviada para análise (total ${formatValorBrl(valorTotal)}).`,
           usuarioId: session.user.id,
           metadata: {
             prestacaoId: prestacaoLocked.id,
-            viagemId: prestacaoLocked.viagem.id,
+            viagemId: viagemLocked.id,
             valorTotal,
-            quantidadeItens: prestacaoLocked.viagem.itens_despesa.length,
+            quantidadeItens: viagemLocked.itens_despesa.length,
           },
         },
         tx
@@ -612,11 +636,11 @@ export async function enviarPrestacaoContas(
 
       return {
         prestacaoId: prestacaoLocked.id,
-        solicitacaoId: prestacaoLocked.viagem.solicitacao.id,
-        processoId: prestacaoLocked.viagem.solicitacao.processo_id,
-        sequenciaViagem: prestacaoLocked.viagem.sequencia,
+        solicitacaoId: viagemLocked.solicitacao.id,
+        processoId: viagemLocked.solicitacao.processo_id,
+        sequenciaViagem: viagemLocked.sequencia,
         valorTotal,
-        quantidadeItens: prestacaoLocked.viagem.itens_despesa.length,
+        quantidadeItens: viagemLocked.itens_despesa.length,
       }
     })
 
@@ -725,9 +749,14 @@ export async function registrarVisualizacaoComprovante(
       return { success: false, error: MSG_PRESTACAO_ID_NAO_ENCONTRADA }
     }
 
+    if (!prestacao.viagem) {
+      return { success: false, error: MSG_PRESTACAO_SEM_VIAGEM_LEGADA }
+    }
+    const viagem = prestacao.viagem
+
     if (
       prestacao.status !== 'ENVIADA' ||
-      prestacao.viagem.solicitacao.status !== 'PC_EM_ANALISE'
+      viagem.solicitacao.status !== 'PC_EM_ANALISE'
     ) {
       return { success: false, error: MSG_PRESTACAO_ANALISE_APENAS }
     }
@@ -747,6 +776,7 @@ export async function registrarVisualizacaoComprovante(
           viagem_id: true,
           viagem: {
             select: {
+              id: true,
               solicitacao: {
                 select: {
                   id: true,
@@ -763,18 +793,23 @@ export async function registrarVisualizacaoComprovante(
         throw new FinanceiroBusinessError(MSG_PRESTACAO_ID_NAO_ENCONTRADA)
       }
 
+      if (!prestacaoLocked.viagem) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_VIAGEM_LEGADA)
+      }
+      const viagemLocked = prestacaoLocked.viagem
+
       if (prestacaoLocked.status !== 'ENVIADA') {
         throw new FinanceiroBusinessError(MSG_PRESTACAO_ANALISE_APENAS)
       }
 
-      if (prestacaoLocked.viagem.solicitacao.status !== 'PC_EM_ANALISE') {
+      if (viagemLocked.solicitacao.status !== 'PC_EM_ANALISE') {
         throw new FinanceiroBusinessError(MSG_PRESTACAO_ANALISE_APENAS)
       }
 
       const itemDespesa = await tx.tfdItemDespesa.findFirst({
         where: {
           tenant_id: tenantId,
-          viagem_id: prestacaoLocked.viagem_id,
+          viagem_id: viagemLocked.id,
           comprovante_anexo_id: data.comprovanteAnexoId,
         },
         select: { id: true },
@@ -802,8 +837,8 @@ export async function registrarVisualizacaoComprovante(
 
       return {
         prestacaoId: prestacaoLocked.id,
-        solicitacaoId: prestacaoLocked.viagem.solicitacao.id,
-        processoId: prestacaoLocked.viagem.solicitacao.processo_id,
+        solicitacaoId: viagemLocked.solicitacao.id,
+        processoId: viagemLocked.solicitacao.processo_id,
         quantidadeVistos: comprovantesAtualizados.length,
       }
     })
@@ -828,7 +863,7 @@ export async function registrarVisualizacaoComprovante(
         comprovanteAnexoId: data.comprovanteAnexoId,
         visualizadoAt,
         quantidadeComprovantesVistos: resultado.quantidadeVistos,
-        protocolo: prestacao.viagem.solicitacao.processo.protocolo,
+        protocolo: viagem.solicitacao.processo.protocolo,
         modulo: MODULO_TFD,
         processoId: resultado.processoId,
       },
@@ -932,20 +967,24 @@ export async function decidirPrestacaoContas(
       return { success: false, error: MSG_PRESTACAO_ID_NAO_ENCONTRADA }
     }
 
+    if (!prestacao.viagem) {
+      return { success: false, error: MSG_PRESTACAO_SEM_VIAGEM_LEGADA }
+    }
+    const viagem = prestacao.viagem
+
     if (prestacao.status !== 'ENVIADA') {
       return { success: false, error: MSG_PRESTACAO_ENVIADA_APENAS }
     }
 
-    if (prestacao.viagem.solicitacao.status !== 'PC_EM_ANALISE') {
+    if (viagem.solicitacao.status !== 'PC_EM_ANALISE') {
       return { success: false, error: MSG_TRANSICAO_INVALIDA }
     }
 
-    const protocolo = prestacao.viagem.solicitacao.processo.protocolo
+    const protocolo = viagem.solicitacao.processo.protocolo
     const especialidadeNome =
-      prestacao.viagem.solicitacao.especialidade?.nome ?? 'Não informada'
+      viagem.solicitacao.especialidade?.nome ?? 'Não informada'
     const servidorResponsavelId =
-      prestacao.viagem.solicitacao.processo.aberto_por_id ??
-      prestacao.viagem.solicitacao.solicitante_id
+      viagem.solicitacao.processo.aberto_por_id ?? viagem.solicitacao.solicitante_id
     const decididoAt = new Date()
 
     if (!data.aprovado) {
@@ -984,7 +1023,12 @@ export async function decidirPrestacaoContas(
           throw new FinanceiroBusinessError(MSG_PRESTACAO_ENVIADA_APENAS)
         }
 
-        if (prestacaoLocked.viagem.solicitacao.status !== 'PC_EM_ANALISE') {
+        if (!prestacaoLocked.viagem) {
+          throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_VIAGEM_LEGADA)
+        }
+        const viagemLocked = prestacaoLocked.viagem
+
+        if (viagemLocked.solicitacao.status !== 'PC_EM_ANALISE') {
           throw new FinanceiroBusinessError(MSG_TRANSICAO_INVALIDA)
         }
 
@@ -999,20 +1043,20 @@ export async function decidirPrestacaoContas(
         })
 
         await tx.tfdSolicitacao.update({
-          where: { id: prestacaoLocked.viagem.solicitacao.id },
+          where: { id: viagemLocked.solicitacao.id },
           data: { status: 'AGUARDANDO_PC' },
         })
 
         await registrarTramitacao(
           {
             tenantId,
-            processoId: prestacaoLocked.viagem.solicitacao.processo_id,
+            processoId: viagemLocked.solicitacao.processo_id,
             tipo: 'PRESTACAO_REJEITADA',
-            descricao: `Prestação de contas da viagem ${prestacaoLocked.viagem.sequencia} rejeitada. ${observacoesGestor}`,
+            descricao: `Prestação de contas da viagem ${viagemLocked.sequencia} rejeitada. ${observacoesGestor}`,
             usuarioId: session.user.id,
             metadata: {
               prestacaoId: prestacaoLocked.id,
-              viagemId: prestacaoLocked.viagem.id,
+              viagemId: viagemLocked.id,
             },
           },
           tx
@@ -1020,9 +1064,9 @@ export async function decidirPrestacaoContas(
 
         return {
           prestacaoId: prestacaoLocked.id,
-          solicitacaoId: prestacaoLocked.viagem.solicitacao.id,
-          processoId: prestacaoLocked.viagem.solicitacao.processo_id,
-          sequenciaViagem: prestacaoLocked.viagem.sequencia,
+          solicitacaoId: viagemLocked.solicitacao.id,
+          processoId: viagemLocked.solicitacao.processo_id,
+          sequenciaViagem: viagemLocked.sequencia,
         }
       })
 
@@ -1070,10 +1114,7 @@ export async function decidirPrestacaoContas(
     const comprovantesVistos = parseComprovantesVistos(prestacao.comprovantes_vistos)
 
     try {
-      assertTodosComprovantesVisualizados(
-        prestacao.viagem.itens_despesa,
-        comprovantesVistos
-      )
+      assertTodosComprovantesVisualizados(viagem.itens_despesa, comprovantesVistos)
     } catch (error) {
       if (error instanceof FinanceiroBusinessError) {
         return { success: false, error: error.message }
@@ -1084,7 +1125,7 @@ export async function decidirPrestacaoContas(
     const reservaAtiva = await db.tfdReservaSaldo.findFirst({
       where: {
         tenant_id: tenantId,
-        solicitacao_id: prestacao.viagem.solicitacao.id,
+        solicitacao_id: viagem.solicitacao.id,
         status: 'ATIVA',
       },
       select: { saldo_id: true },
@@ -1138,19 +1179,24 @@ export async function decidirPrestacaoContas(
         throw new FinanceiroBusinessError(MSG_PRESTACAO_ENVIADA_APENAS)
       }
 
-      if (prestacaoLocked.viagem.solicitacao.status !== 'PC_EM_ANALISE') {
+      if (!prestacaoLocked.viagem) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_VIAGEM_LEGADA)
+      }
+      const viagemLocked = prestacaoLocked.viagem
+
+      if (viagemLocked.solicitacao.status !== 'PC_EM_ANALISE') {
         throw new FinanceiroBusinessError(MSG_TRANSICAO_INVALIDA)
       }
 
       assertTodosComprovantesVisualizados(
-        prestacaoLocked.viagem.itens_despesa,
+        viagemLocked.itens_despesa,
         parseComprovantesVistos(prestacaoLocked.comprovantes_vistos)
       )
 
-      validarItensDespesaComComprovante(prestacaoLocked.viagem.itens_despesa)
+      validarItensDespesaComComprovante(viagemLocked.itens_despesa)
 
       const valorReal = roundMoney(
-        prestacaoLocked.viagem.itens_despesa.reduce(
+        viagemLocked.itens_despesa.reduce(
           (acc, item) => acc + Number(item.valor),
           0
         )
@@ -1159,7 +1205,7 @@ export async function decidirPrestacaoContas(
       const reservaLocked = await lockReservaForUpdate(
         tx,
         tenantId,
-        prestacaoLocked.viagem.solicitacao.id
+        viagemLocked.solicitacao.id
       )
 
       if (!reservaLocked) {
@@ -1189,7 +1235,7 @@ export async function decidirPrestacaoContas(
           saldo_id: reservaLocked.saldo_id,
           tipo: 'CONSUMO',
           valor: valorReal,
-          solicitacao_id: prestacaoLocked.viagem.solicitacao.id,
+          solicitacao_id: viagemLocked.solicitacao.id,
           descricao: 'Consumo — prestação de contas aprovada',
           usuario_id: session.user.id,
         },
@@ -1202,7 +1248,7 @@ export async function decidirPrestacaoContas(
             saldo_id: reservaLocked.saldo_id,
             tipo: 'LIBERACAO',
             valor: valorLiberacao,
-            solicitacao_id: prestacaoLocked.viagem.solicitacao.id,
+            solicitacao_id: viagemLocked.solicitacao.id,
             descricao: 'Liberação — diferença entre valor estimado e real da prestação',
             usuario_id: session.user.id,
           },
@@ -1220,25 +1266,25 @@ export async function decidirPrestacaoContas(
       })
 
       await tx.tfdSolicitacao.update({
-        where: { id: prestacaoLocked.viagem.solicitacao.id },
+        where: { id: viagemLocked.solicitacao.id },
         data: { status: 'CONCLUIDO' },
       })
 
       await tx.processo.update({
-        where: { id: prestacaoLocked.viagem.solicitacao.processo_id },
+        where: { id: viagemLocked.solicitacao.processo_id },
         data: { status: 'CONCLUIDO' },
       })
 
       await registrarTramitacao(
         {
           tenantId,
-          processoId: prestacaoLocked.viagem.solicitacao.processo_id,
+          processoId: viagemLocked.solicitacao.processo_id,
           tipo: 'PRESTACAO_APROVADA',
-          descricao: `Prestação de contas da viagem ${prestacaoLocked.viagem.sequencia} aprovada (total ${formatValorBrl(valorReal)}).`,
+          descricao: `Prestação de contas da viagem ${viagemLocked.sequencia} aprovada (total ${formatValorBrl(valorReal)}).`,
           usuarioId: session.user.id,
           metadata: {
             prestacaoId: prestacaoLocked.id,
-            viagemId: prestacaoLocked.viagem.id,
+            viagemId: viagemLocked.id,
             valorReal,
             valorReservado,
             valorLiberacao,
@@ -1249,9 +1295,9 @@ export async function decidirPrestacaoContas(
 
       return {
         prestacaoId: prestacaoLocked.id,
-        solicitacaoId: prestacaoLocked.viagem.solicitacao.id,
-        processoId: prestacaoLocked.viagem.solicitacao.processo_id,
-        sequenciaViagem: prestacaoLocked.viagem.sequencia,
+        solicitacaoId: viagemLocked.solicitacao.id,
+        processoId: viagemLocked.solicitacao.processo_id,
+        sequenciaViagem: viagemLocked.sequencia,
         valorReal,
         valorReservado,
         valorLiberacao,
@@ -1460,6 +1506,1404 @@ export async function estornarMovimentacaoSaldoTfd(
     return {
       success: false,
       error: 'Não foi possível registrar o estorno. Tente novamente.',
+    }
+  }
+}
+
+function revalidateAgendamentoFinanceiroPaths(
+  processoId: string,
+  agendamentoId: string,
+  solicitacaoId: string
+): void {
+  revalidatePath('/saude/tfd')
+  revalidatePath('/saude/tfd/agendamentos')
+  revalidatePath('/saude/tfd/prestacoes')
+  revalidatePath(`/saude/tfd/${solicitacaoId}`)
+  revalidatePath(`/saude/tfd/processos/${processoId}/agendamentos/${agendamentoId}`)
+}
+
+export async function registrarDespesaAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<{ despesaId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
+
+  const parsed = registrarDespesaAgendamentoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
+    return {
+      success: false,
+      error: MSG_COMPROVANTE_OBRIGATORIO,
+      fieldErrors: {
+        comprovanteAnexoId: [MSG_COMPROVANTE_OBRIGATORIO],
+      },
+    }
+  }
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const agendamento = await db.tfdAgendamento.findFirst({
+      where: {
+        id: data.agendamentoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        processo_id: true,
+        sequencia: true,
+        prestacao_conta: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+        solicitacao: {
+          select: {
+            id: true,
+            processo: { select: { protocolo: true } },
+          },
+        },
+      },
+    })
+
+    if (!agendamento) {
+      return { success: false, error: MSG_AGENDAMENTO_NAO_ENCONTRADO }
+    }
+
+    if (agendamento.status !== 'REALIZADO') {
+      return { success: false, error: MSG_AGENDAMENTO_NAO_REALIZADO }
+    }
+
+    if (!agendamento.prestacao_conta) {
+      return { success: false, error: MSG_PRESTACAO_NAO_ENCONTRADA }
+    }
+
+    const statusPrestacao = agendamento.prestacao_conta.status
+    if (statusPrestacao !== 'PENDENTE' && statusPrestacao !== 'REJEITADA') {
+      return { success: false, error: MSG_PRESTACAO_STATUS_INVALIDO }
+    }
+
+    const resultado = await db.$transaction(async (tx) => {
+      const agendamentoLocked = await tx.tfdAgendamento.findFirst({
+        where: {
+          id: data.agendamentoId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          status: true,
+          processo_id: true,
+          prestacao_conta: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+          solicitacao: {
+            select: {
+              id: true,
+              processo_id: true,
+            },
+          },
+        },
+      })
+
+      if (!agendamentoLocked) {
+        throw new FinanceiroBusinessError(MSG_AGENDAMENTO_NAO_ENCONTRADO)
+      }
+
+      if (agendamentoLocked.status !== 'REALIZADO') {
+        throw new FinanceiroBusinessError(MSG_AGENDAMENTO_NAO_REALIZADO)
+      }
+
+      if (!agendamentoLocked.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_NAO_ENCONTRADA)
+      }
+
+      const statusPc = agendamentoLocked.prestacao_conta.status
+      if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
+        throw new FinanceiroBusinessError(MSG_COMPROVANTE_OBRIGATORIO)
+      }
+
+      if (data.comprovanteAnexoId) {
+        await validarComprovanteAnexo(tx, tenantId, data.comprovanteAnexoId)
+      }
+
+      const item = await tx.tfdItemDespesa.create({
+        data: {
+          tenant_id: tenantId,
+          agendamento_id: agendamentoLocked.id,
+          viagem_id: null,
+          transporte_id: null,
+          tipo: data.tipo,
+          descricao: data.descricao?.trim() || null,
+          valor: data.valor,
+          comprovante_anexo_id: data.comprovanteAnexoId ?? null,
+          responsavel_pagamento: data.responsavelPagamento,
+        },
+        select: { id: true },
+      })
+
+      return {
+        despesaId: item.id,
+        agendamentoId: agendamentoLocked.id,
+        prestacaoId: agendamentoLocked.prestacao_conta.id,
+        solicitacaoId: agendamentoLocked.solicitacao.id,
+        processoId: agendamentoLocked.solicitacao.processo_id,
+        tipo: data.tipo,
+        valor: data.valor,
+        possuiComprovante: Boolean(data.comprovanteAnexoId),
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_item_despesa',
+      entidadeId: resultado.despesaId,
+      payloadDepois: {
+        agendamentoId: resultado.agendamentoId,
+        prestacaoId: resultado.prestacaoId,
+        tipo: resultado.tipo,
+        valor: resultado.valor,
+        possuiComprovante: resultado.possuiComprovante,
+        protocolo: agendamento.solicitacao.processo.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    revalidateAgendamentoFinanceiroPaths(
+      resultado.processoId,
+      resultado.agendamentoId,
+      resultado.solicitacaoId
+    )
+
+    return {
+      success: true,
+      data: { despesaId: resultado.despesaId },
+    }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[registrarDespesaAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar a despesa. Tente novamente.',
+    }
+  }
+}
+
+export async function registrarDespesaTransporte(
+  rawInput: unknown
+): Promise<ActionResponse<{ despesaId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
+
+  const parsed = registrarDespesaTransporteSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
+    return {
+      success: false,
+      error: MSG_COMPROVANTE_OBRIGATORIO,
+      fieldErrors: {
+        comprovanteAnexoId: [MSG_COMPROVANTE_OBRIGATORIO],
+      },
+    }
+  }
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const transporte = await db.tfdTransporte.findFirst({
+      where: {
+        id: data.transporteId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        agendamento_id: true,
+        agendamento: {
+          select: {
+            id: true,
+            status: true,
+            processo_id: true,
+            sequencia: true,
+            prestacao_conta: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+            solicitacao: {
+              select: {
+                id: true,
+                processo: { select: { protocolo: true } },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!transporte) {
+      return { success: false, error: MSG_TRANSPORTE_NAO_ENCONTRADO }
+    }
+
+    const agendamento = transporte.agendamento
+
+    if (agendamento.status !== 'REALIZADO') {
+      return { success: false, error: MSG_AGENDAMENTO_NAO_REALIZADO }
+    }
+
+    if (!agendamento.prestacao_conta) {
+      return { success: false, error: MSG_PRESTACAO_NAO_ENCONTRADA }
+    }
+
+    const statusPrestacao = agendamento.prestacao_conta.status
+    if (statusPrestacao !== 'PENDENTE' && statusPrestacao !== 'REJEITADA') {
+      return { success: false, error: MSG_PRESTACAO_STATUS_INVALIDO }
+    }
+
+    const resultado = await db.$transaction(async (tx) => {
+      const transporteLocked = await tx.tfdTransporte.findFirst({
+        where: {
+          id: data.transporteId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          agendamento: {
+            select: {
+              id: true,
+              status: true,
+              processo_id: true,
+              prestacao_conta: {
+                select: {
+                  id: true,
+                  status: true,
+                },
+              },
+              solicitacao: {
+                select: {
+                  id: true,
+                  processo_id: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      if (!transporteLocked) {
+        throw new FinanceiroBusinessError(MSG_TRANSPORTE_NAO_ENCONTRADO)
+      }
+
+      const agendamentoLocked = transporteLocked.agendamento
+
+      if (agendamentoLocked.status !== 'REALIZADO') {
+        throw new FinanceiroBusinessError(MSG_AGENDAMENTO_NAO_REALIZADO)
+      }
+
+      if (!agendamentoLocked.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_NAO_ENCONTRADA)
+      }
+
+      const statusPc = agendamentoLocked.prestacao_conta.status
+      if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
+        throw new FinanceiroBusinessError(MSG_COMPROVANTE_OBRIGATORIO)
+      }
+
+      if (data.comprovanteAnexoId) {
+        await validarComprovanteAnexo(tx, tenantId, data.comprovanteAnexoId)
+      }
+
+      const item = await tx.tfdItemDespesa.create({
+        data: {
+          tenant_id: tenantId,
+          agendamento_id: agendamentoLocked.id,
+          viagem_id: null,
+          transporte_id: transporteLocked.id,
+          tipo: data.tipo,
+          descricao: data.descricao?.trim() || null,
+          valor: data.valor,
+          comprovante_anexo_id: data.comprovanteAnexoId ?? null,
+          responsavel_pagamento: data.responsavelPagamento,
+        },
+        select: { id: true },
+      })
+
+      return {
+        despesaId: item.id,
+        agendamentoId: agendamentoLocked.id,
+        transporteId: transporteLocked.id,
+        prestacaoId: agendamentoLocked.prestacao_conta.id,
+        solicitacaoId: agendamentoLocked.solicitacao.id,
+        processoId: agendamentoLocked.solicitacao.processo_id,
+        tipo: data.tipo,
+        valor: data.valor,
+        possuiComprovante: Boolean(data.comprovanteAnexoId),
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_item_despesa',
+      entidadeId: resultado.despesaId,
+      payloadDepois: {
+        agendamentoId: resultado.agendamentoId,
+        transporteId: resultado.transporteId,
+        prestacaoId: resultado.prestacaoId,
+        tipo: resultado.tipo,
+        valor: resultado.valor,
+        possuiComprovante: resultado.possuiComprovante,
+        protocolo: agendamento.solicitacao.processo.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    revalidateAgendamentoFinanceiroPaths(
+      resultado.processoId,
+      resultado.agendamentoId,
+      resultado.solicitacaoId
+    )
+
+    return {
+      success: true,
+      data: { despesaId: resultado.despesaId },
+    }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[registrarDespesaTransporte] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar a despesa. Tente novamente.',
+    }
+  }
+}
+
+export async function enviarPrestacaoContasAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.ENVIAR_PRESTACAO)
+
+  const parsed = enviarPrestacaoContasSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const prestacao = await db.tfdPrestacaoConta.findFirst({
+      where: {
+        id: data.prestacaoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        agendamento_id: true,
+        agendamento: {
+          select: {
+            id: true,
+            sequencia: true,
+            solicitacao: {
+              select: {
+                id: true,
+                status: true,
+                urgencia: true,
+                processo_id: true,
+                processo: { select: { protocolo: true } },
+                especialidade: { select: { nome: true } },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!prestacao) {
+      return { success: false, error: MSG_PRESTACAO_ID_NAO_ENCONTRADA }
+    }
+
+    if (!prestacao.agendamento_id || !prestacao.agendamento) {
+      return { success: false, error: MSG_PRESTACAO_SEM_AGENDAMENTO }
+    }
+
+    const agendamento = prestacao.agendamento
+
+    const statusPc = prestacao.status
+    if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+      return { success: false, error: MSG_PRESTACAO_STATUS_INVALIDO }
+    }
+
+    if (agendamento.solicitacao.status !== 'AGUARDANDO_PC') {
+      return { success: false, error: MSG_SOLICITACAO_STATUS_INVALIDO_ENVIO }
+    }
+
+    const itensDespesa = await buscarItensDespesaDoAgendamento(
+      db,
+      tenantId,
+      agendamento.id
+    )
+
+    try {
+      validarItensDespesaComComprovante(itensDespesa)
+    } catch (error) {
+      if (error instanceof FinanceiroBusinessError) {
+        return { success: false, error: error.message }
+      }
+      throw error
+    }
+
+    const protocolo = agendamento.solicitacao.processo.protocolo
+    const especialidadeNome = agendamento.solicitacao.especialidade?.nome ?? 'Não informada'
+
+    const resultado = await db.$transaction(async (tx) => {
+      const prestacaoLocked = await tx.tfdPrestacaoConta.findFirst({
+        where: {
+          id: data.prestacaoId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          status: true,
+          agendamento_id: true,
+          agendamento: {
+            select: {
+              id: true,
+              sequencia: true,
+              solicitacao: {
+                select: {
+                  id: true,
+                  status: true,
+                  processo_id: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      if (!prestacaoLocked) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ID_NAO_ENCONTRADA)
+      }
+
+      if (!prestacaoLocked.agendamento_id || !prestacaoLocked.agendamento) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_AGENDAMENTO)
+      }
+
+      const agendamentoLocked = prestacaoLocked.agendamento
+
+      const statusLocked = prestacaoLocked.status
+      if (statusLocked !== 'PENDENTE' && statusLocked !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      if (agendamentoLocked.solicitacao.status !== 'AGUARDANDO_PC') {
+        throw new FinanceiroBusinessError(MSG_SOLICITACAO_STATUS_INVALIDO_ENVIO)
+      }
+
+      const itensLocked = await buscarItensDespesaDoAgendamento(
+        tx,
+        tenantId,
+        agendamentoLocked.id
+      )
+
+      validarItensDespesaComComprovante(itensLocked)
+
+      const valorTotal = itensLocked.reduce((acc, item) => acc + Number(item.valor), 0)
+
+      await tx.tfdPrestacaoConta.update({
+        where: { id: prestacaoLocked.id },
+        data: {
+          status: 'ENVIADA',
+          comprovantes_vistos: [],
+          observacoes_gestor: null,
+        },
+      })
+
+      await tx.tfdSolicitacao.update({
+        where: { id: agendamentoLocked.solicitacao.id },
+        data: { status: 'PC_EM_ANALISE' },
+      })
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: agendamentoLocked.solicitacao.processo_id,
+          tipo: 'PRESTACAO_ENVIADA',
+          descricao: `Prestação de contas do agendamento ${agendamentoLocked.sequencia} enviada para análise (total ${formatValorBrl(valorTotal)}).`,
+          usuarioId: session.user.id,
+          metadata: {
+            prestacaoId: prestacaoLocked.id,
+            agendamentoId: agendamentoLocked.id,
+            valorTotal,
+            quantidadeItens: itensLocked.length,
+          },
+        },
+        tx
+      )
+
+      return {
+        prestacaoId: prestacaoLocked.id,
+        agendamentoId: agendamentoLocked.id,
+        solicitacaoId: agendamentoLocked.solicitacao.id,
+        processoId: agendamentoLocked.solicitacao.processo_id,
+        sequenciaAgendamento: agendamentoLocked.sequencia,
+        valorTotal,
+        quantidadeItens: itensLocked.length,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_prestacao_conta',
+      entidadeId: resultado.prestacaoId,
+      payloadDepois: {
+        statusPrestacao: 'ENVIADA',
+        statusSolicitacao: 'PC_EM_ANALISE',
+        valorTotal: resultado.valorTotal,
+        quantidadeItens: resultado.quantidadeItens,
+        agendamentoId: resultado.agendamentoId,
+        protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    await dispararNotificacao({
+      tenantId,
+      evento: NOTIFICATION_EVENTS.PRESTACAO_ENVIADA,
+      modulo: MODULO_TFD,
+      processoId: resultado.processoId,
+      context: {
+        protocolo,
+        especialidade: especialidadeNome,
+        sequenciaViagem: resultado.sequenciaAgendamento,
+        valorTotalFormatado: formatValorBrl(resultado.valorTotal),
+      },
+      excludeUserIds: [session.user.id],
+    })
+
+    revalidateAgendamentoFinanceiroPaths(
+      resultado.processoId,
+      resultado.agendamentoId,
+      resultado.solicitacaoId
+    )
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[enviarPrestacaoContasAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível enviar a prestação de contas. Tente novamente.',
+    }
+  }
+}
+
+/** Visualização de comprovante — prestação vinculada a agendamento (sem viagem legada). */
+export async function registrarVisualizacaoComprovanteAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<{ url: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('GESTOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.APROVAR_PRESTACAO)
+
+  const parsed = registrarVisualizacaoComprovanteSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const userId = session.user.id
+    const db = await getPrismaForTenant(tenantId)
+
+    const prestacao = await db.tfdPrestacaoConta.findFirst({
+      where: {
+        id: data.prestacaoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        viagem_id: true,
+        agendamento_id: true,
+        comprovantes_vistos: true,
+        agendamento: {
+          select: {
+            id: true,
+            sequencia: true,
+            solicitacao: {
+              select: {
+                id: true,
+                status: true,
+                processo_id: true,
+                processo: { select: { protocolo: true } },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!prestacao) {
+      return { success: false, error: MSG_PRESTACAO_ID_NAO_ENCONTRADA }
+    }
+
+    if (!prestacao.agendamento_id || !prestacao.agendamento) {
+      return { success: false, error: MSG_PRESTACAO_SEM_AGENDAMENTO }
+    }
+
+    if (prestacao.viagem_id) {
+      return { success: false, error: MSG_PRESTACAO_FLUXO_VIAGEM }
+    }
+
+    const agendamento = prestacao.agendamento
+
+    if (
+      prestacao.status !== 'ENVIADA' ||
+      agendamento.solicitacao.status !== 'PC_EM_ANALISE'
+    ) {
+      return { success: false, error: MSG_PRESTACAO_ANALISE_APENAS }
+    }
+
+    const visualizadoAt = new Date().toISOString()
+
+    const resultado = await db.$transaction(async (tx) => {
+      const prestacaoLocked = await tx.tfdPrestacaoConta.findFirst({
+        where: {
+          id: data.prestacaoId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          status: true,
+          viagem_id: true,
+          agendamento_id: true,
+          comprovantes_vistos: true,
+          agendamento: {
+            select: {
+              id: true,
+              solicitacao: {
+                select: {
+                  id: true,
+                  status: true,
+                  processo_id: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      if (!prestacaoLocked) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ID_NAO_ENCONTRADA)
+      }
+
+      if (!prestacaoLocked.agendamento_id || !prestacaoLocked.agendamento) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_AGENDAMENTO)
+      }
+
+      if (prestacaoLocked.viagem_id) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_FLUXO_VIAGEM)
+      }
+
+      const agendamentoLocked = prestacaoLocked.agendamento
+
+      if (prestacaoLocked.status !== 'ENVIADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ANALISE_APENAS)
+      }
+
+      if (agendamentoLocked.solicitacao.status !== 'PC_EM_ANALISE') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ANALISE_APENAS)
+      }
+
+      const itensDespesa = await buscarItensDespesaDoAgendamento(
+        tx,
+        tenantId,
+        agendamentoLocked.id
+      )
+
+      const itemPertence = itensDespesa.some(
+        (item) => item.comprovante_anexo_id === data.comprovanteAnexoId
+      )
+
+      if (!itemPertence) {
+        throw new FinanceiroBusinessError(MSG_COMPROVANTE_NAO_PERTENCE_PRESTACAO)
+      }
+
+      const comprovantesAtualizados = upsertComprovanteVisto(
+        parseComprovantesVistos(prestacaoLocked.comprovantes_vistos),
+        data.comprovanteAnexoId,
+        userId,
+        visualizadoAt
+      )
+
+      await tx.tfdPrestacaoConta.update({
+        where: { id: prestacaoLocked.id },
+        data: {
+          comprovantes_vistos: JSON.parse(
+            JSON.stringify(comprovantesAtualizados)
+          ) as Prisma.InputJsonValue,
+        },
+      })
+
+      return {
+        prestacaoId: prestacaoLocked.id,
+        agendamentoId: agendamentoLocked.id,
+        solicitacaoId: agendamentoLocked.solicitacao.id,
+        processoId: agendamentoLocked.solicitacao.processo_id,
+        quantidadeVistos: comprovantesAtualizados.length,
+      }
+    })
+
+    const { url } = await gerarUrlDownloadAnexo(
+      {
+        tenantId,
+        anexoId: data.comprovanteAnexoId,
+        downloadExpiresInMinutes: COMPROVANTE_DOWNLOAD_EXPIRES_MINUTES,
+      },
+      db
+    )
+
+    await createAuditLog({
+      tenantId,
+      userId,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_prestacao_conta',
+      entidadeId: resultado.prestacaoId,
+      payloadDepois: {
+        prestacaoId: resultado.prestacaoId,
+        agendamentoId: resultado.agendamentoId,
+        comprovanteAnexoId: data.comprovanteAnexoId,
+        visualizadoAt,
+        quantidadeComprovantesVistos: resultado.quantidadeVistos,
+        protocolo: agendamento.solicitacao.processo.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    revalidateAgendamentoFinanceiroPaths(
+      resultado.processoId,
+      resultado.agendamentoId,
+      resultado.solicitacaoId
+    )
+
+    return {
+      success: true,
+      data: { url },
+    }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    if (error instanceof StorageNotFoundError) {
+      return { success: false, error: MSG_COMPROVANTE_NAO_ENCONTRADO }
+    }
+
+    if (error instanceof StorageValidationError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[registrarVisualizacaoComprovanteAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar a visualização do comprovante. Tente novamente.',
+    }
+  }
+}
+
+/** Aprovação ou rejeição — prestação vinculada a agendamento (sem viagem legada). */
+export async function decidirPrestacaoContasAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('GESTOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.APROVAR_PRESTACAO)
+
+  const parsed = decidirPrestacaoContasAgendamentoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const prestacao = await db.tfdPrestacaoConta.findFirst({
+      where: {
+        id: data.prestacaoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        viagem_id: true,
+        agendamento_id: true,
+        comprovantes_vistos: true,
+        agendamento: {
+          select: {
+            id: true,
+            sequencia: true,
+            solicitacao: {
+              select: {
+                id: true,
+                status: true,
+                solicitante_id: true,
+                processo_id: true,
+                processo: {
+                  select: {
+                    protocolo: true,
+                    aberto_por_id: true,
+                  },
+                },
+                especialidade: { select: { nome: true } },
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!prestacao) {
+      return { success: false, error: MSG_PRESTACAO_ID_NAO_ENCONTRADA }
+    }
+
+    if (!prestacao.agendamento_id || !prestacao.agendamento) {
+      return { success: false, error: MSG_PRESTACAO_SEM_AGENDAMENTO }
+    }
+
+    if (prestacao.viagem_id) {
+      return { success: false, error: MSG_PRESTACAO_FLUXO_VIAGEM }
+    }
+
+    const agendamento = prestacao.agendamento
+
+    if (prestacao.status !== 'ENVIADA') {
+      return { success: false, error: MSG_PRESTACAO_ENVIADA_APENAS }
+    }
+
+    if (agendamento.solicitacao.status !== 'PC_EM_ANALISE') {
+      return { success: false, error: MSG_TRANSICAO_INVALIDA }
+    }
+
+    const protocolo = agendamento.solicitacao.processo.protocolo
+    const especialidadeNome =
+      agendamento.solicitacao.especialidade?.nome ?? 'Não informada'
+    const servidorResponsavelId =
+      agendamento.solicitacao.processo.aberto_por_id ??
+      agendamento.solicitacao.solicitante_id
+    const decididoAt = new Date()
+
+    const itensDespesaInicial = await buscarItensDespesaDoAgendamento(
+      db,
+      tenantId,
+      agendamento.id
+    )
+
+    if (data.decisao === 'REJEITADA') {
+      const observacoesGestor = data.observacoesGestor!.trim()
+
+      const resultado = await db.$transaction(async (tx) => {
+        const prestacaoLocked = await tx.tfdPrestacaoConta.findFirst({
+          where: {
+            id: data.prestacaoId,
+            tenant_id: tenantId,
+          },
+          select: {
+            id: true,
+            status: true,
+            viagem_id: true,
+            agendamento: {
+              select: {
+                id: true,
+                sequencia: true,
+                solicitacao: {
+                  select: {
+                    id: true,
+                    status: true,
+                    processo_id: true,
+                  },
+                },
+              },
+            },
+          },
+        })
+
+        if (!prestacaoLocked) {
+          throw new FinanceiroBusinessError(MSG_PRESTACAO_ID_NAO_ENCONTRADA)
+        }
+
+        if (!prestacaoLocked.agendamento) {
+          throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_AGENDAMENTO)
+        }
+
+        if (prestacaoLocked.viagem_id) {
+          throw new FinanceiroBusinessError(MSG_PRESTACAO_FLUXO_VIAGEM)
+        }
+
+        if (prestacaoLocked.status !== 'ENVIADA') {
+          throw new FinanceiroBusinessError(MSG_PRESTACAO_ENVIADA_APENAS)
+        }
+
+        const agendamentoLocked = prestacaoLocked.agendamento
+
+        if (agendamentoLocked.solicitacao.status !== 'PC_EM_ANALISE') {
+          throw new FinanceiroBusinessError(MSG_TRANSICAO_INVALIDA)
+        }
+
+        await tx.tfdPrestacaoConta.update({
+          where: { id: prestacaoLocked.id },
+          data: {
+            status: 'REJEITADA',
+            observacoes_gestor: observacoesGestor,
+            aprovado_por_id: session.user.id,
+            aprovado_at: decididoAt,
+          },
+        })
+
+        await tx.tfdSolicitacao.update({
+          where: { id: agendamentoLocked.solicitacao.id },
+          data: { status: 'AGUARDANDO_PC' },
+        })
+
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: agendamentoLocked.solicitacao.processo_id,
+            tipo: 'PRESTACAO_REJEITADA',
+            descricao: `Prestação de contas do agendamento ${agendamentoLocked.sequencia} rejeitada. ${observacoesGestor}`,
+            usuarioId: session.user.id,
+            metadata: {
+              prestacaoId: prestacaoLocked.id,
+              agendamentoId: agendamentoLocked.id,
+            },
+          },
+          tx
+        )
+
+        return {
+          prestacaoId: prestacaoLocked.id,
+          agendamentoId: agendamentoLocked.id,
+          solicitacaoId: agendamentoLocked.solicitacao.id,
+          processoId: agendamentoLocked.solicitacao.processo_id,
+          sequenciaAgendamento: agendamentoLocked.sequencia,
+        }
+      })
+
+      await createAuditLog({
+        tenantId,
+        userId: session.user.id,
+        acao: 'UPDATE',
+        entidade: 'saude_tfd_prestacao_conta',
+        entidadeId: resultado.prestacaoId,
+        payloadAntes: { statusPrestacao: 'ENVIADA', statusSolicitacao: 'PC_EM_ANALISE' },
+        payloadDepois: {
+          statusPrestacao: 'REJEITADA',
+          statusSolicitacao: 'AGUARDANDO_PC',
+          decisao: 'REJEITADA',
+          protocolo,
+          modulo: MODULO_TFD,
+          processoId: resultado.processoId,
+          agendamentoId: resultado.agendamentoId,
+        },
+      })
+
+      if (servidorResponsavelId) {
+        await dispararNotificacao({
+          tenantId,
+          evento: NOTIFICATION_EVENTS.PRESTACAO_REJEITADA,
+          modulo: MODULO_TFD,
+          processoId: resultado.processoId,
+          context: {
+            protocolo,
+            especialidade: especialidadeNome,
+            sequenciaViagem: resultado.sequenciaAgendamento,
+            observacoesGestor,
+          },
+          recipientUserIds: [servidorResponsavelId],
+          excludeUserIds: [session.user.id],
+        })
+      }
+
+      revalidateAgendamentoFinanceiroPaths(
+        resultado.processoId,
+        resultado.agendamentoId,
+        resultado.solicitacaoId
+      )
+
+      return { success: true, data: undefined }
+    }
+
+    const comprovantesVistos = parseComprovantesVistos(prestacao.comprovantes_vistos)
+
+    try {
+      assertTodosComprovantesVisualizados(itensDespesaInicial, comprovantesVistos)
+    } catch (error) {
+      if (error instanceof FinanceiroBusinessError) {
+        return { success: false, error: error.message }
+      }
+      throw error
+    }
+
+    const reservaAtiva = await db.tfdReservaSaldo.findFirst({
+      where: {
+        tenant_id: tenantId,
+        solicitacao_id: agendamento.solicitacao.id,
+        status: 'ATIVA',
+      },
+      select: { saldo_id: true },
+    })
+
+    const saldoIdAfetado = reservaAtiva?.saldo_id ?? null
+    let jaEstavaEmAlertaBaixo = false
+
+    if (saldoIdAfetado) {
+      const estadoSaldoAntes = await resolveSaldoEstadoAlerta(db, tenantId, saldoIdAfetado)
+      jaEstavaEmAlertaBaixo = estadoSaldoAntes?.alertaBaixo ?? false
+    }
+
+    const resultado = await db.$transaction(async (tx) => {
+      const prestacaoLocked = await tx.tfdPrestacaoConta.findFirst({
+        where: {
+          id: data.prestacaoId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          status: true,
+          viagem_id: true,
+          comprovantes_vistos: true,
+          agendamento: {
+            select: {
+              id: true,
+              sequencia: true,
+              solicitacao: {
+                select: {
+                  id: true,
+                  status: true,
+                  processo_id: true,
+                },
+              },
+            },
+          },
+        },
+      })
+
+      if (!prestacaoLocked) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ID_NAO_ENCONTRADA)
+      }
+
+      if (!prestacaoLocked.agendamento) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_SEM_AGENDAMENTO)
+      }
+
+      if (prestacaoLocked.viagem_id) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_FLUXO_VIAGEM)
+      }
+
+      if (prestacaoLocked.status !== 'ENVIADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ENVIADA_APENAS)
+      }
+
+      const agendamentoLocked = prestacaoLocked.agendamento
+
+      if (agendamentoLocked.solicitacao.status !== 'PC_EM_ANALISE') {
+        throw new FinanceiroBusinessError(MSG_TRANSICAO_INVALIDA)
+      }
+
+      const itensLocked = await buscarItensDespesaDoAgendamento(
+        tx,
+        tenantId,
+        agendamentoLocked.id
+      )
+
+      assertTodosComprovantesVisualizados(
+        itensLocked,
+        parseComprovantesVistos(prestacaoLocked.comprovantes_vistos)
+      )
+
+      validarItensDespesaComComprovante(itensLocked)
+
+      const valorReal = roundMoney(
+        itensLocked.reduce((acc, item) => acc + Number(item.valor), 0)
+      )
+
+      const reservaLocked = await lockReservaForUpdate(
+        tx,
+        tenantId,
+        agendamentoLocked.solicitacao.id
+      )
+
+      if (!reservaLocked) {
+        throw new FinanceiroBusinessError(MSG_RESERVA_NAO_ENCONTRADA)
+      }
+
+      const saldoLocked = await lockSaldoForUpdate(tx, tenantId, reservaLocked.saldo_id)
+
+      if (!saldoLocked) {
+        throw new FinanceiroBusinessError(MSG_RESERVA_NAO_ENCONTRADA)
+      }
+
+      const valorReservado = roundMoney(Number(reservaLocked.valor_estimado))
+      const valorLiberacao = roundMoney(Math.max(0, valorReservado - valorReal))
+
+      await tx.tfdReservaSaldo.update({
+        where: { id: reservaLocked.id },
+        data: {
+          status: 'CONSUMIDA',
+          consumido_at: decididoAt,
+        },
+      })
+
+      await tx.tfdMovimentacaoSaldo.create({
+        data: {
+          tenant_id: tenantId,
+          saldo_id: reservaLocked.saldo_id,
+          tipo: 'CONSUMO',
+          valor: valorReal,
+          solicitacao_id: agendamentoLocked.solicitacao.id,
+          descricao: 'Consumo — prestação de contas aprovada',
+          usuario_id: session.user.id,
+        },
+      })
+
+      if (valorLiberacao > 0) {
+        await tx.tfdMovimentacaoSaldo.create({
+          data: {
+            tenant_id: tenantId,
+            saldo_id: reservaLocked.saldo_id,
+            tipo: 'LIBERACAO',
+            valor: valorLiberacao,
+            solicitacao_id: agendamentoLocked.solicitacao.id,
+            descricao: 'Liberação — diferença entre valor estimado e real da prestação',
+            usuario_id: session.user.id,
+          },
+        })
+      }
+
+      await tx.tfdPrestacaoConta.update({
+        where: { id: prestacaoLocked.id },
+        data: {
+          status: 'APROVADA',
+          aprovado_por_id: session.user.id,
+          aprovado_at: decididoAt,
+          observacoes_gestor: data.observacoesGestor?.trim() || null,
+        },
+      })
+
+      await tx.tfdSolicitacao.update({
+        where: { id: agendamentoLocked.solicitacao.id },
+        data: { status: 'CONCLUIDO' },
+      })
+
+      await tx.processo.update({
+        where: { id: agendamentoLocked.solicitacao.processo_id },
+        data: { status: 'CONCLUIDO' },
+      })
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: agendamentoLocked.solicitacao.processo_id,
+          tipo: 'PRESTACAO_APROVADA',
+          descricao: `Prestação de contas do agendamento ${agendamentoLocked.sequencia} aprovada (total ${formatValorBrl(valorReal)}).`,
+          usuarioId: session.user.id,
+          metadata: {
+            prestacaoId: prestacaoLocked.id,
+            agendamentoId: agendamentoLocked.id,
+            valorReal,
+            valorReservado,
+            valorLiberacao,
+          },
+        },
+        tx
+      )
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: agendamentoLocked.solicitacao.processo_id,
+          tipo: 'CONCLUSAO',
+          descricao: `Processo TFD concluído após aprovação da prestação do agendamento ${agendamentoLocked.sequencia}.`,
+          usuarioId: session.user.id,
+          metadata: {
+            prestacaoId: prestacaoLocked.id,
+            agendamentoId: agendamentoLocked.id,
+          },
+        },
+        tx
+      )
+
+      return {
+        prestacaoId: prestacaoLocked.id,
+        agendamentoId: agendamentoLocked.id,
+        solicitacaoId: agendamentoLocked.solicitacao.id,
+        processoId: agendamentoLocked.solicitacao.processo_id,
+        sequenciaAgendamento: agendamentoLocked.sequencia,
+        valorReal,
+        valorReservado,
+        valorLiberacao,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_prestacao_conta',
+      entidadeId: resultado.prestacaoId,
+      payloadAntes: { statusPrestacao: 'ENVIADA', statusSolicitacao: 'PC_EM_ANALISE' },
+      payloadDepois: {
+        statusPrestacao: 'APROVADA',
+        statusSolicitacao: 'CONCLUIDO',
+        processoStatus: 'CONCLUIDO',
+        decisao: 'APROVADA',
+        valorReal: resultado.valorReal,
+        valorReservado: resultado.valorReservado,
+        valorLiberacao: resultado.valorLiberacao,
+        protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        agendamentoId: resultado.agendamentoId,
+      },
+    })
+
+    if (servidorResponsavelId) {
+      await dispararNotificacao({
+        tenantId,
+        evento: NOTIFICATION_EVENTS.PRESTACAO_APROVADA,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        context: {
+          protocolo,
+          especialidade: especialidadeNome,
+          sequenciaViagem: resultado.sequenciaAgendamento,
+          valorTotalFormatado: formatValorBrl(resultado.valorReal),
+        },
+        recipientUserIds: [servidorResponsavelId],
+        excludeUserIds: [session.user.id],
+      })
+    }
+
+    if (saldoIdAfetado) {
+      await tryNotificarSaldoBaixoAposMutacao({
+        tenantId,
+        saldoId: saldoIdAfetado,
+        jaEstavaEmAlertaBaixo,
+        excludeUserIds: [session.user.id],
+      })
+    }
+
+    revalidateAgendamentoFinanceiroPaths(
+      resultado.processoId,
+      resultado.agendamentoId,
+      resultado.solicitacaoId
+    )
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[decidirPrestacaoContasAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar a decisão da prestação. Tente novamente.',
     }
   }
 }

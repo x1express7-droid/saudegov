@@ -297,6 +297,7 @@ export interface TfdSolicitacaoListItem {
   }
   tipoAtendimento: string
   criadoEm: string
+  posicaoFila: number | null
 }
 
 /** Retorno de sucesso de `abrirSolicitacaoTfd`. */
@@ -716,4 +717,300 @@ export interface RelatorioProducaoMensalData {
 export interface RelatorioSelectOption {
   id: string
   nome: string
+}
+
+// --- Sprint 3.1: dados clínicos, perfil do paciente e fila ---
+
+export interface TfdProcessoDadosClinicosOutput {
+  processoId: string
+  subjetivo: string | null
+  objetivo: string | null
+  avaliacao: string | null
+  plano: string | null
+  motivoQuadro: string | null
+  observacao: string | null
+  registradoPorNome: string | null
+  updatedAt: string | null
+}
+
+export interface TfdPacientePerfilCadastro {
+  id: string
+  nome: string
+  nomeSocial: string | null
+  cpfMascarado: string | null
+  cnsMascarado: string | null
+  dataNascimento: string | null
+  sexo: string | null
+  email: string | null
+  telefone: string | null
+  telefoneCelular: string | null
+  telefoneAlternativo: string | null
+  racaCor: string | null
+  nacionalidade: string | null
+  identidadeGenero: string | null
+  responsavelLegalNome: string | null
+  responsavelLegalCpfMascarado: string | null
+  municipio: string | null
+  uf: string | null
+  ativo: boolean
+}
+
+/** Processo TFD no histórico do paciente — sem CID/diagnóstico (LGPD §1.11). */
+export interface TfdPacienteProcessoListItem {
+  processoId: string
+  solicitacaoId: string
+  protocolo: string
+  statusSolicitacao: string
+  statusProcesso: string
+  especialidadeNome: string | null
+  prestadorNome: string | null
+  prestadorCidade: string | null
+  prestadorEstado: string | null
+  posicaoFila: number | null
+  criadoEm: string
+  atualizadoEm: string
+}
+
+export interface TfdPacienteAgendamentoResumoItem {
+  viagemId: string
+  protocolo: string
+  dataViagem: string
+  statusViagem: string
+  prestadorNome: string | null
+  solicitacaoId: string
+}
+
+export interface TfdFilaMovimentacaoHistoricoItem {
+  id: string
+  tipoMovimentacao: string
+  posicaoAnterior: number | null
+  posicaoNova: number | null
+  justificativa: string | null
+  usuarioNome: string
+  criadoEm: string
+}
+
+export interface TfdPacientePerfilOutput {
+  cadastro: TfdPacientePerfilCadastro
+  processos: TfdPacienteProcessoListItem[]
+  processosTotal: number
+  agendamentos: TfdPacienteAgendamentoResumoItem[]
+  agendamentosTotal: number
+}
+
+// --- Sprint 3.2: entidade agendamento (consulta) ---
+
+export interface AgendamentoProcessoListItem {
+  id: string
+  sequencia: number
+  dataConsulta: string
+  horaConsulta: string | null
+  tipoAtendimento: string
+  status: string
+  prestador: {
+    id: string | null
+    nome: string | null
+    cidade: string | null
+    estado: string | null
+  }
+  profissionalNome: string | null
+  acompanhante: {
+    id: string | null
+    nome: string | null
+  }
+  orientacoes: string | null
+  createdAt: string
+}
+
+export interface AgendamentoDetalheOutput extends AgendamentoProcessoListItem {
+  processoId: string
+  solicitacaoId: string
+  canceladoAt: string | null
+  motivoCancelamento: string | null
+  canceladoPor: {
+    id: string
+    nome: string
+  } | null
+  realizadoAt: string | null
+  prestacaoConta: {
+    id: string
+    status: string
+    prazoEnvioAt: string
+  } | null
+}
+
+export interface AgendamentoNovoOutput {
+  agendamentoId: string
+  sequencia: number
+}
+
+// --- Outputs de queries (client-safe) ---
+
+export interface TransporteAgendamentoItem {
+  id: string
+  sequencia: number
+  tipoSegmento: string
+  status: string
+  origemDescricao: string
+  destinoDescricao: string
+  dataSaida: string
+  horaSaida: string | null
+  dataChegada: string | null
+  horaChegada: string | null
+  custoEstimado: number | null
+  custoReal: number | null
+  responsavelPagamento: string
+  observacoes: string | null
+  veiculo: {
+    id: string
+    placa: string
+    modelo: string
+  } | null
+  motorista: {
+    id: string
+    nome: string
+  } | null
+  kmSaida: number | null
+  kmChegada: number | null
+  anexos: Array<{
+    id: string
+    tipoAnexo: string
+    anexoId: string | null
+  }>
+}
+
+export interface ProcessoTfdListItem {
+  processoId: string
+  protocolo: string
+  statusProcesso: string
+  paciente: {
+    id: string
+    nome: string
+  } | null
+  totalSolicitacoes: number
+  urgenciaMaisCritica: string | null
+  statusSolicitacaoMaisRecente: string | null
+  ultimaMovimentacaoEm: string
+  createdAt: string
+}
+
+export interface TfdAgendamentoConsultaListItem {
+  id: string
+  processoId: string
+  solicitacaoId: string
+  sequencia: number
+  dataConsulta: string
+  horaConsulta: string | null
+  tipoAtendimento: string
+  status: string
+  protocolo: string
+  pacienteNome: string
+  prestador: {
+    id: string | null
+    nome: string | null
+    cidade: string | null
+    estado: string | null
+  }
+}
+
+export interface ProcessoTfdDetalheOutput {
+  id: string
+  protocolo: string
+  status: string
+  titulo: string
+  paciente: {
+    id: string
+    nome: string
+    nomeSocial: string | null
+    cpfMascarado: string | null
+    cnsMascarado: string | null
+    dataNascimento: string | null
+    sexo: string | null
+    email: string | null
+    telefone: string | null
+    telefoneCelular: string | null
+    telefoneAlternativo: string | null
+    racaCor: string | null
+    nacionalidade: string | null
+    identidadeGenero: string | null
+    responsavelLegalNome: string | null
+    responsavelLegalCpfMascarado: string | null
+    municipio: string | null
+    uf: string | null
+    ativo: boolean
+  } | null
+  dadosClinicos: {
+    subjetivo: string | null
+    objetivo: string | null
+    avaliacao: string | null
+    plano: string | null
+    motivoQuadro: string | null
+    observacao: string | null
+    registradoPorNome: string | null
+    updatedAt: string | null
+  }
+  solicitacoes: Array<{
+    id: string
+    protocolo: string
+    status: string
+    urgencia: string
+    tipoAtendimento: string
+    especialidade: string | null
+    prestador: string | null
+    createdAt: string
+  }>
+  agendamentos: Array<{
+    id: string
+    sequencia: number
+    dataConsulta: string
+    horaConsulta: string | null
+    status: string
+    prestador: string | null
+  }>
+  tramitacoes: Array<{
+    tipo: string
+    descricao: string
+    usuarioNome: string | null
+    createdAt: string
+  }>
+  anexos: Array<{
+    id: string
+    nomeOriginal: string
+    mimeType: string
+    createdAt: string
+    uploaderId: string | null
+  }>
+}
+
+export interface PerfilServidorOutput {
+  id: string
+  nome: string
+  email: string
+  cpfMascarado: string | null
+  matricula: string | null
+  telefone: string | null
+  role: string
+  ativo: boolean
+  permissions: Record<string, boolean>
+  setores: Array<{
+    id: string
+    setorId: string
+    setorNome: string
+    cargo: string | null
+    principal: boolean
+    ativo: boolean
+  }>
+  motorista: {
+    cnh: string
+    cnhCategoria: string
+    cnhValidade: string
+    cnhVencida: boolean
+    cnhVencendoEmBreve: boolean
+  } | null
+  ultimasAcoes: Array<{
+    acao: string
+    entidade: string
+    entidadeId: string | null
+    createdAt: string
+  }>
 }

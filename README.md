@@ -62,6 +62,8 @@ Rotas em `apps/painel-servidor/app/api/cron/`. Todas exigem header `Authorizatio
 | Lembrete de viagem (48h) | `GET /api/cron/tfd-lembrete-viagem` | A cada hora (`0 * * * *`) | Notifica servidor e motorista 48h antes da viagem. Marca `lembrete_48h_enviado_at` ou `lembrete_48h_falhou_at` — reexecução não reenvia para viagens já marcadas. |
 | Lembrete de prestação (48h) | `GET /api/cron/tfd-lembrete-prestacao` | A cada hora (`0 * * * *`) | Notifica 48h antes do prazo de envio da PC. Idempotente via `lembrete_48h_enviado_at` / `lembrete_48h_falhou_at`. |
 | Transição em viagem | `GET /api/cron/tfd-transicao-em-viagem` | Diária, antes do expediente — ex.: `0 9 * * *` UTC (~06:00 em `America/Sao_Paulo`) | Para viagens `AGENDADA` com `data_viagem` ≤ hoje (timezone do tenant em `settings.timezone`), transiciona solicitação `AGENDADO` → `EM_VIAGEM`, grava `em_viagem_transicionado_at` na viagem e registra tramitação/auditoria. Idempotente: viagens já com `em_viagem_transicionado_at` são ignoradas; se a solicitação já estiver `EM_VIAGEM` (outra viagem no mesmo dia), só marca a viagem sem duplicar o status. |
+| Transição agendamento em viagem | `GET /api/cron/tfd-transicao-agendamento` | Diária, antes do expediente — ex.: `0 9 * * *` UTC | Para agendamentos `AGENDADO` com `data_consulta` ≤ hoje, transiciona status do agendamento → `EM_VIAGEM` (fluxo Fase 3). |
+| Transição transporte em trânsito | `GET /api/cron/tfd-transicao-transporte` | A cada hora (`0 * * * *`) ou conforme operação | Para segmentos `CONFIRMADO` com data/hora de saída atingida, transiciona → `EM_TRANSITO`. |
 
 Teste local (painel-servidor na porta 3001):
 

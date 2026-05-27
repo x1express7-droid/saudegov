@@ -1,4 +1,4 @@
-import type { TfdFonteRecursoValor } from '@saude/mod-saude-tfd'
+import type { TfdFonteRecursoValor } from '@saude/mod-saude-tfd/client'
 
 export const FONTE_LABELS: Record<TfdFonteRecursoValor, string> = {
   FEDERAL_FNS: 'Federal (FNS)',

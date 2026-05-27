@@ -110,6 +110,12 @@ Definidas em `modules/saude/tfd/src/permissions.ts`.
 | `saude.tfd.configurar_especialidades` | ADMIN | CRUD de especialidades médicas |
 | `saude.tfd.configurar_procedimentos` | GESTOR | CRUD de procedimentos vinculados a especialidades (aba Configurações TFD) |
 | `saude.tfd.configurar_prestadores` | ADMIN | CRUD de prestadores de saúde externos |
+| `saude.tfd.criar_agendamento` | SERVIDOR | Criar agendamento de consulta/atendimento no processo TFD (entidade `agendamentos`) |
+| `saude.tfd.gerenciar_transporte` | SERVIDOR | Criar e operar segmentos de transporte vinculados a agendamentos |
+| `saude.tfd.gerenciar_processo` | SERVIDOR | Abrir solicitações e operar processos TFD como raiz do fluxo |
+| `saude.tfd.registrar_dados_clinicos` | SERVIDOR | Registrar ou atualizar dados clínicos SOAP do processo |
+| `saude.tfd.mover_fila` | GESTOR | Alterar posição na fila de regulação com justificativa auditada |
+| `saude.tfd.ver_perfil_paciente` | SERVIDOR | Acessar perfil do paciente com histórico de processos e agendamentos |
 
 ### 3.2 Regras de gestão de permissões
 

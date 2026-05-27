@@ -74,6 +74,15 @@ export type {
   RelatorioCompetenciaData,
   RelatorioPacienteData,
   PacienteRelatorioBuscaItem,
+  TfdProcessoDadosClinicosOutput,
+  TfdPacientePerfilCadastro,
+  TfdPacienteProcessoListItem,
+  TfdPacienteAgendamentoResumoItem,
+  TfdFilaMovimentacaoHistoricoItem,
+  TfdPacientePerfilOutput,
+  AgendamentoProcessoListItem,
+  AgendamentoDetalheOutput,
+  AgendamentoNovoOutput,
 } from './types/tfd.types'
 
 export {
@@ -84,6 +93,7 @@ export {
   TEXTO_MOTIVO_CANCELAMENTO_PRAZO_ESGOTADO,
   resolveMotivoCancelamentoTexto,
 } from './validators/solicitacao.schema'
+export { atualizarServidorSchema } from './validators/servidor.schema'
 
 export {
   relatorioCompetenciaSchema,
@@ -112,6 +122,7 @@ export type {
   TfdUrgencia,
   TfdRelacaoAcompanhante,
 } from './validators/solicitacao.schema'
+export type { AtualizarServidorInput } from './validators/servidor.schema'
 
 export type {
   IniciarAnaliseInput,
@@ -156,6 +167,7 @@ export {
   enviarPrestacaoContasSchema,
   registrarVisualizacaoComprovanteSchema,
   decidirPrestacaoContasSchema,
+  decidirPrestacaoContasAgendamentoSchema,
   MIN_VALOR_COMPROVANTE,
 } from './validators/despesa.schema'
 
@@ -164,6 +176,7 @@ export type {
   EnviarPrestacaoContasInput,
   RegistrarVisualizacaoComprovanteInput,
   DecidirPrestacaoContasInput,
+  DecidirPrestacaoContasAgendamentoInput,
 } from './validators/despesa.schema'
 
 export type {
@@ -177,13 +190,56 @@ export {
   buscarPacientePorCnsSchema,
   vincularPacienteNovoSchema,
   vincularPacienteExistenteSchema,
+  atualizarPacienteCompletoSchema,
 } from './validators/paciente.schema'
+export { salvarDadosClinicosSchema } from './validators/processo-dados-clinicos.schema'
+export {
+  moverPacienteNaFilaSchema,
+  MIN_JUSTIFICATIVA_FILA_CHARS,
+} from './validators/fila-movimentacao.schema'
+export {
+  criarAgendamentoNovoSchema,
+  registrarRetornoAgendamentoSchema,
+  cancelarAgendamentoSchema,
+} from './validators/agendamento-novo.schema'
+
+export {
+  registrarDespesaAgendamentoSchema,
+  registrarDespesaTransporteSchema,
+} from './validators/despesa.schema'
+
+export type {
+  RegistrarDespesaAgendamentoInput,
+  RegistrarDespesaTransporteInput,
+} from './validators/despesa.schema'
+
+export {
+  criarSegmentoTransporteSchema,
+  confirmarTransporteSchema,
+  registrarChegadaSchema,
+  cancelarTransporteSchema,
+} from './validators/transporte.schema'
+
+export type {
+  CriarSegmentoTransporteInput,
+  ConfirmarTransporteInput,
+  RegistrarChegadaInput,
+  CancelarTransporteInput,
+} from './validators/transporte.schema'
 
 export type {
   BuscarPacientePorCnsInput,
   VincularPacienteNovoInput,
   VincularPacienteExistenteInput,
+  AtualizarPacienteCompletoInput,
 } from './validators/paciente.schema'
+export type { SalvarDadosClinicosInput } from './validators/processo-dados-clinicos.schema'
+export type { MoverPacienteNaFilaInput } from './validators/fila-movimentacao.schema'
+export type {
+  CriarAgendamentoNovoInput,
+  RegistrarRetornoAgendamentoInput,
+  CancelarAgendamentoInput,
+} from './validators/agendamento-novo.schema'
 
 export type {
   CriarEspecialidadeInput,
@@ -224,7 +280,22 @@ export {
   buscarExtratoSaldoTfd,
 } from './actions/configuracao'
 
-export { buscarPacientePorCns, vincularPaciente } from './actions/paciente'
+export { buscarPacientePorCns, vincularPaciente, atualizarPacienteCompletoTfd } from './actions/paciente'
+export { salvarDadosClinicosTfd } from './actions/processo'
+export { moverPacienteNaFila } from './actions/fila'
+export {
+  criarAgendamentoNovo,
+  registrarRetornoAgendamento,
+  cancelarAgendamento,
+} from './actions/agendamento'
+export {
+  criarSegmentoTransporte,
+  confirmarTransporte,
+  registrarChegadaTransporte,
+  cancelarTransporte,
+  adicionarAnexoTransporte,
+} from './actions/transporte'
+export type { CriarSegmentoTransporteOutput } from './actions/transporte'
 export {
   buscarPacientesAtendimentoTfd,
   carregarPacienteAtendimentoTfd,
@@ -237,6 +308,7 @@ export {
   enviarSolicitacaoTfd,
   cancelarSolicitacaoTfd,
 } from './actions/solicitacao'
+export { atualizarDadosServidor } from './actions/servidor'
 export {
   iniciarAnaliseTfd,
   solicitarComplementoTfd,
@@ -246,8 +318,13 @@ export { decidirSolicitacaoTfd } from './actions/decisao'
 export {
   registrarDespesa,
   enviarPrestacaoContas,
+  registrarDespesaAgendamento,
+  registrarDespesaTransporte,
+  enviarPrestacaoContasAgendamento,
   registrarVisualizacaoComprovante,
+  registrarVisualizacaoComprovanteAgendamento,
   decidirPrestacaoContas,
+  decidirPrestacaoContasAgendamento,
   estornarMovimentacaoSaldoTfd,
 } from './actions/financeiro'
 export {
@@ -299,6 +376,16 @@ export type {
   ProcessarTransicaoEmViagemResult,
   ProcessarTransicaoEmViagemErro,
 } from './jobs/processar-transicao-em-viagem'
+export { processarTransicaoAgendamento } from './jobs/processar-transicao-agendamento'
+export type {
+  ProcessarTransicaoAgendamentoResult,
+  ProcessarTransicaoAgendamentoErro,
+} from './jobs/processar-transicao-agendamento'
+export { processarTransicaoTransporte } from './jobs/processar-transicao-transporte'
+export type {
+  ProcessarTransicaoTransporteResult,
+  ProcessarTransicaoTransporteErro,
+} from './jobs/processar-transicao-transporte'
 
 export { getEspecialidadesTfd } from './queries/get-especialidades'
 export { getProcedimentosTfd } from './queries/get-procedimentos'
@@ -332,16 +419,51 @@ export type { GetExtratoSaldoResult } from './queries/get-extrato'
 export { getExtratoSaldoCompleto, EXTRATO_EXPORT_MAX_REGISTROS } from './queries/get-extrato-completo'
 export type { GetExtratoSaldoCompletoResult } from './queries/get-extrato-completo'
 export { getPacientesTfd } from './queries/get-pacientes'
+export { getDadosClinicosProcesso } from './queries/get-dados-clinicos-processo'
+export { getPerfilPacienteTfd } from './queries/get-perfil-paciente-tfd'
+export { getHistoricoFilaSolicitacao } from './queries/get-historico-fila-solicitacao'
+export { getAgendamentosPorProcesso } from './queries/get-agendamentos-por-processo'
+export { getAgendamentoDetalhe } from './queries/get-agendamento-detalhe'
+export { getAgendamentosConsulta } from './queries/get-agendamentos-consulta'
+export type {
+  GetAgendamentosConsultaFiltros,
+  TfdAgendamentoConsultaListItem,
+} from './queries/get-agendamentos-consulta'
+export {
+  getAcompanhantesSolicitacao,
+  labelRelacaoAcompanhante,
+} from './queries/get-acompanhantes-solicitacao'
+export type { AcompanhanteSolicitacaoOption } from './queries/get-acompanhantes-solicitacao'
+export { getTransportesPorAgendamento } from './queries/get-transportes-por-agendamento'
+export type { TransporteAgendamentoItem } from './queries/get-transportes-por-agendamento'
+export { getTransporteDetalhe } from './queries/get-transporte-detalhe'
+export type { TransporteDetalheOutput } from './queries/get-transporte-detalhe'
+export { getPrestacaoDetalheAgendamento } from './queries/get-prestacao-detalhe-agendamento'
+export type { PrestacaoDetalheAgendamentoOutput } from './queries/get-prestacao-detalhe-agendamento'
+export { getExtratoAgendamento } from './queries/get-extrato-agendamento'
+export type { ExtratoAgendamentoOutput } from './queries/get-extrato-agendamento'
 export type { GetPacientesFiltros } from './queries/get-pacientes'
 export { getSolicitacoesTfd } from './queries/get-solicitacoes'
 export type { GetSolicitacoesFiltros } from './queries/get-solicitacoes'
+export { getListaProcessosTfd } from './queries/get-lista-processos-tfd'
+export type {
+  GetListaProcessosFiltros,
+  ProcessoTfdListItem,
+} from './queries/get-lista-processos-tfd'
+export { getProcessoTfdDetalhe } from './queries/get-processo-tfd-detalhe'
+export type { ProcessoTfdDetalheOutput } from './queries/get-processo-tfd-detalhe'
+export { getPerfilServidor } from './queries/get-perfil-servidor'
+export type { PerfilServidorOutput } from './queries/get-perfil-servidor'
 export { getSolicitacaoTfd } from './queries/get-solicitacao'
 export { getContextoDecisaoTfd } from './queries/get-contexto-decisao-tfd'
 export { getMotoristasAgendamentoTfd } from './queries/get-motoristas-agendamento'
 export { getVeiculosAgendamentoTfd } from './queries/get-veiculos-agendamento'
 export { getViagensSolicitacaoTfd } from './queries/get-viagens-solicitacao'
 export { getAgendamentosTfd } from './queries/get-agendamentos'
-export type { GetAgendamentosFiltros } from './queries/get-agendamentos'
+export type {
+  GetAgendamentosFiltros,
+  AgendamentoListagemFonte,
+} from './queries/get-agendamentos'
 export { getDashboardTfd } from './queries/get-dashboard-tfd'
 export { getDashboardFinanceiroTfd } from './queries/get-dashboard-financeiro-tfd'
 export { getDashboardTfdOperacional } from './queries/get-dashboard-tfd-operacional'

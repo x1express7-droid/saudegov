@@ -17,6 +17,9 @@ import { Alert, Button, Card, Input, Select } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useCallback, useMemo, useState } from 'react'
 
+/** Radix Select não permite `value=""` em itens; usado para “sem filtro”. */
+const RELATORIO_FILTRO_TODOS = '__todos__'
+
 const MESES = [
   { value: 1, label: 'Janeiro' },
   { value: 2, label: 'Fevereiro' },
@@ -75,13 +78,13 @@ export function TfdRelatoriosPanel({
 
   const [dataInicioPrestador, setDataInicioPrestador] = useState(periodoInicial.dataInicio)
   const [dataFimPrestador, setDataFimPrestador] = useState(periodoInicial.dataFim)
-  const [prestadorId, setPrestadorId] = useState('')
+  const [prestadorId, setPrestadorId] = useState(RELATORIO_FILTRO_TODOS)
   const [loadingPrestador, setLoadingPrestador] = useState(false)
   const [erroPrestador, setErroPrestador] = useState<string | null>(null)
 
   const [dataInicioMotorista, setDataInicioMotorista] = useState(periodoInicial.dataInicio)
   const [dataFimMotorista, setDataFimMotorista] = useState(periodoInicial.dataFim)
-  const [motoristaId, setMotoristaId] = useState('')
+  const [motoristaId, setMotoristaId] = useState(RELATORIO_FILTRO_TODOS)
   const [loadingMotorista, setLoadingMotorista] = useState(false)
   const [erroMotorista, setErroMotorista] = useState<string | null>(null)
 
@@ -94,7 +97,7 @@ export function TfdRelatoriosPanel({
 
   const prestadorSelectOptions = useMemo(
     () => [
-      { value: '', label: 'Todos os prestadores' },
+      { value: RELATORIO_FILTRO_TODOS, label: 'Todos os prestadores' },
       ...prestadoresOpcoes.map((item) => ({ value: item.id, label: item.nome })),
     ],
     [prestadoresOpcoes]
@@ -102,7 +105,7 @@ export function TfdRelatoriosPanel({
 
   const motoristaSelectOptions = useMemo(
     () => [
-      { value: '', label: 'Todos os motoristas' },
+      { value: RELATORIO_FILTRO_TODOS, label: 'Todos os motoristas' },
       ...motoristasOpcoes.map((item) => ({ value: item.id, label: item.nome })),
     ],
     [motoristasOpcoes]
@@ -165,7 +168,7 @@ export function TfdRelatoriosPanel({
       const result = await gerarRelatorioPrestadorTfd({
         dataInicio: dataInicioPrestador,
         dataFim: dataFimPrestador,
-        ...(prestadorId ? { prestadorId } : {}),
+        ...(prestadorId !== RELATORIO_FILTRO_TODOS ? { prestadorId } : {}),
       })
 
       if (!result.success) {
@@ -188,7 +191,7 @@ export function TfdRelatoriosPanel({
       const result = await gerarRelatorioMotoristaTfd({
         dataInicio: dataInicioMotorista,
         dataFim: dataFimMotorista,
-        ...(motoristaId ? { motoristaId } : {}),
+        ...(motoristaId !== RELATORIO_FILTRO_TODOS ? { motoristaId } : {}),
       })
 
       if (!result.success) {

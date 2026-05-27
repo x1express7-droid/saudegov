@@ -21,6 +21,7 @@ type SolicitacaoListRow = {
   status: TfdStatusSolicitacao
   urgencia: TfdUrgencia
   tipo_atendimento: string
+  posicao_fila: number | null
   created_at: Date
   paciente: { nome: string }
   especialidade: { nome: string } | null
@@ -45,6 +46,7 @@ function mapToListItem(row: SolicitacaoListRow): TfdSolicitacaoListItem {
     },
     tipoAtendimento: row.tipo_atendimento,
     criadoEm: row.created_at.toISOString(),
+    posicaoFila: row.posicao_fila,
   }
 }
 
@@ -53,6 +55,7 @@ const solicitacaoListSelect = {
   status: true,
   urgencia: true,
   tipo_atendimento: true,
+  posicao_fila: true,
   created_at: true,
   paciente: { select: { nome: true } },
   especialidade: { select: { nome: true } },

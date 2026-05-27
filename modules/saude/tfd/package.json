@@ -19,6 +19,11 @@
     "./actions/viagem": "./src/actions/viagem.ts",
     "./actions/relatorio": "./src/actions/relatorio.ts",
     "./actions/exportacao": "./src/actions/exportacao.ts",
+    "./actions/processo": "./src/actions/processo.ts",
+    "./actions/fila": "./src/actions/fila.ts",
+    "./actions/agendamento": "./src/actions/agendamento.ts",
+    "./actions/transporte": "./src/actions/transporte.ts",
+    "./actions/servidor": "./src/actions/servidor.ts",
     "./utils/cancelamento": "./src/utils/cancelamento.ts"
   },
   "scripts": {

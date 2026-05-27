@@ -6,6 +6,8 @@ export const TFD_PERMISSIONS = {
   ANALISAR_LAUDO: 'saude.tfd.analisar_laudo',
   SOLICITAR_COMPLEMENTO: 'saude.tfd.solicitar_complemento',
   AGENDAR_VIAGEM: 'saude.tfd.agendar_viagem',
+  CRIAR_AGENDAMENTO: 'saude.tfd.criar_agendamento',
+  GERENCIAR_TRANSPORTE: 'saude.tfd.gerenciar_transporte',
   REGISTRAR_RETORNO: 'saude.tfd.registrar_retorno',
   REGISTRAR_DESPESA: 'saude.tfd.registrar_despesa',
   ENVIAR_PRESTACAO: 'saude.tfd.enviar_prestacao',
@@ -20,6 +22,10 @@ export const TFD_PERMISSIONS = {
   CONFIGURAR_ESPECIALIDADES: 'saude.tfd.configurar_especialidades',
   CONFIGURAR_PROCEDIMENTOS: 'saude.tfd.configurar_procedimentos',
   CONFIGURAR_PRESTADORES: 'saude.tfd.configurar_prestadores',
+  REGISTRAR_DADOS_CLINICOS: 'saude.tfd.registrar_dados_clinicos',
+  MOVER_FILA: 'saude.tfd.mover_fila',
+  VER_PERFIL_PACIENTE: 'saude.tfd.ver_perfil_paciente',
+  GERENCIAR_PROCESSO: 'saude.tfd.gerenciar_processo',
 } as const
 
 export type TfdPermissionKey = (typeof TFD_PERMISSIONS)[keyof typeof TFD_PERMISSIONS]
@@ -57,6 +63,18 @@ export const TFD_PERMISSION_DEFINITIONS: readonly TfdPermissionDefinition[] = [
     key: TFD_PERMISSIONS.AGENDAR_VIAGEM,
     label: 'Agendar viagem',
     descricao: 'Definir data, veículo e motorista.',
+    minRole: 'SERVIDOR',
+  },
+  {
+    key: TFD_PERMISSIONS.CRIAR_AGENDAMENTO,
+    label: 'Criar agendamento',
+    descricao: 'Registrar consulta ou atendimento agendado no processo TFD.',
+    minRole: 'SERVIDOR',
+  },
+  {
+    key: TFD_PERMISSIONS.GERENCIAR_TRANSPORTE,
+    label: 'Gerenciar transporte',
+    descricao: 'Criar e operar segmentos de transporte vinculados a agendamentos TFD.',
     minRole: 'SERVIDOR',
   },
   {
@@ -128,20 +146,44 @@ export const TFD_PERMISSION_DEFINITIONS: readonly TfdPermissionDefinition[] = [
   {
     key: TFD_PERMISSIONS.CONFIGURAR_ESPECIALIDADES,
     label: 'Configurar especialidades',
-    descricao: 'CRUD de especialidades médicas (ADMIN).',
-    minRole: 'ADMIN',
+    descricao: 'CRUD de especialidades médicas.',
+    minRole: 'GESTOR',
   },
   {
     key: TFD_PERMISSIONS.CONFIGURAR_PROCEDIMENTOS,
     label: 'Configurar procedimentos',
-    descricao: 'CRUD de procedimentos vinculados a especialidades (ADMIN).',
-    minRole: 'ADMIN',
+    descricao: 'CRUD de procedimentos vinculados a especialidades.',
+    minRole: 'GESTOR',
   },
   {
     key: TFD_PERMISSIONS.CONFIGURAR_PRESTADORES,
     label: 'Configurar prestadores',
-    descricao: 'CRUD de prestadores externos (ADMIN).',
-    minRole: 'ADMIN',
+    descricao: 'CRUD de prestadores externos.',
+    minRole: 'GESTOR',
+  },
+  {
+    key: TFD_PERMISSIONS.REGISTRAR_DADOS_CLINICOS,
+    label: 'Registrar dados clínicos',
+    descricao: 'Preencher dados SOAP do processo TFD.',
+    minRole: 'SERVIDOR',
+  },
+  {
+    key: TFD_PERMISSIONS.MOVER_FILA,
+    label: 'Mover na fila',
+    descricao: 'Alterar posição do paciente na fila de regulação com justificativa.',
+    minRole: 'GESTOR',
+  },
+  {
+    key: TFD_PERMISSIONS.VER_PERFIL_PACIENTE,
+    label: 'Ver perfil do paciente',
+    descricao: 'Acessar perfil completo do paciente com histórico de processos TFD.',
+    minRole: 'SERVIDOR',
+  },
+  {
+    key: TFD_PERMISSIONS.GERENCIAR_PROCESSO,
+    label: 'Gerenciar processos TFD',
+    descricao: 'Criar e editar processos TFD.',
+    minRole: 'SERVIDOR',
   },
 ] as const
 

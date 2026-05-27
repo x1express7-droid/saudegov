@@ -164,6 +164,7 @@ export async function coletarDadosMunicipioExport(input: {
 
       const prestacaoWhere = {
         tenant_id: tenantId,
+        viagem_id: { not: null },
         ...(createdAtFilter ? { created_at: createdAtFilter } : {}),
       }
 
@@ -340,7 +341,10 @@ export async function coletarDadosMunicipioExport(input: {
         }
       })
 
-      const prestacoes: MunicipioExportTfdPrestacao[] = prestacoesRows.map((row) => {
+      const prestacoes: MunicipioExportTfdPrestacao[] = prestacoesRows.flatMap((row) => {
+        if (!row.viagem) {
+          return []
+        }
         const valorTotal = row.viagem.itens_despesa.reduce(
           (acc, item) => acc + Number(item.valor),
           0
@@ -348,13 +352,15 @@ export async function coletarDadosMunicipioExport(input: {
         const enviadoEm =
           row.status === 'PENDENTE' ? null : row.updated_at.toISOString()
 
-        return {
-          protocolo: row.viagem.solicitacao.processo.protocolo,
-          status: row.status,
-          valorTotal,
-          enviadoEm,
-          aprovadoEm: row.aprovado_at?.toISOString() ?? null,
-        }
+        return [
+          {
+            protocolo: row.viagem.solicitacao.processo.protocolo,
+            status: row.status,
+            valorTotal,
+            enviadoEm,
+            aprovadoEm: row.aprovado_at?.toISOString() ?? null,
+          },
+        ]
       })
 
       const saldos: MunicipioExportTfdSaldo[] = saldosRows.map((row) => {

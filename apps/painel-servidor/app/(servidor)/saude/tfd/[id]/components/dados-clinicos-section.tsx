@@ -1,0 +1,270 @@
+'use client'
+
+import { salvarDadosClinicosTfd } from '@saude/mod-saude-tfd/actions/processo'
+import type { TfdProcessoDadosClinicosOutput } from '@saude/mod-saude-tfd/client'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
+import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
+import { Button, Card, CardHeader, Textarea, formFieldsStackClassName } from '@saude/ui'
+import { PermissionGate } from '@saude/ui/permission-gate'
+import { useRouter } from 'next/navigation'
+import { useMemo, useState, useTransition } from 'react'
+
+function hasConteudoClinico(dados: TfdProcessoDadosClinicosOutput): boolean {
+  return Boolean(
+    dados.subjetivo?.trim() ||
+      dados.objetivo?.trim() ||
+      dados.avaliacao?.trim() ||
+      dados.plano?.trim() ||
+      dados.motivoQuadro?.trim() ||
+      dados.observacao?.trim()
+  )
+}
+
+export interface DadosClinicosSectionProps {
+  session: SaudeMunicSession
+  processoId: string
+  dadosIniciais: TfdProcessoDadosClinicosOutput
+}
+
+export function DadosClinicosSection({
+  session,
+  processoId,
+  dadosIniciais,
+}: DadosClinicosSectionProps) {
+  const router = useRouter()
+  const [aberto, setAberto] = useState(hasConteudoClinico(dadosIniciais))
+  const [editando, setEditando] = useState(false)
+  const [subjetivo, setSubjetivo] = useState(dadosIniciais.subjetivo ?? '')
+  const [objetivo, setObjetivo] = useState(dadosIniciais.objetivo ?? '')
+  const [avaliacao, setAvaliacao] = useState(dadosIniciais.avaliacao ?? '')
+  const [plano, setPlano] = useState(dadosIniciais.plano ?? '')
+  const [motivoQuadro, setMotivoQuadro] = useState(dadosIniciais.motivoQuadro ?? '')
+  const [observacao, setObservacao] = useState(dadosIniciais.observacao ?? '')
+  const [serverError, setServerError] = useState<string | null>(null)
+  const [isPending, startTransition] = useTransition()
+
+  const preenchido = useMemo(() => hasConteudoClinico(dadosIniciais), [dadosIniciais])
+
+  const atualizadoEm = dadosIniciais.updatedAt
+    ? new Date(dadosIniciais.updatedAt).toLocaleString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      })
+    : null
+
+  function iniciarEdicao() {
+    setSubjetivo(dadosIniciais.subjetivo ?? '')
+    setObjetivo(dadosIniciais.objetivo ?? '')
+    setAvaliacao(dadosIniciais.avaliacao ?? '')
+    setPlano(dadosIniciais.plano ?? '')
+    setMotivoQuadro(dadosIniciais.motivoQuadro ?? '')
+    setObservacao(dadosIniciais.observacao ?? '')
+    setEditando(true)
+    setAberto(true)
+    setServerError(null)
+  }
+
+  function handleSalvar() {
+    setServerError(null)
+    startTransition(async () => {
+      const result = await salvarDadosClinicosTfd({
+        processoId,
+        subjetivo: subjetivo.trim() || undefined,
+        objetivo: objetivo.trim() || undefined,
+        avaliacao: avaliacao.trim() || undefined,
+        plano: plano.trim() || undefined,
+        motivoQuadro: motivoQuadro.trim() || undefined,
+        observacao: observacao.trim() || undefined,
+      })
+
+      if (!result.success) {
+        setServerError(result.error ?? 'Não foi possível salvar os dados clínicos.')
+        return
+      }
+
+      setEditando(false)
+      router.refresh()
+    })
+  }
+
+  return (
+    <Card
+      header={<CardHeader>Dados clínicos (SOAP)</CardHeader>}
+      bodyClassName={formFieldsStackClassName()}
+    >
+      <details
+        open={aberto}
+        onToggle={(event) => setAberto(event.currentTarget.open)}
+        className="group"
+      >
+        <summary className="cursor-pointer list-none text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            {aberto ? 'Recolher seção' : 'Expandir seção'}
+          </span>
+        </summary>
+
+        <div className="mt-[var(--space-4)] flex flex-col gap-[var(--space-4)] border-t border-[var(--color-border)] pt-[var(--space-4)]">
+          {preenchido ? (
+            <div className="flex flex-col gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              <p>
+                Última atualização
+                {atualizadoEm ? `: ${atualizadoEm}` : ''}
+                {dadosIniciais.registradoPorNome
+                  ? ` — por ${dadosIniciais.registradoPorNome}`
+                  : ''}
+                .
+              </p>
+            </div>
+          ) : (
+            <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              Não preenchido
+            </p>
+          )}
+
+          {!editando && preenchido ? (
+            <dl className="grid gap-[var(--space-3)] text-[length:var(--text-sm)]">
+              {dadosIniciais.subjetivo ? (
+                <div>
+                  <dt className="font-medium text-[var(--color-text)]">Subjetivo</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-[var(--color-text-muted)]">
+                    {dadosIniciais.subjetivo}
+                  </dd>
+                </div>
+              ) : null}
+              {dadosIniciais.objetivo ? (
+                <div>
+                  <dt className="font-medium text-[var(--color-text)]">Objetivo</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-[var(--color-text-muted)]">
+                    {dadosIniciais.objetivo}
+                  </dd>
+                </div>
+              ) : null}
+              {dadosIniciais.avaliacao ? (
+                <div>
+                  <dt className="font-medium text-[var(--color-text)]">Avaliação</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-[var(--color-text-muted)]">
+                    {dadosIniciais.avaliacao}
+                  </dd>
+                </div>
+              ) : null}
+              {dadosIniciais.plano ? (
+                <div>
+                  <dt className="font-medium text-[var(--color-text)]">Plano</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-[var(--color-text-muted)]">
+                    {dadosIniciais.plano}
+                  </dd>
+                </div>
+              ) : null}
+              {dadosIniciais.motivoQuadro ? (
+                <div>
+                  <dt className="font-medium text-[var(--color-text)]">Motivo / quadro</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-[var(--color-text-muted)]">
+                    {dadosIniciais.motivoQuadro}
+                  </dd>
+                </div>
+              ) : null}
+              {dadosIniciais.observacao ? (
+                <div>
+                  <dt className="font-medium text-[var(--color-text)]">Observação</dt>
+                  <dd className="mt-1 whitespace-pre-wrap text-[var(--color-text-muted)]">
+                    {dadosIniciais.observacao}
+                  </dd>
+                </div>
+              ) : null}
+            </dl>
+          ) : null}
+
+          {editando ? (
+            <div className="flex flex-col gap-[var(--space-3)]">
+              <Textarea
+                id="soap-subjetivo"
+                label="Subjetivo"
+                value={subjetivo}
+                onChange={(event) => setSubjetivo(event.target.value)}
+                disabled={isPending}
+                rows={3}
+              />
+              <Textarea
+                id="soap-objetivo"
+                label="Objetivo"
+                value={objetivo}
+                onChange={(event) => setObjetivo(event.target.value)}
+                disabled={isPending}
+                rows={3}
+              />
+              <Textarea
+                id="soap-avaliacao"
+                label="Avaliação"
+                value={avaliacao}
+                onChange={(event) => setAvaliacao(event.target.value)}
+                disabled={isPending}
+                rows={3}
+              />
+              <Textarea
+                id="soap-plano"
+                label="Plano"
+                value={plano}
+                onChange={(event) => setPlano(event.target.value)}
+                disabled={isPending}
+                rows={3}
+              />
+              <Textarea
+                id="soap-motivo"
+                label="Motivo / quadro clínico"
+                value={motivoQuadro}
+                onChange={(event) => setMotivoQuadro(event.target.value)}
+                disabled={isPending}
+                rows={3}
+              />
+              <Textarea
+                id="soap-observacao"
+                label="Observação"
+                value={observacao}
+                onChange={(event) => setObservacao(event.target.value)}
+                disabled={isPending}
+                rows={2}
+              />
+
+              {serverError ? (
+                <p role="alert" className="text-[length:var(--text-sm)] text-[var(--color-error)]">
+                  {serverError}
+                </p>
+              ) : null}
+
+              <div className="flex flex-wrap gap-[var(--space-2)]">
+                <Button
+                  type="button"
+                  variant="primary"
+                  onClick={handleSalvar}
+                  loading={isPending}
+                >
+                  Salvar dados clínicos
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  onClick={() => {
+                    setEditando(false)
+                    setServerError(null)
+                  }}
+                  disabled={isPending}
+                >
+                  Cancelar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <PermissionGate session={session} permission={TFD_PERMISSIONS.REGISTRAR_DADOS_CLINICOS}>
+              <Button type="button" variant="secondary" onClick={iniciarEdicao}>
+                {preenchido ? 'Editar dados clínicos' : 'Preencher dados clínicos'}
+              </Button>
+            </PermissionGate>
+          )}
+        </div>
+      </details>
+    </Card>
+  )
+}

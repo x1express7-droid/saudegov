@@ -62,7 +62,7 @@ export function DialogContent({
         className={cn(
           'fixed left-1/2 top-1/2 z-[101] w-[calc(100%-var(--space-8))] max-w-lg -translate-x-1/2 -translate-y-1/2',
           'rounded-[var(--radius-lg)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--space-6)] shadow-[0_8px_24px_color-mix(in_srgb,var(--color-text)_16%,transparent)]',
-          'focus:outline-none',
+          'overflow-visible focus:outline-none',
           className
         )}
         onPointerDownOutside={(event) => {
@@ -104,13 +104,15 @@ export function DialogContent({
           ) : null}
         </div>
         <OverlayPortalProvider container={overlayPortal}>
-          {children ? <div className="mt-[var(--space-6)]">{children}</div> : null}
-          <div
-            ref={setOverlayPortal}
-            data-overlay-portal=""
-            className="pointer-events-none relative z-[var(--z-dropdown)] size-0 overflow-visible"
-            aria-hidden="true"
-          />
+          <div className="relative">
+            {children ? <div className="mt-[var(--space-6)]">{children}</div> : null}
+            <div
+              ref={setOverlayPortal}
+              data-overlay-portal=""
+              className="pointer-events-none absolute inset-x-0 bottom-0 z-[var(--z-dropdown)] h-0 overflow-visible"
+              aria-hidden="true"
+            />
+          </div>
         </OverlayPortalProvider>
       </DialogPrimitive.Content>
     </DialogPortal>

@@ -7,6 +7,7 @@ import {
   Network,
   Palette,
   Users,
+  type LucideIcon,
 } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import {
@@ -19,6 +20,7 @@ import {
   type SaudeNavChildConfig,
 } from '../config/saude-modules-nav'
 import { cn } from '../utils/cn'
+import { resolveSaudeNavIcon } from '../utils/saude-nav-icons'
 import { focusRingClassName } from '../utils/field-control'
 import { Badge } from './badge'
 
@@ -52,13 +54,17 @@ export interface SidebarProps {
   systemName?: string
 }
 
-const ADMIN_NAV_ITEMS = [
+const ADMIN_NAV_ITEMS: ReadonlyArray<{
+  label: string
+  href: string
+  icon: LucideIcon
+}> = [
   { label: 'Organograma', href: '/configuracoes/organograma', icon: Building2 },
   { label: 'Responsáveis', href: '/configuracoes/responsaveis', icon: Network },
   { label: 'Servidores', href: '/configuracoes/servidores', icon: Users },
   { label: 'Tema', href: '/configuracoes/tema', icon: Palette },
   { label: 'Município', href: '/configuracoes/municipio', icon: Landmark },
-] as const
+]
 
 function isModuleActive(modules: Record<string, Record<string, boolean>>, key: SaudeModuleToggleKey): boolean {
   return Boolean(modules.saude?.[key])
@@ -77,8 +83,19 @@ function isActivePath(pathname: string, href: string): boolean {
   if (href === SAUDE_SYSTEM_DASHBOARD.href) {
     return pathname === '/dashboard' || pathname === '/'
   }
-  if (href === '/saude/tfd') {
-    return pathname === '/saude/tfd'
+  if (href === '/saude/tfd/solicitacoes') {
+    if (pathname === '/saude/tfd/solicitacoes') {
+      return true
+    }
+    const detalheSolicitacao = /^\/saude\/tfd\/[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+      pathname
+    )
+    return detalheSolicitacao
+  }
+  if (href === '/saude/tfd/processos') {
+    return (
+      pathname === '/saude/tfd/processos' || pathname.startsWith('/saude/tfd/processos/')
+    )
   }
   if (href === '/saude/tfd/dashboard') {
     return pathname === '/saude/tfd/dashboard'
@@ -100,7 +117,7 @@ function renderNavChildLink(
   pathname: string,
   onNavigate?: () => void
 ) {
-  const ChildIcon = child.icon
+  const ChildIcon = resolveSaudeNavIcon(child.icon)
   const childActive = isActivePath(pathname, child.href)
 
   return (
@@ -143,7 +160,7 @@ function SaudeModuleAccordion({
   onToggle,
   onNavigate,
 }: SaudeModuleAccordionProps) {
-  const ModuleIcon = config.icon
+  const ModuleIcon = resolveSaudeNavIcon(config.icon)
   const hasChildren = config.children.length > 0 || financeiroChildren.length > 0
   const sectionActive = resolveActiveModuleKey(pathname) === config.moduleKey
 
@@ -276,8 +293,8 @@ export function Sidebar({
   }, [])
 
   const dashboardActive = isActivePath(pathname, SAUDE_SYSTEM_DASHBOARD.href)
-  const DashboardIcon = SAUDE_SYSTEM_DASHBOARD.icon
-  const ConfigIcon = SAUDE_CONFIG_NAV.icon
+  const DashboardIcon = resolveSaudeNavIcon(SAUDE_SYSTEM_DASHBOARD.icon)
+  const ConfigIcon = resolveSaudeNavIcon(SAUDE_CONFIG_NAV.icon)
   const configActive = pathname.startsWith(SAUDE_CONFIG_NAV.basePath)
   const tfdConfigLinkHref = tfdConfigHref ?? SAUDE_CONFIG_NAV.basePath
 

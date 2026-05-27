@@ -1,12 +1,16 @@
 'use server'
 
+import { revalidatePath } from 'next/cache'
+
 import { assertModuleActive, maskCPF, requirePermission, requireTenantRole } from '@saude/core-auth/server'
+import { Prisma } from '@prisma/client'
 import { getPrismaForTenant } from '@saude/core-db'
 import { createAuditLog, getCadsusService } from '@saude/core-documents'
 import type { ActionResponse } from '@saude/validators'
 import { validarCNS } from '@saude/validators'
 
 import {
+  atualizarPacienteCompletoSchema,
   buscarPacientePorCnsSchema,
   vincularPacienteExistenteSchema,
   vincularPacienteNovoSchema,
@@ -309,6 +313,110 @@ export async function vincularPaciente(
     return {
       success: false,
       error: 'Não foi possível vincular o paciente. Tente novamente.',
+    }
+  }
+}
+
+export async function atualizarPacienteCompletoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<{ pacienteId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
+
+  const parsed = atualizarPacienteCompletoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const existente = await db.paciente.findFirst({
+      where: {
+        id: data.pacienteId,
+        tenant_id: tenantId,
+      },
+      select: { id: true },
+    })
+
+    if (!existente) {
+      return { success: false, error: 'Paciente não encontrado.' }
+    }
+
+    const updateData: Prisma.PacienteUpdateInput = {}
+
+    if (data.email !== undefined) updateData.email = data.email
+    if (data.telefoneCelular !== undefined) updateData.telefone_celular = data.telefoneCelular
+    if (data.nomeSocial !== undefined) updateData.nome_social = data.nomeSocial
+    if (data.racaCor !== undefined) updateData.raca_cor = data.racaCor
+    if (data.nacionalidade !== undefined) updateData.nacionalidade = data.nacionalidade
+    if (data.identidadeGenero !== undefined) {
+      updateData.identidade_genero = data.identidadeGenero
+    }
+    if (data.responsavelLegalNome !== undefined) {
+      updateData.responsavel_legal_nome = data.responsavelLegalNome
+    }
+    if (data.responsavelLegalCpf !== undefined) {
+      updateData.responsavel_legal_cpf = data.responsavelLegalCpf
+    }
+    if (data.telefone !== undefined) updateData.telefone = data.telefone
+    if (data.telefoneAlternativo !== undefined) {
+      updateData.telefone_alternativo = data.telefoneAlternativo
+    }
+    if (data.cep !== undefined) updateData.cep = data.cep
+    if (data.logradouro !== undefined) updateData.logradouro = data.logradouro
+    if (data.numero !== undefined) updateData.numero = data.numero
+    if (data.complemento !== undefined) updateData.complemento = data.complemento
+    if (data.bairro !== undefined) updateData.bairro = data.bairro
+    if (data.municipio !== undefined) updateData.municipio = data.municipio
+    if (data.uf !== undefined) updateData.uf = data.uf
+
+    if (Object.keys(updateData).length === 0) {
+      return { success: false, error: 'Nenhum campo informado para atualização.' }
+    }
+
+    await db.$transaction(async (tx) => {
+      await tx.paciente.update({
+        where: {
+          id: data.pacienteId,
+          tenant_id: tenantId,
+        },
+        data: updateData,
+      })
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_base_paciente',
+      entidadeId: data.pacienteId,
+      payloadDepois: {
+        camposAtualizados: Object.keys(updateData),
+      },
+    })
+
+    revalidatePath('/saude/tfd/pacientes')
+    revalidatePath(`/saude/tfd/pacientes/${data.pacienteId}`)
+
+    return { success: true, data: { pacienteId: data.pacienteId } }
+  } catch (error) {
+    console.error('[atualizarPacienteCompletoTfd] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível atualizar o cadastro do paciente. Tente novamente.',
     }
   }
 }

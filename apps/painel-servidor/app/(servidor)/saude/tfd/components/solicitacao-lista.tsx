@@ -4,6 +4,7 @@ import { exportarSolicitacoesTfdCsv } from '@saude/mod-saude-tfd/actions/exporta
 import { TfdSolicitacaoListItem } from '@saude/mod-saude-tfd/client'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
+  Badge,
   Button,
   DataTable,
   ProtocoloBadge,
@@ -19,6 +20,7 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 
+import { MoverFilaDialog } from './mover-fila-dialog'
 import { TfdExportCsvButton } from './tfd-export-csv-button'
 
 const TFD_DETAIL_BASE = '/saude/tfd'
@@ -186,6 +188,21 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
           ),
       },
       {
+        id: 'posicaoFila',
+        header: 'Posição',
+        cell: ({ row }) => {
+          const posicao = row.original.posicaoFila
+          if (posicao == null) {
+            return <span className="text-[var(--color-text-muted)]">—</span>
+          }
+          return (
+            <Badge variant="blue" size="sm">
+              #{posicao}
+            </Badge>
+          )
+        },
+      },
+      {
         id: 'tipoAtendimento',
         header: 'Tipo de atendimento',
         cell: ({ row }) => (
@@ -203,8 +220,32 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
           </span>
         ),
       },
+      {
+        id: 'acoesFila',
+        header: '',
+        cell: ({ row }) => {
+          const posicao = row.original.posicaoFila
+          if (posicao == null) {
+            return null
+          }
+          return (
+            <div
+              className="flex justify-end"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              <MoverFilaDialog
+                session={session}
+                solicitacaoId={row.original.id}
+                protocolo={row.original.protocolo}
+                posicaoAtual={posicao}
+              />
+            </div>
+          )
+        },
+      },
     ],
-    []
+    [session]
   )
 
   return (

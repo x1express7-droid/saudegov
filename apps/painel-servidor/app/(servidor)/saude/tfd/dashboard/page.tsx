@@ -68,7 +68,7 @@ async function GestorDashboard() {
         subtitulo="Visão operacional do mês corrente, alertas consolidados e últimas solicitações."
         acoes={
           <Link
-            href="/saude/tfd"
+            href="/saude/tfd/solicitacoes"
             className="text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] underline-offset-2 hover:underline"
           >
             Ir para a fila

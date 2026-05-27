@@ -36,6 +36,10 @@ export type { FileUploadProps } from './components/file-upload'
 export { Input } from './components/input'
 export type { InputProps } from './components/input'
 
+export { DateInputField } from './components/date-input-field'
+export type { DateInputFieldProps } from './components/date-input-field'
+export { brDateToIso, isoDateToBr, maskBrDateInput } from './utils/date-input-format'
+
 export { PageHeader } from './components/page-header'
 export type { PageHeaderProps } from './components/page-header'
 
@@ -63,6 +67,7 @@ export type {
   SaudeModuleNavConfig,
   SaudeModuleToggleKey,
   SaudeNavChildConfig,
+  SaudeNavIconName,
 } from './config/saude-modules-nav'
 
 export { Spinner } from './components/spinner'

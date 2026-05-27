@@ -91,3 +91,78 @@ export const decidirPrestacaoContasSchema = z
   })
 
 export type DecidirPrestacaoContasInput = z.infer<typeof decidirPrestacaoContasSchema>
+
+const decisaoPrestacaoAgendamentoField = z.enum(['APROVADA', 'REJEITADA'], {
+  errorMap: () => ({ message: 'Decisão inválida.' }),
+})
+
+/** Prestação de contas vinculada a agendamento (sem viagem legada). */
+export const decidirPrestacaoContasAgendamentoSchema = z
+  .object({
+    prestacaoId: prestacaoIdField,
+    decisao: decisaoPrestacaoAgendamentoField,
+    observacoesGestor: observacoesGestorField,
+  })
+  .superRefine((data, ctx) => {
+    if (data.decisao === 'APROVADA') {
+      return
+    }
+
+    if (!data.observacoesGestor || data.observacoesGestor.length < 20) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A observação do gestor deve ter pelo menos 20 caracteres.',
+        path: ['observacoesGestor'],
+      })
+    }
+  })
+
+export type DecidirPrestacaoContasAgendamentoInput = z.infer<
+  typeof decidirPrestacaoContasAgendamentoSchema
+>
+
+const agendamentoIdField = z.string().uuid('ID do agendamento inválido.')
+const transporteIdField = z.string().uuid('ID do transporte inválido.')
+
+const despesaCamposComuns = {
+  tipo: tipoDespesaField,
+  descricao: z
+    .string()
+    .trim()
+    .max(300, 'A descrição deve ter no máximo 300 caracteres.')
+    .optional(),
+  valor: valorField,
+  comprovanteAnexoId: comprovanteAnexoIdField,
+  responsavelPagamento: responsavelPagamentoField,
+}
+
+const comprovanteObrigatorioRefine = {
+  refine: (data: { valor: number; comprovanteAnexoId?: string }) =>
+    data.valor < MIN_VALOR_COMPROVANTE || Boolean(data.comprovanteAnexoId),
+  message: `Comprovante obrigatório para valores iguais ou superiores a R$ ${MIN_VALOR_COMPROVANTE},00.`,
+  path: ['comprovanteAnexoId'],
+} as const
+
+export const registrarDespesaAgendamentoSchema = z
+  .object({
+    agendamentoId: agendamentoIdField,
+    ...despesaCamposComuns,
+  })
+  .refine(comprovanteObrigatorioRefine.refine, {
+    message: comprovanteObrigatorioRefine.message,
+    path: ['comprovanteAnexoId'],
+  })
+
+export type RegistrarDespesaAgendamentoInput = z.infer<typeof registrarDespesaAgendamentoSchema>
+
+export const registrarDespesaTransporteSchema = z
+  .object({
+    transporteId: transporteIdField,
+    ...despesaCamposComuns,
+  })
+  .refine(comprovanteObrigatorioRefine.refine, {
+    message: comprovanteObrigatorioRefine.message,
+    path: ['comprovanteAnexoId'],
+  })
+
+export type RegistrarDespesaTransporteInput = z.infer<typeof registrarDespesaTransporteSchema>

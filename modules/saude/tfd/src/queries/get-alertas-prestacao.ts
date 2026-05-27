@@ -68,6 +68,7 @@ export async function getAlertasPrestacaoTfd(): Promise<AlertaPrestacaoPrazo[]> 
   const baseWhere = {
     tenant_id: tenantId,
     status: 'PENDENTE' as const,
+    viagem_id: { not: null },
     viagem: {
       solicitacao: solicitacaoAguardandoPc,
     },
@@ -112,8 +113,12 @@ export async function getAlertasPrestacaoTfd(): Promise<AlertaPrestacaoPrazo[]> 
       if (vistos.has(row.id)) {
         continue
       }
+      const { viagem } = row
+      if (!viagem) {
+        continue
+      }
       vistos.add(row.id)
-      alertas.push(mapRowToAlerta(row, motivo))
+      alertas.push(mapRowToAlerta({ ...row, viagem }, motivo))
     }
   }
 

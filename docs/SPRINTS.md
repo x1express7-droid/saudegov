@@ -597,6 +597,12 @@ npm run db:verify:sprint-2-3
 | 2.3 | Regras operacionais e automações | ✅ Concluído |
 | 2.4 | Notificações e-mail TFD | 💡 Planejado |
 | 2.5 | CADSUS real | 💡 Planejado |
+| 3.1 | Dados clínicos, perfil do paciente e fila auditada (TFD) | ✅ Concluído |
+| 3.2 | Agendamento como entidade própria (TFD) | ✅ Concluído |
+| 3.3 | Transporte com múltiplos segmentos (TFD) | ✅ Concluído |
+| 3.4 | Prestação de contas unificada por agendamento (TFD) | ✅ Concluído |
+| 3.5 | Processo como raiz + perfil do servidor (TFD) | ✅ Concluído |
+| 3.6 | Limpeza, consolidação e documentação (TFD) | ✅ Concluído |
 
 ---
 

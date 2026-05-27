@@ -66,7 +66,23 @@ export type {
   AbrirSolicitacaoOutput,
   EnviarSolicitacaoOutput,
   RelatorioSelectOption,
+  AgendamentoProcessoListItem,
+  TfdProcessoDadosClinicosOutput,
+  TfdPacienteProcessoListItem,
+  TfdPacientePerfilCadastro,
+  TfdFilaMovimentacaoHistoricoItem,
+  TfdPacienteAgendamentoResumoItem,
+  TransporteAgendamentoItem,
+  ProcessoTfdListItem,
+  TfdAgendamentoConsultaListItem,
+  ProcessoTfdDetalheOutput,
+  PerfilServidorOutput,
 } from './types/tfd.types'
+
+export type { AcompanhanteSolicitacaoOption } from './utils/acompanhante-labels'
+export { labelRelacaoAcompanhante } from './utils/acompanhante-labels'
+
+export { MIN_JUSTIFICATIVA_FILA_CHARS } from './validators/fila-movimentacao.schema'
 
 export { formatExtratoOrigemLabel, labelTipoMovimentacao } from './utils/extrato-labels'
 
@@ -172,6 +188,7 @@ export type {
   BuscarPacientePorCnsInput,
   VincularPacienteNovoInput,
   VincularPacienteExistenteInput,
+  AtualizarPacienteCompletoInput,
 } from './validators/paciente.schema'
 
 export type {

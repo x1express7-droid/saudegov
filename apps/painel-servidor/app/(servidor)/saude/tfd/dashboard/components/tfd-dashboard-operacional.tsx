@@ -90,7 +90,7 @@ export function TfdDashboardOperacional() {
                 </Link>
               </Button>
               <Button asChild variant="secondary" className="h-auto min-h-[52px] justify-start py-[var(--space-3)]">
-                <Link href="/saude/tfd">
+                <Link href="/saude/tfd/solicitacoes">
                   <List className="size-5 shrink-0" aria-hidden="true" />
                   Ver Fila
                 </Link>

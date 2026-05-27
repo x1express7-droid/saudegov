@@ -1,7 +1,7 @@
 'use client'
 
 import { buscarExtratoSaldoTenant } from '../../../../../lib/actions/buscar-extrato-saldo-tenant'
-import type { ExtratoMovimentacaoItem, SaldoListItem } from '@saude/mod-saude-tfd'
+import type { ExtratoMovimentacaoItem, SaldoListItem } from '@saude/mod-saude-tfd/client'
 import {
   Badge,
   Button,

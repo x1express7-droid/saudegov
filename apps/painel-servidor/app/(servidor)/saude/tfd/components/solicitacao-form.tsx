@@ -1,5 +1,6 @@
 'use client'
 
+import { TFD_SOLICITACOES_PATH } from '@/lib/tfd/routes'
 import { abrirSolicitacaoSchema, type AbrirSolicitacaoInput, type TfdEspecialidadeListItem, type TfdPrestadorListItem, type TfdProcedimentoListItem, type TfdSolicitacaoOrigemRetornoItem } from '@saude/mod-saude-tfd/client'
 import { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/solicitacao'
 import {
@@ -27,7 +28,7 @@ import { SolicitacaoAcompanhanteFields } from './solicitacao-acompanhante-fields
 import { SolicitacaoLaudoUpload } from './solicitacao-laudo-upload'
 import { SolicitacaoRetornoPicker } from './solicitacao-retorno-picker'
 
-const TFD_LIST_PATH = '/saude/tfd'
+const TFD_LIST_PATH = TFD_SOLICITACOES_PATH
 
 const TIPO_ATENDIMENTO_OPTIONS = [
   { value: 'CONSULTA', label: 'Consulta' },
@@ -54,6 +55,8 @@ export interface SolicitacaoFormProps {
   procedimentos: TfdProcedimentoListItem[]
   prestadores: TfdPrestadorListItem[]
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
+  /** Quando informado, vincula a solicitação a um processo TFD existente. */
+  processoId?: string
 }
 
 function ProcedimentosCheckboxGroup({
@@ -131,6 +134,7 @@ export function SolicitacaoForm({
   procedimentos,
   prestadores,
   solicitacoesOrigem,
+  processoId,
 }: SolicitacaoFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -151,6 +155,7 @@ export function SolicitacaoForm({
   } = useForm<AbrirSolicitacaoInput>({
     resolver: zodResolver(abrirSolicitacaoSchema) as Resolver<AbrirSolicitacaoInput>,
     defaultValues: {
+      processoId,
       pacienteId: paciente.id,
       especialidadeId: '',
       procedimentos: [],
@@ -263,6 +268,7 @@ export function SolicitacaoForm({
   function buildPayload(values: AbrirSolicitacaoInput): AbrirSolicitacaoInput {
     return {
       ...values,
+      processoId: processoId ?? values.processoId,
       pacienteId: paciente.id,
       pacienteCpf: undefined,
       laudoAnexoId: laudoAnexoId ?? values.laudoAnexoId,

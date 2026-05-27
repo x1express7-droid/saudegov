@@ -1,6 +1,6 @@
 'use client'
 
-import type { SaldoListItem } from '@saude/mod-saude-tfd'
+import type { SaldoListItem } from '@saude/mod-saude-tfd/client'
 import { Alert, Badge, DataTable, EmptyState, type ColumnDef } from '@saude/ui'
 import { AlertTriangle, Eye, Wallet } from 'lucide-react'
 import { useMemo, useState } from 'react'

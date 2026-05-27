@@ -90,6 +90,7 @@ export async function getPrestacoesTfd(
 
   const whereClause = {
     tenant_id: tenantId,
+    viagem_id: { not: null },
     ...(filtros.status ? { status: filtros.status } : {}),
     viagem: {
       solicitacao: {
@@ -111,8 +112,13 @@ export async function getPrestacoesTfd(
     db.tfdPrestacaoConta.count({ where: whereClause }),
   ])
 
-  return {
-    items: rows.map(mapToListItem),
-    total,
+  const items: TfdPrestacaoListItem[] = []
+  for (const row of rows) {
+    if (!row.viagem) {
+      continue
+    }
+    items.push(mapToListItem({ ...row, viagem: row.viagem }))
   }
+
+  return { items, total }
 }

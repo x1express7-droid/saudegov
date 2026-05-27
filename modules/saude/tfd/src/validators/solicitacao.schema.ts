@@ -38,6 +38,7 @@ const acompanhanteSchema = z.object({
 
 export const abrirSolicitacaoSchema = z
   .object({
+    processoId: z.string().uuid('ID do processo inválido.').optional(),
     pacienteId: z.string().uuid('ID de paciente inválido.'),
     /** CPF do paciente (11 dígitos) — usado na validação cruzada com o acompanhante no formulário. */
     pacienteCpf: cpfPacienteRefinementField,

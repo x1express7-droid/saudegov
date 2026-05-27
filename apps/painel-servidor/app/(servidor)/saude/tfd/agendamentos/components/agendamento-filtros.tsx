@@ -1,21 +1,26 @@
 'use client'
 
-import { Button, Card, Input } from '@saude/ui'
-import { endOfWeek, format, startOfWeek } from 'date-fns'
+import { Button, Card, Input, Select } from '@saude/ui'
+import { getDefaultAgendamentosPeriodo } from '@/lib/tfd/default-agendamentos-periodo'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
-function getCurrentWeekRange(): { dataInicio: string; dataFim: string } {
-  const now = new Date()
-  const start = startOfWeek(now, { weekStartsOn: 1 })
-  const end = endOfWeek(now, { weekStartsOn: 1 })
-  return {
-    dataInicio: format(start, 'yyyy-MM-dd'),
-    dataFim: format(end, 'yyyy-MM-dd'),
-  }
-}
+const FILTER_KEYS = [
+  'dataInicio',
+  'dataFim',
+  'motoristaId',
+  'veiculoId',
+  'prestadorId',
+  'status',
+  'page',
+] as const
 
-const FILTER_KEYS = ['dataInicio', 'dataFim', 'motoristaId', 'veiculoId', 'page'] as const
+const STATUS_CONSULTA_OPTIONS = [
+  { value: 'AGENDADO', label: 'Agendado' },
+  { value: 'EM_VIAGEM', label: 'Em viagem' },
+  { value: 'REALIZADO', label: 'Realizado' },
+  { value: 'CANCELADO', label: 'Cancelado' },
+]
 
 function buildQueryString(
   current: URLSearchParams,
@@ -36,21 +41,28 @@ function buildQueryString(
   return next.toString()
 }
 
-export function AgendamentoFiltros() {
+export interface AgendamentoFiltrosProps {
+  modo?: 'consultas' | 'viagens'
+}
+
+export function AgendamentoFiltros({ modo = 'consultas' }: AgendamentoFiltrosProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
   const dataInicioParam = searchParams.get('dataInicio') ?? ''
   const dataFimParam = searchParams.get('dataFim') ?? ''
+  const statusParam = searchParams.get('status') ?? ''
 
   const [dataInicio, setDataInicio] = useState(dataInicioParam)
   const [dataFim, setDataFim] = useState(dataFimParam)
+  const [status, setStatus] = useState(statusParam)
 
   useEffect(() => {
     setDataInicio(dataInicioParam)
     setDataFim(dataFimParam)
-  }, [dataInicioParam, dataFimParam])
+    setStatus(statusParam)
+  }, [dataInicioParam, dataFimParam, statusParam])
 
   const pushParams = useCallback(
     (patch: Record<string, string | undefined>) => {
@@ -65,20 +77,27 @@ export function AgendamentoFiltros() {
     pushParams({
       dataInicio: dataInicio.trim() || undefined,
       dataFim: dataFim.trim() || undefined,
+      ...(modo === 'consultas'
+        ? { status: status.trim() || undefined }
+        : { status: undefined }),
     })
   }
 
   function handleClear() {
-    const { dataInicio: inicioSemana, dataFim: fimSemana } = getCurrentWeekRange()
-    setDataInicio(inicioSemana)
-    setDataFim(fimSemana)
+    const { dataInicio: inicioPadrao, dataFim: fimPadrao } = getDefaultAgendamentosPeriodo()
+    setDataInicio(inicioPadrao)
+    setDataFim(fimPadrao)
+    setStatus('')
 
     const next = new URLSearchParams(searchParams.toString())
     for (const key of FILTER_KEYS) {
       next.delete(key)
     }
-    next.set('dataInicio', inicioSemana)
-    next.set('dataFim', fimSemana)
+    if (!next.get('fonte')) {
+      next.set('fonte', modo)
+    }
+    next.set('dataInicio', inicioPadrao)
+    next.set('dataFim', fimPadrao)
 
     router.push(`${pathname}?${next.toString()}`)
   }
@@ -86,7 +105,7 @@ export function AgendamentoFiltros() {
   return (
     <Card>
       <div className="flex flex-col gap-[var(--space-4)]">
-        <div className="grid gap-[var(--space-4)] md:grid-cols-2">
+        <div className="grid gap-[var(--space-4)] md:grid-cols-2 lg:grid-cols-3">
           <Input
             id="filtro-data-inicio-tfd"
             label="Data início"
@@ -101,6 +120,15 @@ export function AgendamentoFiltros() {
             value={dataFim}
             onChange={(event) => setDataFim(event.target.value)}
           />
+          {modo === 'consultas' ? (
+            <Select
+              label="Status"
+              value={status || undefined}
+              placeholder="Todos os status"
+              options={STATUS_CONSULTA_OPTIONS}
+              onValueChange={setStatus}
+            />
+          ) : null}
         </div>
         <div className="flex flex-wrap gap-[var(--space-2)]">
           <Button type="button" variant="primary" onClick={handleApply}>

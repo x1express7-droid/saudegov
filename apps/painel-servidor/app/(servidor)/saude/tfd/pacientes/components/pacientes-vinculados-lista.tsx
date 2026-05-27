@@ -3,6 +3,7 @@
 import type { TfdPacienteVinculadoItem } from '@saude/mod-saude-tfd/client'
 import { Badge, DataTable, type ColumnDef } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
+import Link from 'next/link'
 import { ptBR } from 'date-fns/locale'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
@@ -37,9 +38,14 @@ function buildQueryString(
 export interface PacientesVinculadosListaProps {
   items: TfdPacienteVinculadoItem[]
   total: number
+  podeVerPerfilPaciente: boolean
 }
 
-export function PacientesVinculadosLista({ items, total }: PacientesVinculadosListaProps) {
+export function PacientesVinculadosLista({
+  items,
+  total,
+  podeVerPerfilPaciente,
+}: PacientesVinculadosListaProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -67,9 +73,18 @@ export function PacientesVinculadosLista({ items, total }: PacientesVinculadosLi
       {
         id: 'nome',
         header: 'Nome',
-        cell: ({ row }) => (
-          <span className="font-medium text-[var(--color-text)]">{row.original.nome}</span>
-        ),
+        cell: ({ row }) =>
+          podeVerPerfilPaciente ? (
+            <Link
+              href={`/saude/tfd/pacientes/${row.original.id}`}
+              className="font-medium text-[var(--color-primary)] hover:underline"
+              onClick={(event) => event.stopPropagation()}
+            >
+              {row.original.nome}
+            </Link>
+          ) : (
+            <span className="font-medium text-[var(--color-text)]">{row.original.nome}</span>
+          ),
       },
       {
         id: 'cns',
@@ -104,7 +119,7 @@ export function PacientesVinculadosLista({ items, total }: PacientesVinculadosLi
           ),
       },
     ],
-    []
+    [podeVerPerfilPaciente]
   )
 
   return (

@@ -9,6 +9,9 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   serverExternalPackages: ["@prisma/client", "bcryptjs"],
+  experimental: {
+    authInterrupts: true,
+  },
 };
 
 export default nextConfig;

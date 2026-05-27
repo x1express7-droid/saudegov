@@ -1,16 +1,16 @@
-import type { LucideIcon } from 'lucide-react'
-import {
-  BarChart3,
-  CalendarDays,
-  ClipboardList,
-  LayoutDashboard,
-  List,
-  PlusCircle,
-  Receipt,
-  Settings,
-  UserSearch,
-  Wallet,
-} from 'lucide-react'
+/** Identificadores serializáveis de ícones Lucide (resolvidos no Client Component). */
+export type SaudeNavIconName =
+  | 'BarChart3'
+  | 'CalendarDays'
+  | 'ClipboardList'
+  | 'FileText'
+  | 'LayoutDashboard'
+  | 'List'
+  | 'PlusCircle'
+  | 'Receipt'
+  | 'Settings'
+  | 'UserSearch'
+  | 'Wallet'
 
 /** Chaves em `tenant.modules.saude` — alinhado a `docs/MUNICIPAL_MAP.md`. */
 export type SaudeModuleToggleKey =
@@ -26,7 +26,7 @@ export type SaudeModuleToggleKey =
 export interface SaudeNavChildConfig {
   label: string
   href: string
-  icon: LucideIcon
+  icon: SaudeNavIconName
 }
 
 /** Rótulo da seção Financeiro no accordion TFD. */
@@ -40,32 +40,32 @@ export const TFD_FINANCEIRO_NAV_CATALOG = [
   {
     label: 'Saldos',
     href: '/saude/tfd/configuracoes/saldos',
-    icon: Wallet,
+    icon: 'Wallet',
   },
   {
     label: 'Prestações de contas',
     href: '/saude/tfd/prestacoes',
-    icon: Receipt,
+    icon: 'Receipt',
   },
   {
     label: 'Relatórios',
     href: '/saude/tfd/dashboard',
-    icon: BarChart3,
+    icon: 'BarChart3',
   },
 ] as const satisfies ReadonlyArray<SaudeNavChildConfig>
 
-const TFD_FINANCEIRO_ICON_BY_HREF: Record<string, LucideIcon> = Object.fromEntries(
+const TFD_FINANCEIRO_ICON_BY_HREF: Record<string, SaudeNavIconName> = Object.fromEntries(
   TFD_FINANCEIRO_NAV_CATALOG.map((item) => [item.href, item.icon])
-)
+) as Record<string, SaudeNavIconName>
 
-/** Anexa ícones aos itens financeiros filtrados no servidor. */
+/** Anexa identificadores de ícone aos itens financeiros filtrados no servidor. */
 export function attachTfdFinanceiroNavIcons(
   items: ReadonlyArray<{ label: string; href: string }>
 ): SaudeNavChildConfig[] {
   return items.map((item) => ({
     label: item.label,
     href: item.href,
-    icon: TFD_FINANCEIRO_ICON_BY_HREF[item.href] ?? Wallet,
+    icon: TFD_FINANCEIRO_ICON_BY_HREF[item.href] ?? 'Wallet',
   }))
 }
 
@@ -73,7 +73,7 @@ export interface SaudeModuleNavConfig {
   moduleKey: SaudeModuleToggleKey
   label: string
   basePath: string
-  icon: LucideIcon
+  icon: SaudeNavIconName
   children: SaudeNavChildConfig[]
 }
 
@@ -87,13 +87,14 @@ export const SAUDE_MODULES_NAV: readonly SaudeModuleNavConfig[] = [
     moduleKey: 'tfd',
     label: 'TFD',
     basePath: '/saude/tfd',
-    icon: ClipboardList,
+    icon: 'ClipboardList',
     children: [
-      { label: 'Dashboard', href: '/saude/tfd/dashboard', icon: LayoutDashboard },
-      { label: 'Nova Solicitação', href: '/saude/tfd/nova', icon: PlusCircle },
-      { label: 'Fila de Solicitações', href: '/saude/tfd', icon: List },
-      { label: 'Agendamentos', href: '/saude/tfd/agendamentos', icon: CalendarDays },
-      { label: 'Pacientes', href: '/saude/tfd/pacientes', icon: UserSearch },
+      { label: 'Dashboard', href: '/saude/tfd/dashboard', icon: 'LayoutDashboard' },
+      { label: 'Nova Solicitação', href: '/saude/tfd/nova', icon: 'PlusCircle' },
+      { label: 'Solicitações', href: '/saude/tfd/solicitacoes', icon: 'FileText' },
+      { label: 'Processos TFD', href: '/saude/tfd/processos', icon: 'List' },
+      { label: 'Agendamentos', href: '/saude/tfd/agendamentos', icon: 'CalendarDays' },
+      { label: 'Pacientes', href: '/saude/tfd/pacientes', icon: 'UserSearch' },
     ],
   },
 ] as const
@@ -101,12 +102,12 @@ export const SAUDE_MODULES_NAV: readonly SaudeModuleNavConfig[] = [
 export const SAUDE_SYSTEM_DASHBOARD = {
   label: 'Dashboard',
   href: '/dashboard',
-  icon: LayoutDashboard,
-} as const
+  icon: 'LayoutDashboard',
+} as const satisfies { label: string; href: string; icon: SaudeNavIconName }
 
 export const SAUDE_CONFIG_NAV = {
   label: 'Configurações',
   /** Entrada canônica; o destino efetivo é resolvido no servidor conforme permissões TFD. */
   basePath: '/saude/tfd/configuracoes',
-  icon: Settings,
-} as const
+  icon: 'Settings',
+} as const satisfies { label: string; basePath: string; icon: SaudeNavIconName }

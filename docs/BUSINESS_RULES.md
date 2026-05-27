@@ -246,9 +246,19 @@ do módulo TFD (itens filtrados por permissão): **Saldos** (`/saude/tfd/configu
 - Cada viagem tem sua própria prestação de contas
 - Campo `sequencia` (1, 2, 3...) identifica a ordem das viagens
 
+**Agendamento como entidade (Fase 3):**
+- A partir da Fase 3, **marcar consulta/atendimento** usa `saude_tfd.agendamentos` (`TfdAgendamento`), vinculado ao **processo** e à solicitação — não substitui a tabela legada `viagens`, que permanece com `deprecated_at` para histórico e prestações antigas.
+- O agendamento concentra data/hora da consulta, prestador, tipo de atendimento e status (`AGENDADO` → `EM_VIAGEM` → `REALIZADO` / `CANCELADO`).
+- **Transporte** (veículo, motorista, segmentos terrestre/aéreo etc.) é registrado em `saude_tfd.transportes`, sempre ligado a um agendamento; um agendamento pode ter vários segmentos.
+- Listagens unificadas podem mesclar viagens legadas (`TfdViagem`) e agendamentos novos; o filtro `fonte` distingue `legado`, `novo` ou ambos.
+
 ---
 
 ### 1.7 Regras de Prestação de Contas
+
+**Fluxo novo por agendamento (Fase 3):**
+- Prestações criadas após o retorno de um **agendamento** (`TfdAgendamento`) usam `enviarPrestacaoContasAgendamento`, com itens de despesa vinculados a `agendamento_id` e/ou `transporte_id` (um ou mais segmentos).
+- O fluxo legado (`enviarPrestacaoContas`, `decidirPrestacaoContas`, `registrarDespesa` por `viagem_id`) permanece ativo para viagens e prestações anteriores à reestruturação.
 
 **Prazo de envio:**
 - Prestação deve ser enviada em até **10 dias corridos** após a data de retorno

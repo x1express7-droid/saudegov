@@ -2,7 +2,7 @@ import type { UserRole } from '@saude/core-auth'
 import {
   TFD_GRANULAR_PERMISSION_DEFINITIONS,
   type TfdPermissionDefinition,
-} from '@saude/mod-saude-tfd'
+} from '@saude/mod-saude-tfd/client'
 
 export interface PermissaoCatalogoItem {
   key: string

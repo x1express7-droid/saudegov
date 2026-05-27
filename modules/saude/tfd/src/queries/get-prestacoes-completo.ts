@@ -56,6 +56,7 @@ export async function getPrestacoesCompleto(
 
   const whereClause = {
     tenant_id: tenantId,
+    viagem_id: { not: null },
     ...(status ? { status } : {}),
   }
 
@@ -68,18 +69,23 @@ export async function getPrestacoesCompleto(
     orderBy: { prazo_envio_at: 'asc' },
   })
 
-  const items: PrestacaoExportRow[] = rows.map((row) => {
+  const items: PrestacaoExportRow[] = rows.flatMap((row) => {
+    if (!row.viagem) {
+      return []
+    }
     const valorTotal = row.viagem.itens_despesa.reduce((acc, item) => acc + Number(item.valor), 0)
     const enviadoEm =
       STATUS_COM_ENVIO.has(row.status) ? row.updated_at.toISOString() : null
 
-    return {
-      protocolo: row.viagem.solicitacao.processo.protocolo,
-      status: row.status,
-      valorTotal,
-      enviadoEm,
-      aprovadoEm: row.aprovado_at?.toISOString() ?? null,
-    }
+    return [
+      {
+        protocolo: row.viagem.solicitacao.processo.protocolo,
+        status: row.status,
+        valorTotal,
+        enviadoEm,
+        aprovadoEm: row.aprovado_at?.toISOString() ?? null,
+      },
+    ]
   })
 
   return { items, total }

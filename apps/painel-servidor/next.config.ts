@@ -9,6 +9,23 @@ const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
   serverExternalPackages: ['@prisma/client', 'bcryptjs', 'pdfkit'],
+  experimental: {
+    authInterrupts: true,
+  },
+  async redirects() {
+    return [
+      {
+        source: '/saude/tfd/fila',
+        destination: '/saude/tfd/solicitacoes',
+        permanent: false,
+      },
+      {
+        source: '/saude/tfd/saldos',
+        destination: '/saude/tfd/configuracoes/saldos',
+        permanent: false,
+      },
+    ]
+  },
   async rewrites() {
     return [
       {

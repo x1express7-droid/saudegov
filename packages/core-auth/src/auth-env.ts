@@ -4,6 +4,16 @@ export function authSecret(): string | undefined {
   return process.env.AUTH_SECRET?.trim() || process.env.NEXTAUTH_SECRET?.trim()
 }
 
+function isLocalHttpAuthUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    const localHost = parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1'
+    return localHost && parsed.protocol === 'http:'
+  } catch {
+    return false
+  }
+}
+
 /** Cookies Secure exigem HTTPS no browser; use AUTH_COOKIE_SECURE=false em staging HTTP. */
 export function authUsesSecureCookies(): boolean {
   const override = process.env.AUTH_COOKIE_SECURE?.trim().toLowerCase()
@@ -14,9 +24,17 @@ export function authUsesSecureCookies(): boolean {
     return true
   }
 
+  if (process.env.NODE_ENV !== 'production') {
+    return false
+  }
+
   const url = process.env.AUTH_URL?.trim() || process.env.NEXTAUTH_URL?.trim() || ''
   if (!url) {
-    return process.env.NODE_ENV === 'production'
+    return true
+  }
+
+  if (isLocalHttpAuthUrl(url)) {
+    return false
   }
 
   return url.startsWith('https://')

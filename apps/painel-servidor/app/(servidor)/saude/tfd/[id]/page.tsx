@@ -6,6 +6,7 @@ import {
 } from '@saude/core-auth/server'
 import {
   getContextoDecisaoTfd,
+  getDadosClinicosProcesso,
   getSaldosTfd,
   getSolicitacaoTfd,
   getVeiculosAgendamentoTfd,
@@ -13,6 +14,7 @@ import {
   TFD_PERMISSIONS,
   type ContextoDecisaoTfd,
   type SaldoListItem,
+  type TfdProcessoDadosClinicosOutput,
   type TfdVeiculoAgendamentoItem,
   type TfdViagemSolicitacaoItem,
 } from '@saude/mod-saude-tfd'
@@ -28,6 +30,8 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { AgendamentosSection } from './components/agendamentos-section'
+import { DadosClinicosSection } from './components/dados-clinicos-section'
 import { SolicitacaoAcoes } from './components/solicitacao-acoes'
 import { SolicitacaoDetalhe } from './components/solicitacao-detalhe'
 import { SolicitacaoTimeline } from './components/solicitacao-timeline'
@@ -148,13 +152,26 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
     ;[viagens, veiculosAgendamento] = await Promise.all([viagensPromise, veiculosPromise])
   }
 
+  const podeVerDadosClinicos =
+    hasPermission(session, TFD_PERMISSIONS.REGISTRAR_DADOS_CLINICOS) ||
+    hasPermission(session, TFD_PERMISSIONS.ANALISAR_LAUDO)
+
+  let dadosClinicos: TfdProcessoDadosClinicosOutput | null = null
+  if (podeVerDadosClinicos && solicitacao.processoId) {
+    try {
+      dadosClinicos = await getDadosClinicosProcesso(solicitacao.processoId)
+    } catch {
+      dadosClinicos = null
+    }
+  }
+
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
         titulo={solicitacao.protocolo}
         subtitulo="Detalhe da solicitação de Tratamento Fora de Domicílio."
         breadcrumbs={[
-          { label: 'Fila TFD', href: '/saude/tfd' },
+          { label: 'Solicitações', href: '/saude/tfd/solicitacoes' },
           { label: solicitacao.protocolo },
         ]}
         acoes={
@@ -175,7 +192,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
               </span>
             )}
             <Link
-              href="/saude/tfd"
+              href="/saude/tfd/solicitacoes"
               className="text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
             >
               Voltar à fila
@@ -187,6 +204,19 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
       <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
           <SolicitacaoDetalhe solicitacao={solicitacao} viagens={viagens} />
+          <AgendamentosSection
+            session={session}
+            processoId={solicitacao.processoId}
+            solicitacaoId={solicitacao.id}
+            solicitacaoStatus={solicitacao.status}
+          />
+          {dadosClinicos ? (
+            <DadosClinicosSection
+              session={session}
+              processoId={solicitacao.processoId}
+              dadosIniciais={dadosClinicos}
+            />
+          ) : null}
           <SolicitacaoTimeline tramitacoes={solicitacao.tramitacoes} />
         </div>
 

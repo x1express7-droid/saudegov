@@ -1023,6 +1023,59 @@ CREATE POLICY tenant_isolation ON saude_tfd.prestacoes_conta
   USING (tenant_id = current_setting('app.current_tenant_id')::uuid);
 ```
 
+### 4.7 Tabelas da Fase 3 — Processo, agendamento e transporte
+
+> Implementadas nas sprints 3.1–3.3. A tabela `viagens` permanece legada (`deprecated_at` desde a sprint 3.6).
+
+#### `saude_tfd.processo_dados_clinicos`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Propósito** | Dados clínicos SOAP (subjetivo, objetivo, avaliação, plano) por processo TFD — 1:1 com `public.processos`. |
+| **Campos principais** | `processo_id` (UNIQUE), `subjetivo`, `objetivo`, `avaliacao`, `plano`, `motivo_quadro`, `observacao`, `registrado_por_id`, `created_at`, `updated_at`. |
+| **Índices** | `idx_tfd_processo_dados_clinicos_tenant`, `idx_tfd_processo_dados_clinicos_processo`. |
+| **RLS** | `tenant_isolation` em `tenant_id = current_setting('app.current_tenant_id')::uuid`. |
+
+#### `saude_tfd.fila_movimentacoes`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Propósito** | Histórico imutável de movimentação na fila de regulação (`ENTRADA`, `SAIDA`, `AVANCO`, `RECUO`, `PRIORIDADE`). |
+| **Campos principais** | `solicitacao_id`, `posicao_anterior`, `posicao_nova`, `tipo_movimentacao`, `justificativa`, `usuario_id`, `created_at`. |
+| **Índices** | `idx_tfd_fila_movimentacoes_tenant`, `idx_tfd_fila_movimentacoes_solicitacao` (`tenant_id`, `solicitacao_id`, `created_at DESC`). |
+| **RLS** | `tenant_isolation` por `tenant_id`. |
+
+#### `saude_tfd.agendamentos`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Propósito** | Consulta/atendimento agendado no processo — substitui o papel operacional de “marcar consulta” que antes era só `viagens`. |
+| **Campos principais** | `processo_id`, `solicitacao_id`, `sequencia`, `data_consulta`, `hora_consulta`, `prestador_id`, `tipo_atendimento`, `status` (`agendamento_status`), `realizado_at`, cancelamento. |
+| **Índices** | `idx_tfd_agendamentos_tenant`, `processo`, `solicitacao`, `status`, `data_consulta`. |
+| **RLS** | `tenant_isolation` por `tenant_id`. |
+
+#### `saude_tfd.transportes`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Propósito** | Segmentos de deslocamento (terrestre próprio/terceiro, aéreo, fluvial etc.) vinculados a um agendamento. |
+| **Campos principais** | `agendamento_id`, `sequencia`, `tipo_segmento`, `veiculo_id`, `motorista_id`, origem/destino, datas/horas de saída e chegada, `status` (`transporte_status`), custos. |
+| **Índices** | `idx_tfd_transportes_tenant`, `agendamento`, `status`, `data_saida`, `motorista`. |
+| **RLS** | `tenant_isolation` por `tenant_id`. |
+
+#### `saude_tfd.transporte_anexos`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Propósito** | Comprovantes e documentos por segmento de transporte. |
+| **Campos principais** | `transporte_id`, `anexo_id`, `tipo_anexo`, `created_at`. |
+| **Índices** | `idx_tfd_transporte_anexos_tenant`, `idx_tfd_transporte_anexos_transporte`. |
+| **RLS** | `tenant_isolation` por `tenant_id`. |
+
+#### Depreciação de `saude_tfd.viagens`
+
+Coluna `deprecated_at TIMESTAMPTZ NULL` marca registros da tabela legada; dados e fluxos antigos (prestação por `viagem_id`) permanecem consultáveis.
+
 ---
 
 ## 5. Diagrama de Relacionamentos do TFD
