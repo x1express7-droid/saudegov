@@ -107,7 +107,7 @@ export const SAUDE_SYSTEM_DASHBOARD = {
 
 export const SAUDE_CONFIG_NAV = {
   label: 'Configurações',
-  /** Entrada canônica; o destino efetivo é resolvido no servidor conforme permissões TFD. */
-  basePath: '/saude/tfd/configuracoes',
+  /** Hub de configuração municipal (ADMIN) — abas em /configuracoes/*. */
+  basePath: '/configuracoes',
   icon: 'Settings',
 } as const satisfies { label: string; basePath: string; icon: SaudeNavIconName }

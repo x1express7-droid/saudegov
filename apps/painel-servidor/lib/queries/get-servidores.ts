@@ -1,9 +1,12 @@
 import { maskCPF, requireTenantRole, requirePermission } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import { CONFIG_PERMISSIONS } from '../permissions'
-import type { ServidorListItem, ServidorRole, ServidorSetorVinculo } from '../types/servidores.types'
-
-const SERVIDOR_ROLES = ['GESTOR', 'SERVIDOR'] as ('GESTOR' | 'SERVIDOR')[]
+import {
+  TENANT_STAFF_ROLES,
+  type ServidorListItem,
+  type ServidorRole,
+  type ServidorSetorVinculo,
+} from '../types/servidores.types'
 
 interface Filtros {
   incluirInativos?: boolean
@@ -39,7 +42,7 @@ export async function getServidores(filtros: Filtros = {}): Promise<ServidorList
   const rows = await db.user.findMany({
     where: {
       tenant_id: tenantId,
-      role: { in: SERVIDOR_ROLES },
+      role: { in: [...TENANT_STAFF_ROLES] },
       ...(filtros.incluirInativos ? {} : { active: true }),
     },
     select: {

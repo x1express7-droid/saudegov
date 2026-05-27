@@ -32,7 +32,13 @@ export default async function LoginPage({
       </div>
       <LoginForm
         tenantId={tenantId}
-        errorMessage={error === 'credentials' ? 'E-mail ou senha inválidos.' : null}
+        errorMessage={
+          error === 'credentials'
+            ? 'E-mail ou senha inválidos.'
+            : error === 'session'
+              ? 'Sessão expirada ou cookie não gravado. Tente entrar novamente; em localhost use AUTH_COOKIE_SECURE=false no .env.'
+              : null
+        }
       />
     </main>
   )

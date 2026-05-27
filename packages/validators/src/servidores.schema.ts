@@ -1,8 +1,8 @@
 import { z } from 'zod'
 import { stripCpf, validateCpf } from './cpf'
 
-const servidorRoleSchema = z.enum(['GESTOR', 'SERVIDOR'], {
-  errorMap: () => ({ message: 'Papel deve ser Gestor ou Servidor.' }),
+const servidorRoleSchema = z.enum(['ADMIN', 'GESTOR', 'SERVIDOR'], {
+  errorMap: () => ({ message: 'Papel inválido.' }),
 })
 
 const cpfField = z

@@ -2,9 +2,12 @@ import { notFound } from 'next/navigation'
 import { requireTenantRole, requirePermission } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import { CONFIG_PERMISSIONS } from '../permissions'
-import type { ServidorDetail, ServidorRole, ServidorSetorVinculo } from '../types/servidores.types'
-
-const SERVIDOR_ROLES = ['GESTOR', 'SERVIDOR'] as ('GESTOR' | 'SERVIDOR')[]
+import {
+  TENANT_STAFF_ROLES,
+  type ServidorDetail,
+  type ServidorRole,
+  type ServidorSetorVinculo,
+} from '../types/servidores.types'
 
 function mapSetorVinculo(row: {
   setor_id: string
@@ -37,7 +40,7 @@ export async function getServidor(id: string): Promise<ServidorDetail> {
     where: {
       id,
       tenant_id: tenantId,
-      role: { in: SERVIDOR_ROLES },
+      role: { in: [...TENANT_STAFF_ROLES] },
     },
     select: {
       id: true,

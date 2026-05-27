@@ -11,6 +11,7 @@ import {
   desativarServidorSchema,
 } from '@saude/validators'
 import { CONFIG_PERMISSIONS } from '../permissions'
+import { TENANT_STAFF_ROLES } from '../types/servidores.types'
 import { generateTempPassword } from '../utils/temp-password'
 
 const SERVIDORES_PATH = '/configuracoes/servidores'
@@ -33,6 +34,19 @@ async function getAdminSession() {
   const session = await requireTenantRole('ADMIN')
   await requirePermission(session, CONFIG_PERMISSIONS.SERVIDORES)
   return session
+}
+
+function validateAdminRoleAssignment(
+  session: Awaited<ReturnType<typeof getAdminSession>>,
+  role: string
+): { error: string; fieldErrors: Record<string, string[]> } | null {
+  if (role === 'ADMIN' && session.user.role !== 'ADMIN') {
+    return {
+      error: 'Somente administradores podem atribuir o papel Administrador.',
+      fieldErrors: { role: ['Somente administradores podem atribuir este papel.'] },
+    }
+  }
+  return null
 }
 
 async function validateSetoresAtivos(
@@ -126,6 +140,11 @@ export async function criarServidor(
 
   const data = parsed.data
   const tenantId = session.user.tenantId!
+
+  const adminRoleError = validateAdminRoleAssignment(session, data.role)
+  if (adminRoleError) {
+    return { success: false, ...adminRoleError }
+  }
 
   try {
     const db = await getPrismaForTenant(tenantId)
@@ -236,6 +255,13 @@ export async function atualizarServidor(rawInput: unknown): Promise<ActionRespon
   const data = parsed.data
   const tenantId = session.user.tenantId!
 
+  if (data.role !== undefined) {
+    const adminRoleError = validateAdminRoleAssignment(session, data.role)
+    if (adminRoleError) {
+      return { success: false, ...adminRoleError }
+    }
+  }
+
   try {
     const db = await getPrismaForTenant(tenantId)
 
@@ -243,7 +269,7 @@ export async function atualizarServidor(rawInput: unknown): Promise<ActionRespon
       where: {
         id: data.id,
         tenant_id: tenantId,
-        role: { in: ['GESTOR', 'SERVIDOR'] },
+        role: { in: [...TENANT_STAFF_ROLES] },
         active: true,
       },
       select: {
@@ -261,6 +287,19 @@ export async function atualizarServidor(rawInput: unknown): Promise<ActionRespon
 
     if (!existing) {
       return { success: false, error: 'Servidor não encontrado ou inativo.' }
+    }
+
+    if (
+      data.id === session.user.id &&
+      data.role !== undefined &&
+      data.role !== 'ADMIN' &&
+      existing.role === 'ADMIN'
+    ) {
+      return {
+        success: false,
+        error: 'Você não pode alterar seu próprio papel de administrador.',
+        fieldErrors: { role: ['Não é possível rebaixar seu próprio usuário.'] },
+      }
     }
 
     if (data.email && data.email !== existing.email) {
@@ -392,7 +431,7 @@ export async function desativarServidor(rawInput: unknown): Promise<ActionRespon
       where: {
         id,
         tenant_id: tenantId,
-        role: { in: ['GESTOR', 'SERVIDOR'] },
+        role: { in: [...TENANT_STAFF_ROLES] },
         active: true,
       },
       select: { id: true, name: true, email: true, role: true },

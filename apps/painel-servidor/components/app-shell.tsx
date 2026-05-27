@@ -11,9 +11,9 @@ export interface AppShellProps {
   municipalityName: string
   userName: string
   logoUrl?: string
-  showAdminNav?: boolean
-  showTfdConfigNav?: boolean
-  tfdConfigHref?: string
+  showConfigNav?: boolean
+  configHref?: string
+  tfdConfigNavChild?: SaudeNavChildConfig
   tfdFinanceiroNav?: SaudeNavChildConfig[]
   children: ReactNode
 }
@@ -24,9 +24,9 @@ export function AppShell({
   municipalityName,
   userName,
   logoUrl,
-  showAdminNav = false,
-  showTfdConfigNav = false,
-  tfdConfigHref,
+  showConfigNav = false,
+  configHref,
+  tfdConfigNavChild,
   tfdFinanceiroNav = [],
   children,
 }: AppShellProps) {
@@ -98,9 +98,9 @@ export function AppShell({
             pathname={pathname}
             collapsed={sidebarCollapsed}
             onNavigate={closeDrawer}
-            showAdminNav={showAdminNav}
-            showTfdConfigNav={showTfdConfigNav}
-            tfdConfigHref={tfdConfigHref}
+            showConfigNav={showConfigNav}
+            configHref={configHref}
+            tfdConfigNavChild={tfdConfigNavChild}
             tfdFinanceiroNav={tfdFinanceiroNav}
             className="h-[calc(100vh-4rem)] min-h-0"
           />

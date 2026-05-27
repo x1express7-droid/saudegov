@@ -20,7 +20,7 @@ export default async function EditarServidorPage({ params }: EditarServidorPageP
         titulo="Editar servidor"
         subtitulo={servidor.name}
       />
-      {servidor.active ? (
+      {servidor.active && servidor.role !== 'ADMIN' ? (
         <p className="text-[length:var(--text-sm)]">
           <a
             href={`/configuracoes/servidores/${servidor.id}/permissoes`}

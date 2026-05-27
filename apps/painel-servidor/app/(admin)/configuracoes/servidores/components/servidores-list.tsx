@@ -23,7 +23,9 @@ interface ServidoresListProps {
 }
 
 function roleLabel(role: ServidorListItem['role']) {
-  return role === 'GESTOR' ? 'Gestor' : 'Servidor'
+  if (role === 'ADMIN') return 'Administrador'
+  if (role === 'GESTOR') return 'Gestor'
+  return 'Servidor'
 }
 
 function formatSetores(setores: ServidorListItem['setores']) {
@@ -124,7 +126,7 @@ export function ServidoresList({ servidores, incluirInativos }: ServidoresListPr
                       Editar
                     </Link>
                   </Button>
-                  {servidor.active ? (
+                  {servidor.active && servidor.role !== 'ADMIN' ? (
                     <Button asChild variant="secondary" className="min-h-0 min-w-0 py-[var(--space-1)]">
                       <Link href={`/configuracoes/servidores/${servidor.id}/permissoes`}>
                         <KeyRound className="size-4" aria-hidden="true" />

@@ -3,6 +3,7 @@ import { getTenantContext } from '@saude/core-auth/get-tenant-context'
 import { getTfdFinanceiroVisibleNav, resolveTfdConfiguracoesHref } from '@saude/mod-saude-tfd'
 import { attachTfdFinanceiroNavIcons } from '@saude/ui'
 import { themeToCssVarsStyle } from '../../lib/theme-to-css-vars'
+import { resolveConfiguracoesHref } from '../../lib/utils/configuracoes-nav'
 import { headers } from 'next/headers'
 import { AppShell } from '../../components/app-shell'
 
@@ -20,8 +21,16 @@ export default async function ServidorLayout({
   const municipalityName =
     (theme.municipalityName ?? theme.municipality_name ?? tenant.name) || 'Município'
 
-  const tfdConfigHref = resolveTfdConfiguracoesHref(session)
-  const showTfdConfigNav = tfdConfigHref !== null
+  const configHref =
+    session.user.role === 'ADMIN' ? resolveConfiguracoesHref(session) : null
+  const showConfigNav = configHref !== null
+  const tfdConfigNavChild = resolveTfdConfiguracoesHref(session)
+    ? {
+        label: 'Config. TFD',
+        href: '/saude/tfd/configuracoes',
+        icon: 'Settings' as const,
+      }
+    : undefined
   const tfdFinanceiroNav = attachTfdFinanceiroNavIcons(getTfdFinanceiroVisibleNav(session))
 
   const themeCssVars = themeToCssVarsStyle(theme)
@@ -34,8 +43,9 @@ export default async function ServidorLayout({
       municipalityName={municipalityName}
       userName={session.user.name}
       logoUrl={theme.logoUrl ?? theme.logo_url}
-      showTfdConfigNav={showTfdConfigNav}
-      tfdConfigHref={tfdConfigHref ?? undefined}
+      showConfigNav={showConfigNav}
+      configHref={configHref ?? undefined}
+      tfdConfigNavChild={tfdConfigNavChild}
       tfdFinanceiroNav={tfdFinanceiroNav}
     >
       {children}

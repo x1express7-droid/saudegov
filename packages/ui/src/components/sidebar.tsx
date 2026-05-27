@@ -1,14 +1,6 @@
 'use client'
 
-import {
-  Building2,
-  ChevronDown,
-  Landmark,
-  Network,
-  Palette,
-  Users,
-  type LucideIcon,
-} from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { useCallback, useEffect, useState, type ReactNode } from 'react'
 import {
   SAUDE_CONFIG_NAV,
@@ -44,27 +36,16 @@ export interface SidebarProps {
   className?: string
   collapsed?: boolean
   onNavigate?: () => void
-  showAdminNav?: boolean
-  /** Exibe link de Configurações TFD quando o usuário tem ao menos uma aba permitida. */
-  showTfdConfigNav?: boolean
-  /** Destino do link Configurações (primeira aba permitida para a sessão). */
-  tfdConfigHref?: string
+  /** Exibe link de Configurações municipal (ADMIN) no rodapé. */
+  showConfigNav?: boolean
+  /** Destino do hub /configuracoes (primeira aba permitida). */
+  configHref?: string
+  /** Item Config. TFD no submenu do módulo TFD (última opção). */
+  tfdConfigNavChild?: SaudeNavChildConfig
   /** Itens do submenu Financeiro TFD (já filtrados por permissão no servidor). */
   tfdFinanceiroNav?: SaudeNavChildConfig[]
   systemName?: string
 }
-
-const ADMIN_NAV_ITEMS: ReadonlyArray<{
-  label: string
-  href: string
-  icon: LucideIcon
-}> = [
-  { label: 'Organograma', href: '/configuracoes/organograma', icon: Building2 },
-  { label: 'Responsáveis', href: '/configuracoes/responsaveis', icon: Network },
-  { label: 'Servidores', href: '/configuracoes/servidores', icon: Users },
-  { label: 'Tema', href: '/configuracoes/tema', icon: Palette },
-  { label: 'Município', href: '/configuracoes/municipio', icon: Landmark },
-]
 
 function isModuleActive(modules: Record<string, Record<string, boolean>>, key: SaudeModuleToggleKey): boolean {
   return Boolean(modules.saude?.[key])
@@ -102,6 +83,12 @@ function isActivePath(pathname: string, href: string): boolean {
   }
   if (href === '/saude/tfd/prestacoes') {
     return pathname === '/saude/tfd/prestacoes' || pathname.startsWith('/saude/tfd/prestacoes/')
+  }
+  if (href === '/saude/tfd/configuracoes') {
+    return (
+      pathname === '/saude/tfd/configuracoes' ||
+      pathname.startsWith('/saude/tfd/configuracoes/')
+    )
   }
   if (href === '/saude/tfd/configuracoes/saldos') {
     return (
@@ -146,6 +133,7 @@ interface SaudeModuleAccordionProps {
   pathname: string
   collapsed: boolean
   financeiroChildren?: SaudeNavChildConfig[]
+  extraChildren?: SaudeNavChildConfig[]
   onToggle: () => void
   onNavigate?: () => void
 }
@@ -157,11 +145,13 @@ function SaudeModuleAccordion({
   pathname,
   collapsed,
   financeiroChildren = [],
+  extraChildren = [],
   onToggle,
   onNavigate,
 }: SaudeModuleAccordionProps) {
   const ModuleIcon = resolveSaudeNavIcon(config.icon)
-  const hasChildren = config.children.length > 0 || financeiroChildren.length > 0
+  const hasChildren =
+    config.children.length > 0 || financeiroChildren.length > 0 || extraChildren.length > 0
   const sectionActive = resolveActiveModuleKey(pathname) === config.moduleKey
 
   if (!active) {
@@ -259,6 +249,9 @@ function SaudeModuleAccordion({
               ))}
             </>
           ) : null}
+          {extraChildren.map((child) => (
+            <li key={`extra-${child.href}`}>{renderNavChildLink(child, pathname, onNavigate)}</li>
+          ))}
         </ul>
       ) : null}
     </div>
@@ -271,9 +264,9 @@ export function Sidebar({
   className,
   collapsed = false,
   onNavigate,
-  showAdminNav = false,
-  showTfdConfigNav = false,
-  tfdConfigHref,
+  showConfigNav = false,
+  configHref,
+  tfdConfigNavChild,
   tfdFinanceiroNav = [],
   systemName = 'Sistema de Saúde',
 }: SidebarProps) {
@@ -296,7 +289,7 @@ export function Sidebar({
   const DashboardIcon = resolveSaudeNavIcon(SAUDE_SYSTEM_DASHBOARD.icon)
   const ConfigIcon = resolveSaudeNavIcon(SAUDE_CONFIG_NAV.icon)
   const configActive = pathname.startsWith(SAUDE_CONFIG_NAV.basePath)
-  const tfdConfigLinkHref = tfdConfigHref ?? SAUDE_CONFIG_NAV.basePath
+  const configLinkHref = configHref ?? SAUDE_CONFIG_NAV.basePath
 
   return (
     <nav
@@ -358,6 +351,10 @@ export function Sidebar({
             const active = isModuleActive(modules, mod.moduleKey)
             const financeiroChildren =
               mod.moduleKey === 'tfd' && active ? tfdFinanceiroNav : undefined
+            const extraChildren =
+              mod.moduleKey === 'tfd' && active && tfdConfigNavChild
+                ? [tfdConfigNavChild]
+                : undefined
             return (
               <li key={mod.moduleKey}>
                 <SaudeModuleAccordion
@@ -367,6 +364,7 @@ export function Sidebar({
                   pathname={pathname}
                   collapsed={collapsed}
                   financeiroChildren={financeiroChildren}
+                  extraChildren={extraChildren}
                   onToggle={() => handleToggleModule(mod.moduleKey)}
                   onNavigate={onNavigate}
                 />
@@ -375,40 +373,10 @@ export function Sidebar({
           })}
         </ul>
 
-        {showAdminNav ? (
-          <ul className="mt-[var(--space-4)] flex flex-col gap-[var(--space-1)] border-t border-[var(--color-border)] pt-[var(--space-4)]">
-            {ADMIN_NAV_ITEMS.map((item) => {
-              const Icon = item.icon
-              const active = isActivePath(pathname, item.href)
-              return (
-                <li key={item.href}>
-                  <a
-                    href={item.href}
-                    onClick={onNavigate}
-                    title={collapsed ? item.label : undefined}
-                    aria-current={active ? 'page' : undefined}
-                    className={cn(
-                      'flex min-h-[44px] items-center gap-[var(--space-3)] rounded-[var(--radius)] px-[var(--space-3)] text-[length:var(--text-sm)] transition-colors',
-                      focusRingClassName,
-                      collapsed && 'mx-auto min-w-[44px] justify-center px-0',
-                      active
-                        ? 'bg-[var(--color-primary-light)] font-bold text-[var(--color-primary)]'
-                        : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
-                    )}
-                  >
-                    <Icon className="size-5 shrink-0" aria-hidden="true" />
-                    {!collapsed ? <span>{item.label}</span> : <span className="sr-only">{item.label}</span>}
-                  </a>
-                </li>
-              )
-            })}
-          </ul>
-        ) : null}
-
-        {showTfdConfigNav && tfdConfigHref ? (
+        {showConfigNav && configHref ? (
           <div className="mt-auto border-t border-[var(--color-border)] pt-[var(--space-4)]">
             <a
-              href={tfdConfigLinkHref}
+              href={configLinkHref}
               onClick={onNavigate}
               title={collapsed ? SAUDE_CONFIG_NAV.label : undefined}
               aria-current={configActive ? 'page' : undefined}
@@ -422,7 +390,11 @@ export function Sidebar({
               )}
             >
               <ConfigIcon className="size-5 shrink-0" aria-hidden="true" />
-              {!collapsed ? <span>{SAUDE_CONFIG_NAV.label}</span> : <span className="sr-only">{SAUDE_CONFIG_NAV.label}</span>}
+              {!collapsed ? (
+                <span>{SAUDE_CONFIG_NAV.label}</span>
+              ) : (
+                <span className="sr-only">{SAUDE_CONFIG_NAV.label}</span>
+              )}
             </a>
           </div>
         ) : null}

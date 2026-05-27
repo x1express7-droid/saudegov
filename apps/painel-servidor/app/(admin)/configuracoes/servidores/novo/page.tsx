@@ -9,7 +9,7 @@ export default async function NovoServidorPage() {
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
         titulo="Novo servidor"
-        subtitulo="Papel Gestor ou Servidor. A senha temporária será exibida uma única vez após o cadastro."
+        subtitulo="Papel Administrador, Gestor ou Servidor. A senha temporária será exibida uma única vez após o cadastro."
       />
       <ServidorForm mode="create" setoresOpcoes={setoresOpcoes} />
     </div>

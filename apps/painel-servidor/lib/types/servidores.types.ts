@@ -1,4 +1,6 @@
-export type ServidorRole = 'GESTOR' | 'SERVIDOR'
+export type ServidorRole = 'ADMIN' | 'GESTOR' | 'SERVIDOR'
+
+export const TENANT_STAFF_ROLES = ['ADMIN', 'GESTOR', 'SERVIDOR'] as const
 
 export interface ServidorSetorVinculo {
   setorId: string

@@ -30,7 +30,8 @@ export function authUsesSecureCookies(): boolean {
 
   const url = process.env.AUTH_URL?.trim() || process.env.NEXTAUTH_URL?.trim() || ''
   if (!url) {
-    return true
+    // Sem URL pública: não forçar Secure (evita quebra em localhost com `next start`)
+    return false
   }
 
   if (isLocalHttpAuthUrl(url)) {

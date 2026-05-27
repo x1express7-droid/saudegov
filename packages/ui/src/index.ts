@@ -49,6 +49,9 @@ export type { ProtocoloBadgeProps } from './components/protocolo-badge'
 export { Select } from './components/select'
 export type { SelectOption, SelectProps } from './components/select'
 
+export { TabNav } from './components/tab-nav'
+export type { TabNavItem, TabNavProps } from './components/tab-nav'
+
 export { Sidebar } from './components/sidebar'
 export type {
   SidebarNavChildItem,

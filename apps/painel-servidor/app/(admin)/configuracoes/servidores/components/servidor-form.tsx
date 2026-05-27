@@ -17,6 +17,7 @@ interface ServidorFormProps {
 }
 
 const ROLE_OPTIONS = [
+  { value: 'ADMIN', label: 'Administrador' },
   { value: 'GESTOR', label: 'Gestor' },
   { value: 'SERVIDOR', label: 'Servidor' },
 ] as const
@@ -203,6 +204,7 @@ export function ServidorForm({ mode, setoresOpcoes, servidor }: ServidorFormProp
         options={[...ROLE_OPTIONS]}
         value={role}
         onValueChange={(v) => setRole(v as ServidorRole)}
+        hint="Administrador tem acesso total às configurações do município. Somente administradores podem atribuir este papel."
         error={fieldErrors.role?.[0]}
         required
         disabled={isPending}
