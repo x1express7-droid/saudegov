@@ -11,7 +11,7 @@ import {
   type TfdSolicitacaoOrigemRetornoItem,
 } from '@saude/mod-saude-tfd/client'
 import { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/solicitacao'
-import { salvarDadosClinicosTfd } from '@saude/mod-saude-tfd'
+import { salvarDadosClinicosTfd } from '@saude/mod-saude-tfd/actions/processo'
 import {
   Alert,
   Button,

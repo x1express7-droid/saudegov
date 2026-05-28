@@ -8,7 +8,7 @@ loadEnvConfig(monorepoRoot, undefined, undefined, true);
 const nextConfig: NextConfig = {
   output: "standalone",
   outputFileTracingRoot: path.join(__dirname, "../.."),
-  serverExternalPackages: ['@prisma/client', 'bcryptjs', 'pdfkit'],
+  serverExternalPackages: ['@prisma/client', 'bcryptjs', 'pdfkit', 'nodemailer', '@saude/core-notifications'],
   experimental: {
     authInterrupts: true,
   },
