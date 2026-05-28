@@ -15,18 +15,46 @@ export const NOTIFICATION_EVENTS = {
   PRESTACAO_REJEITADA: 'PRESTACAO_REJEITADA',
   PROCESSO_CANCELADO: 'PROCESSO_CANCELADO',
   SALDO_BAIXO: 'SALDO_BAIXO',
+  RETORNO_REGISTRADO: 'RETORNO_REGISTRADO',
+  PENDENTE_30_DIAS: 'PENDENTE_30_DIAS',
+  NOTIFICACAO_EMAIL_FALHOU: 'NOTIFICACAO_EMAIL_FALHOU',
 } as const
 
 export type NotificationEvent =
   (typeof NOTIFICATION_EVENTS)[keyof typeof NOTIFICATION_EVENTS]
 
-/** Canais suportados pelo pacote (Sprint 1.4: apenas in-app). */
+/** Canais suportados pelo pacote (alinhado ao enum Prisma `notificacao_canal`). */
 export const NOTIFICATION_CHANNELS = {
-  IN_APP: 'in_app',
+  IN_APP: 'IN_APP',
+  EMAIL: 'EMAIL',
 } as const
 
 export type NotificationChannel =
   (typeof NOTIFICATION_CHANNELS)[keyof typeof NOTIFICATION_CHANNELS]
+
+/** SMTP custom do tenant (`smtp_custom_enabled`); senha já decriptada em memória. */
+export interface SmtpConfig {
+  host: string
+  port: number
+  user: string
+  password: string
+  secure: boolean
+}
+
+/** Configuração de e-mail do tenant para envio de notificações. */
+export interface TenantEmailConfig {
+  enabled: boolean
+  from: string
+  smtp: SmtpConfig | null
+}
+
+export interface SendEmailParams {
+  from: string
+  to: string[]
+  subject: string
+  textBody: string
+  htmlBody: string
+}
 
 /** Contexto permitido para notificações TFD — sem dados sensíveis (LGPD Art. 11). */
 export interface SolicitacaoTfdNotificationContext {
@@ -81,9 +109,23 @@ export interface SaldoBaixoNotificationContext {
   percentualDisponivel: number
 }
 
+/** Contexto de falha definitiva no envio de e-mail — sem dados sensíveis nem corpo do e-mail original. */
+export interface NotificacaoEmailFalhouNotificationContext {
+  protocolo: string | null
+  eventoOrigem: string
+  destinatarioResumo: string
+}
+
 export interface NotificationMessage {
   titulo: string
   mensagem: string
+}
+
+/** Resultado de `dispararNotificacao` (Sprint 2.4 — canais in-app e e-mail). */
+export interface DispararNotificacaoResult {
+  inApp: boolean
+  email: boolean
+  ok: boolean
 }
 
 export interface DispararNotificacaoInput {
@@ -104,6 +146,7 @@ export interface DispararNotificacaoInput {
     | PrestacaoDecisaoNotificationContext
     | PrestacaoRejeitadaNotificationContext
     | SaldoBaixoNotificationContext
+    | NotificacaoEmailFalhouNotificationContext
   /** Usuários a omitir (ex.: quem disparou a ação). */
   excludeUserIds?: string[]
   /** Destinatários explícitos; se omitido, resolve conforme o evento. */

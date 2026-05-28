@@ -120,7 +120,7 @@ function renderNavChildLink(
           : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
       )}
     >
-      <ChildIcon className="size-5 shrink-0" aria-hidden="true" />
+      {ChildIcon ? <ChildIcon className="size-5 shrink-0" aria-hidden="true" /> : null}
       <span>{child.label}</span>
     </a>
   )
@@ -164,7 +164,9 @@ function SaudeModuleAccordion({
         aria-disabled="true"
         title={collapsed ? config.label : undefined}
       >
-        <ModuleIcon className="size-[18px] shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+        {ModuleIcon ? (
+          <ModuleIcon className="size-[18px] shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
+        ) : null}
         {!collapsed ? (
           <>
             <span className="min-w-0 flex-1 text-[length:var(--text-sm)] font-semibold text-[var(--color-text-muted)]">
@@ -199,13 +201,15 @@ function SaudeModuleAccordion({
             : 'text-[var(--color-text)] hover:bg-[var(--color-bg)]'
         )}
       >
-        <ModuleIcon
-          className={cn(
-            'size-[18px] shrink-0',
-            sectionActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
-          )}
-          aria-hidden="true"
-        />
+        {ModuleIcon ? (
+          <ModuleIcon
+            className={cn(
+              'size-[18px] shrink-0',
+              sectionActive ? 'text-[var(--color-primary)]' : 'text-[var(--color-text-muted)]'
+            )}
+            aria-hidden="true"
+          />
+        ) : null}
         {!collapsed ? (
           <>
             <span className="min-w-0 flex-1 text-[length:var(--text-sm)] font-semibold">{config.label}</span>
@@ -332,7 +336,7 @@ export function Sidebar({
                   : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
               )}
             >
-              <DashboardIcon className="size-5 shrink-0" aria-hidden="true" />
+              {DashboardIcon ? <DashboardIcon className="size-5 shrink-0" aria-hidden="true" /> : null}
               {!collapsed ? <span>{SAUDE_SYSTEM_DASHBOARD.label}</span> : <span className="sr-only">{SAUDE_SYSTEM_DASHBOARD.label}</span>}
             </a>
           </li>
@@ -389,7 +393,7 @@ export function Sidebar({
                   : 'font-medium text-[var(--color-text-muted)] hover:bg-[var(--color-bg)] hover:text-[var(--color-text)]'
               )}
             >
-              <ConfigIcon className="size-5 shrink-0" aria-hidden="true" />
+              {ConfigIcon ? <ConfigIcon className="size-5 shrink-0" aria-hidden="true" /> : null}
               {!collapsed ? (
                 <span>{SAUDE_CONFIG_NAV.label}</span>
               ) : (

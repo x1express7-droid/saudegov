@@ -307,6 +307,7 @@ export {
   abrirSolicitacaoTfd,
   enviarSolicitacaoTfd,
   cancelarSolicitacaoTfd,
+  reclassificarSolicitacaoTfd,
 } from './actions/solicitacao'
 export { atualizarDadosServidor } from './actions/servidor'
 export {

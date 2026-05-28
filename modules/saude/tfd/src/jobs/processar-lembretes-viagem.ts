@@ -138,7 +138,7 @@ export async function processarLembretesViagem(): Promise<ProcessarLembretesViag
     const dataViagem = formatDataViagem(viagem.data_viagem)
     const horaSaida = formatHoraSaida(viagem.hora_saida)
 
-    const notificacaoEnviada = await dispararNotificacao({
+    const resultadoNotificacao = await dispararNotificacao({
       tenantId: viagem.tenant_id,
       evento: NOTIFICATION_EVENTS.LEMBRETE_VIAGEM_48H,
       modulo: MODULO_TFD,
@@ -155,7 +155,7 @@ export async function processarLembretesViagem(): Promise<ProcessarLembretesViag
 
     const agoraGravacao = new Date()
 
-    if (notificacaoEnviada) {
+    if (resultadoNotificacao.ok) {
       await db.tfdViagem.update({
         where: { id: viagem.id },
         data: {

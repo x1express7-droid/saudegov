@@ -393,7 +393,10 @@ export async function registrarRetornoTfd(
             status: true,
             processo_id: true,
             saldo_id: true,
-            processo: { select: { protocolo: true } },
+            solicitante_id: true,
+            urgencia: true,
+            especialidade: { select: { nome: true } },
+            processo: { select: { protocolo: true, aberto_por_id: true } },
           },
         },
       },
@@ -424,6 +427,9 @@ export async function registrarRetornoTfd(
     const timezone = resolveTenantTimezone(tenant?.settings)
     const prazoEnvioAt = calcPrazoEnvioPrestacao(viagem.data_viagem, timezone)
     const protocolo = viagem.solicitacao.processo.protocolo
+    const especialidadeNome = viagem.solicitacao.especialidade?.nome ?? 'Não informada'
+    const servidorResponsavelId =
+      viagem.solicitacao.processo.aberto_por_id ?? viagem.solicitacao.solicitante_id
     const retornoRegistradoAt = new Date()
 
     const resultado = await db.$transaction(async (tx) => {
@@ -553,6 +559,22 @@ export async function registrarRetornoTfd(
         processoId: resultado.processoId,
       },
     })
+
+    if (servidorResponsavelId) {
+      await dispararNotificacao({
+        tenantId,
+        evento: NOTIFICATION_EVENTS.RETORNO_REGISTRADO,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        context: {
+          protocolo,
+          especialidade: especialidadeNome,
+          urgencia: viagem.solicitacao.urgencia,
+        },
+        recipientUserIds: [servidorResponsavelId],
+        excludeUserIds: [session.user.id],
+      })
+    }
 
     revalidatePath('/saude/tfd')
     revalidatePath('/saude/tfd/agendamentos')

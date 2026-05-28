@@ -29,9 +29,19 @@ import { buildPrestacaoEnviadaMessage } from './templates/prestacao-enviada'
 import { buildPrestacaoRejeitadaMessage } from './templates/prestacao-rejeitada'
 import { buildProcessoCanceladoMessage } from './templates/processo-cancelado'
 import { buildSaldoBaixoMessage } from './templates/saldo-baixo'
+import { buildRetornoRegistradoMessage } from './templates/retorno-registrado'
+import { buildPendente30DiasMessage } from './templates/pendente-30-dias'
+import { buildNotificacaoEmailFalhouMessage } from './templates/notificacao-email-falhou'
+import { eventoSuportaEmail, eventoSuportaInApp } from './event-channels'
+
+const RETRY_DELAY_MS = 15 * 60 * 1000
+import { isSmtpTransportConfigured, sendEmail } from './email'
+import { criarNotificacaoInApp } from './inapp'
+import { getTenantEmailConfig } from './tenant-email-config'
 import {
   NOTIFICATION_EVENTS,
   type DispararNotificacaoInput,
+  type DispararNotificacaoResult,
   type LembretePrestacao48hNotificationContext,
   type LembreteViagem48hNotificationContext,
   type NotificationEvent,
@@ -40,22 +50,20 @@ import {
   type PrestacaoEnviadaNotificationContext,
   type PrestacaoRejeitadaNotificationContext,
   type SaldoBaixoNotificationContext,
+  type NotificacaoEmailFalhouNotificationContext,
   type SolicitacaoTfdNotificationContext,
+  type SmtpConfig,
 } from './types'
 
 /** Gestor com acesso ao dashboard financeiro TFD (BUSINESS_RULES.md §1.14). */
 const PERMISSAO_VER_DASHBOARD_TFD = 'saude.tfd.ver_dashboard'
 
-function asSolicitacaoContext(
-  context:
-    | SolicitacaoTfdNotificationContext
-    | LembreteViagem48hNotificationContext
-    | LembretePrestacao48hNotificationContext
-    | PrestacaoEnviadaNotificationContext
-    | PrestacaoDecisaoNotificationContext
-    | PrestacaoRejeitadaNotificationContext
-    | SaldoBaixoNotificationContext
-): SolicitacaoTfdNotificationContext {
+type SolicitacaoCompatibleContext = Exclude<
+  DispararNotificacaoInput['context'],
+  NotificacaoEmailFalhouNotificationContext
+>
+
+function asSolicitacaoContext(context: SolicitacaoCompatibleContext): SolicitacaoTfdNotificationContext {
   return context as SolicitacaoTfdNotificationContext
 }
 
@@ -63,7 +71,13 @@ function buildMessage(
   evento: NotificationEvent,
   input: DispararNotificacaoInput
 ): NotificationMessage {
-  const solicitacaoContext = asSolicitacaoContext(input.context)
+  if (evento === NOTIFICATION_EVENTS.NOTIFICACAO_EMAIL_FALHOU) {
+    return buildNotificacaoEmailFalhouMessage(
+      input.context as NotificacaoEmailFalhouNotificationContext
+    )
+  }
+
+  const solicitacaoContext = asSolicitacaoContext(input.context as SolicitacaoCompatibleContext)
 
   switch (evento) {
     case NOTIFICATION_EVENTS.SOLICITACAO_TFD_ENVIADA:
@@ -98,6 +112,10 @@ function buildMessage(
       return buildProcessoCanceladoMessage(solicitacaoContext)
     case NOTIFICATION_EVENTS.SALDO_BAIXO:
       return buildSaldoBaixoMessage(input.context as SaldoBaixoNotificationContext)
+    case NOTIFICATION_EVENTS.RETORNO_REGISTRADO:
+      return buildRetornoRegistradoMessage(solicitacaoContext)
+    case NOTIFICATION_EVENTS.PENDENTE_30_DIAS:
+      return buildPendente30DiasMessage(solicitacaoContext)
     default: {
       const _exhaustive: never = evento
       throw new Error(`Evento de notificação não suportado: ${String(_exhaustive)}`)
@@ -360,6 +378,16 @@ async function resolverDestinatarios(
     )
   }
 
+  if (input.evento === NOTIFICATION_EVENTS.NOTIFICACAO_EMAIL_FALHOU) {
+    return resolverGestoresVerDashboardModulo(
+      db,
+      input.tenantId,
+      input.modulo,
+      PERMISSAO_VER_DASHBOARD_TFD,
+      input.excludeUserIds ?? []
+    )
+  }
+
   if (input.recipientUserIds && input.recipientUserIds.length > 0) {
     const unique = new Set<string>()
     for (const userId of input.recipientUserIds) {
@@ -378,36 +406,205 @@ async function resolverDestinatarios(
   )
 }
 
+function escapeHtmlForEmail(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+    .replace(/\n/g, '<br />')
+}
+
+function buildDispararNotificacaoResult(
+  inAppRequired: boolean,
+  inApp: boolean,
+  emailRequired: boolean,
+  email: boolean,
+  emailChannelFailed: boolean
+): DispararNotificacaoResult {
+  const ok =
+    (!inAppRequired || inApp) && (!emailRequired || !emailChannelFailed)
+
+  return { inApp, email, ok }
+}
+
+function failureResult(): DispararNotificacaoResult {
+  return { inApp: false, email: false, ok: false }
+}
+
+async function enviarNotificacoesEmail(
+  db: TenantDb,
+  input: DispararNotificacaoInput,
+  destinatarios: string[],
+  titulo: string,
+  mensagem: string,
+  smtpConfig: SmtpConfig | null,
+  from: string
+): Promise<{ email: boolean; emailChannelFailed: boolean }> {
+  const users = await db.user.findMany({
+    where: {
+      tenant_id: input.tenantId,
+      id: { in: destinatarios },
+      active: true,
+      deleted_at: null,
+    },
+    select: { id: true, email: true },
+  })
+
+  const destinatariosComEmail = users.filter(
+    (user) => typeof user.email === 'string' && user.email.trim() !== ''
+  )
+
+  if (destinatariosComEmail.length === 0) {
+    return { email: true, emailChannelFailed: false }
+  }
+
+  const tituloNotificacao = titulo.slice(0, 200)
+  const htmlBody = escapeHtmlForEmail(mensagem)
+  const smtpDisponivel = isSmtpTransportConfigured(smtpConfig)
+  let tentativasEnvio = 0
+  let enviosComSucesso = 0
+  let emailChannelFailed = false
+
+  for (const destinatario of destinatariosComEmail) {
+    const endereco = destinatario.email.trim()
+
+    const notificacao = await db.notificacao.create({
+      data: {
+        tenant_id: input.tenantId,
+        user_id: destinatario.id,
+        processo_id: input.processoId ?? null,
+        canal: 'EMAIL',
+        status: 'PENDENTE',
+        evento: input.evento,
+        titulo: tituloNotificacao,
+        corpo: mensagem,
+      },
+      select: { id: true },
+    })
+
+    if (!smtpDisponivel) {
+      continue
+    }
+
+    tentativasEnvio += 1
+
+    try {
+      await sendEmail(
+        {
+          from,
+          to: [endereco],
+          subject: tituloNotificacao,
+          textBody: mensagem,
+          htmlBody,
+        },
+        smtpConfig
+      )
+
+      await db.notificacao.update({
+        where: { id: notificacao.id },
+        data: {
+          status: 'ENVIADO',
+          enviado_at: new Date(),
+        },
+      })
+
+      enviosComSucesso += 1
+    } catch (error) {
+      emailChannelFailed = true
+
+      await db.notificacao.update({
+        where: { id: notificacao.id },
+        data: {
+          status: 'FALHOU',
+          tentativas: { increment: 1 },
+          proxima_tentativa_at: new Date(Date.now() + RETRY_DELAY_MS),
+        },
+      })
+
+      console.error('[dispararNotificacao] Falha no envio de e-mail.', {
+        tenantId: input.tenantId,
+        evento: input.evento,
+        notificacaoId: notificacao.id,
+        message: error instanceof Error ? error.message : 'Erro desconhecido no envio SMTP.',
+      })
+    }
+  }
+
+  if (!smtpDisponivel) {
+    return { email: false, emailChannelFailed: false }
+  }
+
+  return {
+    email: tentativasEnvio > 0 && enviosComSucesso === tentativasEnvio,
+    emailChannelFailed,
+  }
+}
+
 /**
- * Dispara notificações in-app para os destinatários do evento.
- * Retorna `true` se ao menos uma notificação foi criada; `false` se sem destinatários ou erro.
+ * Dispara notificações in-app e e-mail conforme `event-channels.ts`.
  */
-export async function dispararNotificacao(input: DispararNotificacaoInput): Promise<boolean> {
+export async function dispararNotificacao(
+  input: DispararNotificacaoInput
+): Promise<DispararNotificacaoResult> {
+  const inAppRequired = eventoSuportaInApp(input.evento)
+  const emailRequired = eventoSuportaEmail(input.evento)
+
   try {
     const db = await getPrismaForTenant(input.tenantId)
     const { titulo, mensagem } = buildMessage(input.evento, input)
     const destinatarios = await resolverDestinatarios(db, input)
 
     if (destinatarios.length === 0) {
-      return false
+      return failureResult()
     }
 
-    const enviadoAt = new Date()
+    let inApp = false
 
-    await db.notificacao.createMany({
-      data: destinatarios.map((userId) => ({
-        tenant_id: input.tenantId,
-        user_id: userId,
-        processo_id: input.processoId ?? null,
-        canal: 'IN_APP' as const,
-        status: 'ENVIADO' as const,
-        titulo: titulo.slice(0, 200),
+    if (inAppRequired) {
+      inApp = await criarNotificacaoInApp(db, {
+        tenantId: input.tenantId,
+        userIds: destinatarios,
+        processoId: input.processoId,
+        titulo,
         corpo: mensagem,
-        enviado_at: enviadoAt,
-      })),
-    })
+      })
+    }
 
-    return true
+    let email = true
+    let emailChannelFailed = false
+
+    if (emailRequired) {
+      const tenantEmailConfig = await getTenantEmailConfig(input.tenantId, db)
+
+      if (!tenantEmailConfig.enabled) {
+        email = true
+      } else if (!tenantEmailConfig.from) {
+        email = false
+        emailChannelFailed = true
+      } else {
+        const resultadoEmail = await enviarNotificacoesEmail(
+          db,
+          input,
+          destinatarios,
+          titulo,
+          mensagem,
+          tenantEmailConfig.smtp,
+          tenantEmailConfig.from
+        )
+        email = resultadoEmail.email
+        emailChannelFailed = resultadoEmail.emailChannelFailed
+      }
+    }
+
+    return buildDispararNotificacaoResult(
+      inAppRequired,
+      inApp,
+      emailRequired,
+      email,
+      emailChannelFailed
+    )
   } catch (error) {
     console.error('[dispararNotificacao] Falha ao disparar notificação:', {
       tenantId: input.tenantId,
@@ -416,6 +613,6 @@ export async function dispararNotificacao(input: DispararNotificacaoInput): Prom
       processoId: input.processoId ?? null,
       error: error instanceof Error ? error.message : 'Erro desconhecido',
     })
-    return false
+    return failureResult()
   }
 }

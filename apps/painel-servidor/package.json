@@ -14,6 +14,7 @@
     "@saude/core-auth": "*",
     "@saude/core-db": "*",
     "@saude/core-documents": "*",
+    "@saude/core-notifications": "*",
     "@saude/mod-saude-tfd": "*",
     "@saude/ui": "*",
     "@saude/validators": "*",

@@ -1,0 +1,52 @@
+import {
+  NOTIFICATION_CHANNELS,
+  NOTIFICATION_EVENTS,
+  type NotificationChannel,
+  type NotificationEvent,
+} from './types'
+
+/** Canais obrigatórios por evento (`BUSINESS_RULES.md` §1.14 + decisões Sprint 2.4). */
+export type EventChannelsConfig = readonly NotificationChannel[]
+
+const IN_APP = NOTIFICATION_CHANNELS.IN_APP
+const EMAIL = NOTIFICATION_CHANNELS.EMAIL
+
+const IN_APP_AND_EMAIL: EventChannelsConfig = [IN_APP, EMAIL]
+const IN_APP_ONLY: EventChannelsConfig = [IN_APP]
+
+/**
+ * Mapa evento → canais obrigatórios.
+ * Eventos ausentes de §1.14 (ex.: análise iniciada) permanecem somente in-app.
+ */
+export const EVENT_CHANNELS: Record<NotificationEvent, EventChannelsConfig> = {
+  [NOTIFICATION_EVENTS.SOLICITACAO_TFD_ENVIADA]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.SOLICITACAO_TFD_MUITO_URGENTE]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.ANALISE_TFD_INICIADA]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.COMPLEMENTO_TFD_SOLICITADO]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.COMPLEMENTO_TFD_ENVIADO]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.SOLICITACAO_TFD_APROVADA]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.SOLICITACAO_TFD_NEGADA]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.AGENDAMENTO_TFD_CRIADO]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.LEMBRETE_VIAGEM_48H]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.LEMBRETE_PRESTACAO_48H]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.PRESTACAO_ENVIADA]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.PRESTACAO_APROVADA]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.PRESTACAO_REJEITADA]: IN_APP_AND_EMAIL,
+  [NOTIFICATION_EVENTS.PROCESSO_CANCELADO]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.SALDO_BAIXO]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.RETORNO_REGISTRADO]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.PENDENTE_30_DIAS]: IN_APP_ONLY,
+  [NOTIFICATION_EVENTS.NOTIFICACAO_EMAIL_FALHOU]: IN_APP_ONLY,
+}
+
+export function getCanaisObrigatorios(evento: NotificationEvent): NotificationChannel[] {
+  return [...EVENT_CHANNELS[evento]]
+}
+
+export function eventoSuportaEmail(evento: NotificationEvent): boolean {
+  return EVENT_CHANNELS[evento].includes(EMAIL)
+}
+
+export function eventoSuportaInApp(evento: NotificationEvent): boolean {
+  return EVENT_CHANNELS[evento].includes(IN_APP)
+}

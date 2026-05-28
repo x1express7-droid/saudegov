@@ -1,7 +1,7 @@
 'use client'
 
-import { Alert, Button } from '@saude/ui'
-import { Copy, X } from 'lucide-react'
+import { Alert, Button, copyToClipboard } from '@saude/ui'
+import { Check, Copy, X } from 'lucide-react'
 import { useState } from 'react'
 
 interface TempPasswordBannerProps {
@@ -16,15 +16,18 @@ export function TempPasswordBanner({
   onDismiss,
 }: TempPasswordBannerProps) {
   const [copied, setCopied] = useState(false)
+  const [copyError, setCopyError] = useState(false)
 
   async function handleCopy() {
-    try {
-      await navigator.clipboard.writeText(tempPassword)
+    setCopyError(false)
+    const ok = await copyToClipboard(tempPassword)
+    if (ok) {
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
-    } catch {
-      setCopied(false)
+      return
     }
+    setCopied(false)
+    setCopyError(true)
   }
 
   return (
@@ -35,11 +38,18 @@ export function TempPasswordBanner({
           entregue ao usuário de forma segura. Ela não será exibida novamente nesta tela.
         </p>
         <div className="flex flex-wrap items-center gap-[var(--space-3)]">
-          <code className="rounded-[var(--radius)] bg-[var(--color-surface)] px-[var(--space-3)] py-[var(--space-2)] font-mono text-[length:var(--text-sm)]">
+          <code
+            className="select-all rounded-[var(--radius)] bg-[var(--color-surface)] px-[var(--space-3)] py-[var(--space-2)] font-mono text-[length:var(--text-sm)]"
+            title="Selecione e copie manualmente se o botão falhar"
+          >
             {tempPassword}
           </code>
-          <Button type="button" variant="secondary" onClick={handleCopy}>
-            <Copy className="size-4" aria-hidden="true" />
+          <Button type="button" variant="secondary" onClick={() => void handleCopy()}>
+            {copied ? (
+              <Check className="size-4" aria-hidden="true" />
+            ) : (
+              <Copy className="size-4" aria-hidden="true" />
+            )}
             {copied ? 'Copiado' : 'Copiar'}
           </Button>
           <Button type="button" variant="ghost" onClick={onDismiss}>
@@ -47,6 +57,11 @@ export function TempPasswordBanner({
             Fechar
           </Button>
         </div>
+        {copyError ? (
+          <p role="alert" className="text-[length:var(--text-sm)] text-[var(--color-error)]">
+            Não foi possível copiar automaticamente. Selecione a senha acima e use Ctrl+C.
+          </p>
+        ) : null}
       </div>
     </Alert>
   )

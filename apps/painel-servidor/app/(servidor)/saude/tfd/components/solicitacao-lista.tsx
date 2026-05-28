@@ -20,6 +20,9 @@ import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 
+import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
+import { PermissionGate } from '@saude/ui/permission-gate'
+
 import { MoverFilaDialog } from './mover-fila-dialog'
 import { TfdExportCsvButton } from './tfd-export-csv-button'
 
@@ -221,25 +224,45 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
         ),
       },
       {
-        id: 'acoesFila',
-        header: '',
+        id: 'acoes',
+        header: 'Ações',
         cell: ({ row }) => {
           const posicao = row.original.posicaoFila
-          if (posicao == null) {
-            return null
-          }
+          const agendamentoHabilitado = row.original.status === 'APROVADO'
+          const agendamentoHref = `/saude/tfd/processos/${row.original.processoId}/agendamentos/novo?solicitacaoId=${row.original.id}`
+
           return (
             <div
-              className="flex justify-end"
+              className="flex flex-wrap items-center justify-end gap-[var(--space-2)]"
               onClick={(event) => event.stopPropagation()}
               onKeyDown={(event) => event.stopPropagation()}
             >
-              <MoverFilaDialog
-                session={session}
-                solicitacaoId={row.original.id}
-                protocolo={row.original.protocolo}
-                posicaoAtual={posicao}
-              />
+              {posicao != null ? (
+                <PermissionGate session={session} permission={TFD_PERMISSIONS.MOVER_FILA}>
+                  <MoverFilaDialog
+                    session={session}
+                    solicitacaoId={row.original.id}
+                    protocolo={row.original.protocolo}
+                    posicaoAtual={posicao}
+                  />
+                </PermissionGate>
+              ) : null}
+
+              <PermissionGate session={session} permission={TFD_PERMISSIONS.CRIAR_AGENDAMENTO}>
+                {agendamentoHabilitado ? (
+                  <Button variant="secondary" asChild>
+                    <Link href={agendamentoHref}>Agendar</Link>
+                  </Button>
+                ) : (
+                  <Button
+                    variant="secondary"
+                    disabled
+                    title="Disponível após aprovação"
+                  >
+                    Agendar
+                  </Button>
+                )}
+              </PermissionGate>
             </div>
           )
         },

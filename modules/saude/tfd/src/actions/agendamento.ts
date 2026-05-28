@@ -314,8 +314,12 @@ export async function registrarRetornoAgendamento(
         solicitacao: {
           select: {
             saldo_id: true,
+            solicitante_id: true,
+            urgencia: true,
+            especialidade: { select: { nome: true } },
           },
         },
+        processo: { select: { aberto_por_id: true } },
       },
     })
 
@@ -338,6 +342,9 @@ export async function registrarRetornoAgendamento(
     const timezone = resolveTenantTimezone(tenant?.settings)
     const prazoEnvioAt = calcPrazoEnvioPrestacao(agendamento.data_consulta, timezone)
     const protocolo = agendamento.protocolo
+    const especialidadeNome = agendamento.solicitacao.especialidade?.nome ?? 'Não informada'
+    const servidorResponsavelId =
+      agendamento.processo.aberto_por_id ?? agendamento.solicitacao.solicitante_id
     const realizadoAt = new Date()
 
     const resultado = await db.$transaction(async (tx) => {
@@ -495,6 +502,22 @@ export async function registrarRetornoAgendamento(
           modulo: MODULO_TFD,
           processoId: resultado.processoId,
         },
+      })
+    }
+
+    if (servidorResponsavelId) {
+      await dispararNotificacao({
+        tenantId,
+        evento: NOTIFICATION_EVENTS.RETORNO_REGISTRADO,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        context: {
+          protocolo,
+          especialidade: especialidadeNome,
+          urgencia: agendamento.solicitacao.urgencia,
+        },
+        recipientUserIds: [servidorResponsavelId],
+        excludeUserIds: [session.user.id],
       })
     }
 

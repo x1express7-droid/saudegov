@@ -9,6 +9,7 @@ import {
   getPacienteAtendimentoTfd,
   getPrestadoresTfd,
   getProcessoTfdDetalhe,
+  getDadosClinicosProcesso,
   getProcedimentosTfd,
   getSolicitacoesOrigemRetornoTfd,
   isCadsusEnabledForTenant,
@@ -78,6 +79,15 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
 
   const tenantId = tenant.id
 
+  let dadosClinicos = null
+  if (processoId) {
+    try {
+      dadosClinicos = await getDadosClinicosProcesso(processoId)
+    } catch {
+      dadosClinicos = null
+    }
+  }
+
   const [especialidadesResult, procedimentosResult, prestadoresResult, solicitacoesOrigem, cadsusEnabled] =
     await Promise.all([
       getEspecialidadesTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
@@ -106,6 +116,8 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
       <AtendimentoTfdForm
         initialPaciente={initialPaciente}
         processoId={processoId}
+        session={session}
+        dadosClinicos={dadosClinicos}
         cadsusEnabled={cadsusEnabled}
         especialidades={especialidadesResult.items}
         procedimentos={procedimentosResult.items}

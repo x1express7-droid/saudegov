@@ -10,11 +10,30 @@ export {
   type PrestacaoDecisaoNotificationContext,
   type PrestacaoRejeitadaNotificationContext,
   type SaldoBaixoNotificationContext,
+  type NotificacaoEmailFalhouNotificationContext,
   type NotificationMessage,
   type DispararNotificacaoInput,
+  type DispararNotificacaoResult,
+  type SmtpConfig,
+  type TenantEmailConfig,
+  type SendEmailParams,
 } from './types'
 
+export { getTenantEmailConfig } from './tenant-email-config'
+export { sendEmail, isSmtpTransportConfigured } from './email'
+export { criarNotificacaoInApp, type CriarNotificacaoInAppInput } from './inapp'
+
+export {
+  EVENT_CHANNELS,
+  getCanaisObrigatorios,
+  eventoSuportaEmail,
+  eventoSuportaInApp,
+  type EventChannelsConfig,
+} from './event-channels'
+
 export { dispararNotificacao } from './dispatcher'
+
+export { processarFilaEmail, type ProcessarFilaEmailResult } from './jobs/processar-fila-email'
 
 export { buildSolicitacaoTfdEnviadaMessage } from './templates/solicitacao-tfd-enviada'
 export { buildSolicitacaoTfdMuitoUrgenteMessage } from './templates/solicitacao-tfd-muito-urgente'
@@ -27,3 +46,4 @@ export { buildPrestacaoAprovadaMessage } from './templates/prestacao-aprovada'
 export { buildPrestacaoRejeitadaMessage } from './templates/prestacao-rejeitada'
 export { buildProcessoCanceladoMessage } from './templates/processo-cancelado'
 export { buildSaldoBaixoMessage } from './templates/saldo-baixo'
+export { buildNotificacaoEmailFalhouMessage } from './templates/notificacao-email-falhou'

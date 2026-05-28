@@ -1,4 +1,6 @@
 export { cn } from './utils/cn'
+export { copyToClipboard } from './utils/copy-to-clipboard'
+export { resolveSaudeNavIcon } from './utils/saude-nav-icons'
 
 export { Alert, alertVariants } from './components/alert'
 export type { AlertProps } from './components/alert'

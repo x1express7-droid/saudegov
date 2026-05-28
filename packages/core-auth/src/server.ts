@@ -2,7 +2,14 @@ import 'server-only'
 
 export type { SaudeMunicSession, UserRole } from './types/session'
 
-export { BCRYPT_ROUNDS, hashPassword, verifyPassword } from './crypto'
+export {
+  BCRYPT_ROUNDS,
+  hashPassword,
+  verifyPassword,
+  encryptTenantSecret,
+  decryptTenantSecret,
+  type TenantSecretPayload,
+} from './crypto'
 
 export { maskCPF, maskCNS, maskEmail, maskToken } from './masking'
 

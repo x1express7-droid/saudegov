@@ -1,6 +1,6 @@
 'use client'
 
-import { TfdSolicitacaoDetalhe, TfdViagemSolicitacaoItem } from '@saude/mod-saude-tfd/client'
+import { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd/client'
 import type { ReactNode } from 'react'
 
 import { Button, Card, CardHeader, Spinner, TFD_URGENCIA_CONFIG } from '@saude/ui'
@@ -12,15 +12,6 @@ const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
   RETORNO: 'Retorno',
   EXAME: 'Exame',
   CIRURGIA: 'Cirurgia',
-}
-
-const RELACAO_LABEL: Record<string, string> = {
-  CONJUGE: 'Cônjuge',
-  FILHO_A: 'Filho(a)',
-  PAI_MAE: 'Pai/Mãe',
-  RESPONSAVEL_LEGAL: 'Responsável legal',
-  CUIDADOR: 'Cuidador',
-  OUTRO: 'Outro',
 }
 
 const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -35,11 +26,6 @@ const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
   year: 'numeric',
   hour: '2-digit',
   minute: '2-digit',
-})
-
-const currencyFormatter = new Intl.NumberFormat('pt-BR', {
-  style: 'currency',
-  currency: 'BRL',
 })
 
 function formatDate(iso: string | null): string {
@@ -58,33 +44,9 @@ function labelTipoAtendimento(tipo: string): string {
   return TIPO_ATENDIMENTO_LABEL[tipo] ?? tipo
 }
 
-function labelRelacao(relacao: string): string {
-  return RELACAO_LABEL[relacao] ?? relacao
-}
-
 function labelUrgencia(urgencia: string): string {
   const config = TFD_URGENCIA_CONFIG[urgencia as keyof typeof TFD_URGENCIA_CONFIG]
   return config?.label ?? urgencia
-}
-
-const VIAGEM_STATUS_LABEL: Record<string, string> = {
-  AGENDADA: 'Agendada',
-  REALIZADA: 'Realizada',
-  CANCELADA: 'Cancelada',
-}
-
-function labelViagemStatus(status: string): string {
-  return VIAGEM_STATUS_LABEL[status] ?? status
-}
-
-function labelLembrete48h(viagem: TfdViagemSolicitacaoItem): string {
-  if (viagem.lembrete48hEnviadoAt) {
-    return `Enviado em ${formatDateTime(viagem.lembrete48hEnviadoAt)}`
-  }
-  if (viagem.lembrete48hFalhouAt) {
-    return `Falha em ${formatDateTime(viagem.lembrete48hFalhouAt)}`
-  }
-  return 'Pendente'
 }
 
 function DetalheCampo({ label, children }: { label: string; children: ReactNode }) {
@@ -102,13 +64,9 @@ function DetalheCampo({ label, children }: { label: string; children: ReactNode 
 
 export interface SolicitacaoDetalheProps {
   solicitacao: TfdSolicitacaoDetalhe
-  viagens?: TfdViagemSolicitacaoItem[]
 }
 
-export function SolicitacaoDetalhe({
-  solicitacao,
-  viagens = [],
-}: SolicitacaoDetalheProps) {
+export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
   const [laudoError, setLaudoError] = useState<string | null>(null)
   const [isLaudoPending, startLaudoTransition] = useTransition()
 
@@ -152,21 +110,8 @@ export function SolicitacaoDetalhe({
           {formatDate(solicitacao.paciente.dataNascimento)}
         </DetalheCampo>
         <DetalheCampo label="CNS">{solicitacao.paciente.cns ?? '—'}</DetalheCampo>
-        <DetalheCampo label="Especialidade">
-          {solicitacao.especialidade?.nome ?? '—'}
-        </DetalheCampo>
-        <DetalheCampo label="Prestador">
-          {solicitacao.prestador
-            ? `${solicitacao.prestador.nome} — ${solicitacao.prestador.cidade}/${solicitacao.prestador.estado}`
-            : '—'}
-        </DetalheCampo>
         <DetalheCampo label="Tipo de atendimento">
           {labelTipoAtendimento(solicitacao.tipoAtendimento)}
-        </DetalheCampo>
-        <DetalheCampo label="Urgência">{labelUrgencia(solicitacao.urgencia)}</DetalheCampo>
-        <DetalheCampo label="Solicitante">{solicitacao.solicitante.nome}</DetalheCampo>
-        <DetalheCampo label="Data de abertura">
-          {formatDateTime(solicitacao.createdAt)}
         </DetalheCampo>
         <DetalheCampo label="Procedimentos">
           {solicitacao.procedimentos.length > 0 ? (
@@ -179,13 +124,21 @@ export function SolicitacaoDetalhe({
             '—'
           )}
         </DetalheCampo>
+        <DetalheCampo label="Especialidade">
+          {solicitacao.especialidade?.nome ?? '—'}
+        </DetalheCampo>
+        <DetalheCampo label="Prestador">
+          {solicitacao.prestador
+            ? `${solicitacao.prestador.nome} — ${solicitacao.prestador.cidade}/${solicitacao.prestador.estado}`
+            : '—'}
+        </DetalheCampo>
+        <DetalheCampo label="Urgência">{labelUrgencia(solicitacao.urgencia)}</DetalheCampo>
+        <DetalheCampo label="Solicitante">{solicitacao.solicitante.nome}</DetalheCampo>
+        <DetalheCampo label="Data de abertura">
+          {formatDateTime(solicitacao.createdAt)}
+        </DetalheCampo>
         {solicitacao.acompanhante ? (
-          <>
-            <DetalheCampo label="Acompanhante">{solicitacao.acompanhante.nome}</DetalheCampo>
-            <DetalheCampo label="Relação do acompanhante">
-              {labelRelacao(solicitacao.acompanhante.relacao)}
-            </DetalheCampo>
-          </>
+          <DetalheCampo label="Acompanhante">{solicitacao.acompanhante.nome}</DetalheCampo>
         ) : null}
         {solicitacao.solicitacaoOrigemId ? (
           <DetalheCampo label="Solicitação de origem (retorno)">
@@ -197,45 +150,7 @@ export function SolicitacaoDetalhe({
             </Link>
           </DetalheCampo>
         ) : null}
-        {solicitacao.reservaSaldo ? (
-          <DetalheCampo label="Reserva financeira">
-            {currencyFormatter.format(solicitacao.reservaSaldo.valor)} ({solicitacao.reservaSaldo.status})
-          </DetalheCampo>
-        ) : null}
       </dl>
-
-      {viagens.length > 0 ? (
-        <section className="mt-[var(--space-6)] border-t border-[var(--color-border)] pt-[var(--space-4)]">
-          <h3 className="text-[length:var(--text-base)] font-semibold text-[var(--color-text)]">
-            Viagens agendadas
-          </h3>
-          <ul className="mt-[var(--space-4)] flex flex-col gap-[var(--space-3)]">
-            {viagens.map((viagem) => (
-              <li
-                key={viagem.id}
-                className="rounded-[var(--radius-md)] border border-[var(--color-border)] p-[var(--space-3)]"
-              >
-                <p className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
-                  Viagem {viagem.sequencia} — {labelViagemStatus(viagem.status)}
-                </p>
-                <dl className="mt-[var(--space-2)] grid gap-[var(--space-2)] sm:grid-cols-2">
-                  <DetalheCampo label="Data">{formatDate(viagem.dataViagem)}</DetalheCampo>
-                  <DetalheCampo label="Hora de saída">{viagem.horaSaida ?? '—'}</DetalheCampo>
-                  <DetalheCampo label="Motorista">
-                    {viagem.motorista?.nome ?? '—'}
-                  </DetalheCampo>
-                  <DetalheCampo label="Veículo">
-                    {viagem.veiculo
-                      ? `${viagem.veiculo.placa} — ${viagem.veiculo.modelo}`
-                      : '—'}
-                  </DetalheCampo>
-                  <DetalheCampo label="Lembrete 48h">{labelLembrete48h(viagem)}</DetalheCampo>
-                </dl>
-              </li>
-            ))}
-          </ul>
-        </section>
-      ) : null}
 
       {temDadosClinicos ? (
         <section className="mt-[var(--space-6)] border-t border-[var(--color-border)] pt-[var(--space-4)]">

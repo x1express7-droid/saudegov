@@ -64,6 +64,7 @@ Rotas em `apps/painel-servidor/app/api/cron/`. Todas exigem header `Authorizatio
 | Transição em viagem | `GET /api/cron/tfd-transicao-em-viagem` | Diária, antes do expediente — ex.: `0 9 * * *` UTC (~06:00 em `America/Sao_Paulo`) | Para viagens `AGENDADA` com `data_viagem` ≤ hoje (timezone do tenant em `settings.timezone`), transiciona solicitação `AGENDADO` → `EM_VIAGEM`, grava `em_viagem_transicionado_at` na viagem e registra tramitação/auditoria. Idempotente: viagens já com `em_viagem_transicionado_at` são ignoradas; se a solicitação já estiver `EM_VIAGEM` (outra viagem no mesmo dia), só marca a viagem sem duplicar o status. |
 | Transição agendamento em viagem | `GET /api/cron/tfd-transicao-agendamento` | Diária, antes do expediente — ex.: `0 9 * * *` UTC | Para agendamentos `AGENDADO` com `data_consulta` ≤ hoje, transiciona status do agendamento → `EM_VIAGEM` (fluxo Fase 3). |
 | Transição transporte em trânsito | `GET /api/cron/tfd-transicao-transporte` | A cada hora (`0 * * * *`) ou conforme operação | Para segmentos `CONFIRMADO` com data/hora de saída atingida, transiciona → `EM_TRANSITO`. |
+| Retry de e-mail (notificações) | `GET /api/cron/notificacoes-email-retry` | A cada hora (`0 * * * *`) | Reenvia notificações `EMAIL` com status `PENDENTE` ou `FALHOU`, menos de 3 tentativas e `proxima_tentativa_at` vencida ou nula. Após 3 falhas, notifica gestor in-app (falha definitiva). |
 
 Teste local (painel-servidor na porta 3001):
 

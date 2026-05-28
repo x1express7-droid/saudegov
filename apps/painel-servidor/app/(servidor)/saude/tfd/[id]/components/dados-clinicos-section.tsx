@@ -44,6 +44,7 @@ export function DadosClinicosSection({
   const [isPending, startTransition] = useTransition()
 
   const preenchido = useMemo(() => hasConteudoClinico(dadosIniciais), [dadosIniciais])
+  const somenteLeitura = preenchido
 
   const atualizadoEm = dadosIniciais.updatedAt
     ? new Date(dadosIniciais.updatedAt).toLocaleString('pt-BR', {
@@ -55,13 +56,13 @@ export function DadosClinicosSection({
       })
     : null
 
-  function iniciarEdicao() {
-    setSubjetivo(dadosIniciais.subjetivo ?? '')
-    setObjetivo(dadosIniciais.objetivo ?? '')
-    setAvaliacao(dadosIniciais.avaliacao ?? '')
-    setPlano(dadosIniciais.plano ?? '')
-    setMotivoQuadro(dadosIniciais.motivoQuadro ?? '')
-    setObservacao(dadosIniciais.observacao ?? '')
+  function iniciarPreenchimento() {
+    setSubjetivo('')
+    setObjetivo('')
+    setAvaliacao('')
+    setPlano('')
+    setMotivoQuadro('')
+    setObservacao('')
     setEditando(true)
     setAberto(true)
     setServerError(null)
@@ -124,7 +125,7 @@ export function DadosClinicosSection({
             </p>
           )}
 
-          {!editando && preenchido ? (
+          {somenteLeitura && !editando ? (
             <dl className="grid gap-[var(--space-3)] text-[length:var(--text-sm)]">
               {dadosIniciais.subjetivo ? (
                 <div>
@@ -256,13 +257,13 @@ export function DadosClinicosSection({
                 </Button>
               </div>
             </div>
-          ) : (
+          ) : !somenteLeitura ? (
             <PermissionGate session={session} permission={TFD_PERMISSIONS.REGISTRAR_DADOS_CLINICOS}>
-              <Button type="button" variant="secondary" onClick={iniciarEdicao}>
-                {preenchido ? 'Editar dados clínicos' : 'Preencher dados clínicos'}
+              <Button type="button" variant="secondary" onClick={iniciarPreenchimento}>
+                Preencher dados clínicos
               </Button>
             </PermissionGate>
-          )}
+          ) : null}
         </div>
       </details>
     </Card>

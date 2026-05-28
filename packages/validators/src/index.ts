@@ -56,3 +56,11 @@ export type {
 export { atualizarCadsusConfigSchema } from './cadsus.schema'
 
 export type { AtualizarCadsusConfigInput } from './cadsus.schema'
+
+export { atualizarNotificacoesEmailConfigSchema } from './notificacoes-email.schema'
+
+export type { AtualizarNotificacoesEmailConfigInput } from './notificacoes-email.schema'
+
+export { atualizarSmtpConfigSchema } from './smtp.schema'
+
+export type { AtualizarSmtpConfigInput } from './smtp.schema'

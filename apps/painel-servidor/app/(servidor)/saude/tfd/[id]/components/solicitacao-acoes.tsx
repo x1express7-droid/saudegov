@@ -22,11 +22,12 @@ import {
   Textarea,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
-import { AgendamentoForm } from './agendamento-form'
 import { CancelarSolicitacaoDialog } from './cancelar-solicitacao-dialog'
+import { ReclassificarDialog } from './reclassificar-dialog'
 import { DecisaoForm } from './decisao-form'
 import { DespesaForm } from './despesa-form'
 import { PrestacaoAnalisePainel } from './prestacao-analise-painel'
@@ -129,8 +130,14 @@ export function SolicitacaoAcoes({
     solicitacao.status === 'EM_ANALISE' ||
     solicitacao.status === 'PENDENTE'
 
-  const showAgendamentoForm =
+  const showAgendamentoLink =
     solicitacao.status === 'APROVADO' || solicitacao.status === 'AGENDADO'
+
+  const showReclassificar =
+    solicitacao.status === 'ENVIADO' ||
+    solicitacao.status === 'EM_ANALISE' ||
+    solicitacao.status === 'PENDENTE' ||
+    solicitacao.status === 'APROVADO'
 
   const showRetorno = solicitacao.status === 'EM_VIAGEM'
   const showDespesa =
@@ -148,7 +155,8 @@ export function SolicitacaoAcoes({
 
   const hasAnyAction =
     hasRegulacaoAction ||
-    showAgendamentoForm ||
+    showReclassificar ||
+    showAgendamentoLink ||
     showRetorno ||
     showDespesa ||
     showAnalisePrestacao ||
@@ -315,18 +323,26 @@ export function SolicitacaoAcoes({
           </div>
         ) : null}
 
-        {showAgendamentoForm ? (
-          <PermissionGate session={session} permission={TFD_PERMISSIONS.AGENDAR_VIAGEM}>
+        {showReclassificar ? (
+          <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
+            <ReclassificarDialog
+              session={session}
+              solicitacaoId={solicitacao.id}
+              urgenciaAtual={solicitacao.urgencia}
+            />
+          </div>
+        ) : null}
+
+        {showAgendamentoLink ? (
+          <PermissionGate session={session} permission={TFD_PERMISSIONS.CRIAR_AGENDAMENTO}>
             <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
-              <AgendamentoForm
-                solicitacaoId={solicitacao.id}
-                veiculos={veiculosAgendamento}
-                titulo={
-                  solicitacao.status === 'APROVADO'
-                    ? 'Agendar viagem'
-                    : 'Agendar nova viagem'
-                }
-              />
+              <Button type="button" variant="primary" asChild>
+                <Link
+                  href={`/saude/tfd/processos/${solicitacao.processoId}/agendamentos/novo?solicitacaoId=${solicitacao.id}`}
+                >
+                  {solicitacao.status === 'APROVADO' ? 'Agendar viagem' : 'Novo agendamento'}
+                </Link>
+              </Button>
             </div>
           </PermissionGate>
         ) : null}

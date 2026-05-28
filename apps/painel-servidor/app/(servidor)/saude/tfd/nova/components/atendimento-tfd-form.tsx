@@ -1,9 +1,11 @@
 'use client'
 
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import type { TfdPacienteAtendimentoDetalhe } from '@saude/mod-saude-tfd/client'
 import type {
   TfdEspecialidadeListItem,
   TfdPrestadorListItem,
+  TfdProcessoDadosClinicosOutput,
   TfdProcedimentoListItem,
   TfdSolicitacaoOrigemRetornoItem,
 } from '@saude/mod-saude-tfd/client'
@@ -20,6 +22,8 @@ import {
 export interface AtendimentoTfdFormProps {
   initialPaciente?: TfdPacienteAtendimentoDetalhe | null
   processoId?: string
+  session?: SaudeMunicSession
+  dadosClinicos?: TfdProcessoDadosClinicosOutput | null
   cadsusEnabled?: boolean
   especialidades: TfdEspecialidadeListItem[]
   procedimentos: TfdProcedimentoListItem[]
@@ -30,6 +34,8 @@ export interface AtendimentoTfdFormProps {
 export function AtendimentoTfdForm({
   initialPaciente,
   processoId,
+  session,
+  dadosClinicos = null,
   cadsusEnabled = false,
   especialidades,
   procedimentos,
@@ -69,6 +75,8 @@ export function AtendimentoTfdForm({
             possuiCpf: pacienteCpf.length === 11,
           }}
           processoId={processoId}
+          session={session}
+          dadosClinicos={dadosClinicos}
           especialidades={especialidades}
           procedimentos={procedimentos}
           prestadores={prestadores}

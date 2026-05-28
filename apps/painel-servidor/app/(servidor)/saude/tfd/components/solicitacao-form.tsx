@@ -1,7 +1,16 @@
 'use client'
 
 import { TFD_SOLICITACOES_PATH } from '@/lib/tfd/routes'
-import { abrirSolicitacaoSchema, type AbrirSolicitacaoInput, type TfdEspecialidadeListItem, type TfdPrestadorListItem, type TfdProcedimentoListItem, type TfdSolicitacaoOrigemRetornoItem } from '@saude/mod-saude-tfd/client'
+import {
+  abrirSolicitacaoSchema,
+  type AbrirSolicitacaoInput,
+  type TfdEspecialidadeListItem,
+  type TfdPrestadorListItem,
+  type TfdProcessoDadosClinicosOutput,
+  type TfdProcedimentoListItem,
+  type TfdSolicitacaoOrigemRetornoItem,
+} from '@saude/mod-saude-tfd/client'
+import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/solicitacao'
 import {
   Alert,
@@ -21,9 +30,11 @@ import { useEffect, useMemo, useState, useTransition } from 'react'
 import {
   Controller,
   useForm,
+  type FieldErrors,
   type Resolver,
 } from 'react-hook-form'
 
+import { DadosClinicosSection } from '../[id]/components/dados-clinicos-section'
 import { SolicitacaoAcompanhanteFields } from './solicitacao-acompanhante-fields'
 import { SolicitacaoLaudoUpload } from './solicitacao-laudo-upload'
 import { SolicitacaoRetornoPicker } from './solicitacao-retorno-picker'
@@ -42,6 +53,49 @@ const URGENCIA_OPTIONS = Object.entries(TFD_URGENCIA_CONFIG).map(([value, config
   label: config.label,
 }))
 
+function omitAcompanhanteCpfErrors(
+  errors: FieldErrors<AbrirSolicitacaoInput>
+): FieldErrors<AbrirSolicitacaoInput> {
+  if (!errors.acompanhante || typeof errors.acompanhante !== 'object') {
+    return errors
+  }
+
+  const acompanhanteErrors = { ...errors.acompanhante } as Record<string, unknown>
+  delete acompanhanteErrors.cpf
+
+  const next: FieldErrors<AbrirSolicitacaoInput> = { ...errors }
+  if (Object.keys(acompanhanteErrors).length === 0) {
+    delete next.acompanhante
+  } else {
+    next.acompanhante = acompanhanteErrors as FieldErrors<AbrirSolicitacaoInput>['acompanhante']
+  }
+
+  return next
+}
+
+const zodResolveAbrirSolicitacao = zodResolver(
+  abrirSolicitacaoSchema
+) as Resolver<AbrirSolicitacaoInput>
+
+const abrirSolicitacaoFormResolver: Resolver<AbrirSolicitacaoInput> = async (
+  values,
+  context,
+  options
+) => {
+  const result = await zodResolveAbrirSolicitacao(values, context, options)
+
+  if (Object.keys(result.errors).length === 0) {
+    return result
+  }
+
+  const filteredErrors = omitAcompanhanteCpfErrors(result.errors)
+  if (Object.keys(filteredErrors).length === 0) {
+    return { values, errors: {} }
+  }
+
+  return { values: {}, errors: filteredErrors }
+}
+
 export interface SolicitacaoFormPaciente {
   id: string
   nome: string
@@ -57,6 +111,8 @@ export interface SolicitacaoFormProps {
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
   /** Quando informado, vincula a solicitação a um processo TFD existente. */
   processoId?: string
+  session?: SaudeMunicSession
+  dadosClinicos?: TfdProcessoDadosClinicosOutput | null
 }
 
 function ProcedimentosCheckboxGroup({
@@ -65,12 +121,14 @@ function ProcedimentosCheckboxGroup({
   onChange,
   error,
   disabled,
+  required = false,
 }: {
   options: { value: string; label: string }[]
   selectedIds: string[]
   onChange: (ids: string[]) => void
   error?: string
   disabled?: boolean
+  required?: boolean
 }) {
   function toggle(procedimentoId: string) {
     if (disabled) {
@@ -86,7 +144,7 @@ function ProcedimentosCheckboxGroup({
   return (
     <fieldset className="flex flex-col gap-4" disabled={disabled}>
       <legend className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
-        Procedimentos *
+        Procedimentos{required ? ' *' : ''}
       </legend>
       {error ? (
         <p role="alert" className="text-[length:var(--text-sm)] text-[var(--color-error)]">
@@ -135,6 +193,8 @@ export function SolicitacaoForm({
   prestadores,
   solicitacoesOrigem,
   processoId,
+  session,
+  dadosClinicos = null,
 }: SolicitacaoFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -153,7 +213,7 @@ export function SolicitacaoForm({
     clearErrors,
     formState: { errors },
   } = useForm<AbrirSolicitacaoInput>({
-    resolver: zodResolver(abrirSolicitacaoSchema) as Resolver<AbrirSolicitacaoInput>,
+    resolver: abrirSolicitacaoFormResolver,
     defaultValues: {
       processoId,
       pacienteId: paciente.id,
@@ -172,6 +232,10 @@ export function SolicitacaoForm({
   const especialidadeId = watch('especialidadeId')
   const tipoAtendimento = watch('tipoAtendimento')
   const acompanhanteNecessario = watch('acompanhanteNecessario')
+
+  const especialidadeObrigatoria =
+    tipoAtendimento === 'CONSULTA' || tipoAtendimento === 'RETORNO'
+  const exibirProcedimentos = tipoAtendimento === 'EXAME'
 
   const especialidadeOptions = useMemo(
     () =>
@@ -219,6 +283,10 @@ export function SolicitacaoForm({
       setValue('solicitacaoOrigemId', undefined)
       clearErrors('solicitacaoOrigemId')
     }
+    if (tipoAtendimento !== 'EXAME') {
+      setValue('procedimentos', [])
+      clearErrors('procedimentos')
+    }
   }, [tipoAtendimento, setValue, clearErrors])
 
   useEffect(() => {
@@ -230,10 +298,9 @@ export function SolicitacaoForm({
 
     setValue('acompanhante', {
       nome: '',
-      cpf: '',
       relacao: 'OUTRO',
       telefone: '',
-    })
+    } as AbrirSolicitacaoInput['acompanhante'])
   }, [acompanhanteNecessario, setValue, clearErrors])
 
   useEffect(() => {
@@ -266,39 +333,34 @@ export function SolicitacaoForm({
   }
 
   function buildPayload(values: AbrirSolicitacaoInput): AbrirSolicitacaoInput {
+    const especialidadeIdValue = values.especialidadeId?.trim()
+      ? values.especialidadeId
+      : undefined
+
     return {
       ...values,
       processoId: processoId ?? values.processoId,
       pacienteId: paciente.id,
       pacienteCpf: undefined,
+      especialidadeId: especialidadeIdValue,
+      procedimentos: values.procedimentos ?? [],
       laudoAnexoId: laudoAnexoId ?? values.laudoAnexoId,
       solicitacaoOrigemId:
         values.tipoAtendimento === 'RETORNO' ? values.solicitacaoOrigemId : undefined,
-      acompanhante: values.acompanhanteNecessario ? values.acompanhante : undefined,
+      acompanhante:
+        values.acompanhanteNecessario && values.acompanhante
+          ? ({
+              nome: values.acompanhante.nome,
+              relacao: 'OUTRO' as const,
+              telefone: values.acompanhante.telefone,
+            } as AbrirSolicitacaoInput['acompanhante'])
+          : undefined,
     }
-  }
-
-  function validateAcompanhanteRegras(): boolean {
-    if (!acompanhanteNecessario) {
-      return true
-    }
-    if (!paciente.possuiCpf) {
-      setError('acompanhante', {
-        message:
-          'Paciente sem CPF cadastrado. Atualize o cadastro antes de informar acompanhante.',
-      })
-      return false
-    }
-    return true
   }
 
   function salvarRascunho(values: AbrirSolicitacaoInput) {
     setServerError(null)
     setLaudoError(null)
-
-    if (!validateAcompanhanteRegras()) {
-      return
-    }
 
     startTransition(async () => {
       const response = await abrirSolicitacaoTfd(buildPayload(values))
@@ -320,10 +382,6 @@ export function SolicitacaoForm({
   function enviarSolicitacao(values: AbrirSolicitacaoInput) {
     setServerError(null)
     setLaudoError(null)
-
-    if (!validateAcompanhanteRegras()) {
-      return
-    }
 
     startTransition(async () => {
       const abrirResponse = await abrirSolicitacaoTfd(buildPayload(values))
@@ -378,24 +436,24 @@ export function SolicitacaoForm({
         header={<CardHeader>Dados da solicitação</CardHeader>}
         bodyClassName={formFieldsStackClassName()}
       >
-          <Controller
-            name="especialidadeId"
-            control={control}
-            render={({ field }) => (
-              <Select
-                id="especialidade-id"
-                label="Especialidade"
-                required
-                placeholder="Selecione a especialidade"
-                options={especialidadeOptions}
-                value={field.value}
-                onValueChange={field.onChange}
-                disabled={isPending}
-                error={errors.especialidadeId?.message}
-              />
-            )}
-          />
+        <Controller
+          name="tipoAtendimento"
+          control={control}
+          render={({ field }) => (
+            <Select
+              id="tipo-atendimento"
+              label="Tipo de atendimento"
+              required
+              options={[...TIPO_ATENDIMENTO_OPTIONS]}
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={isPending}
+              error={errors.tipoAtendimento?.message}
+            />
+          )}
+        />
 
+        {exibirProcedimentos ? (
           <Controller
             name="procedimentos"
             control={control}
@@ -405,63 +463,74 @@ export function SolicitacaoForm({
                 selectedIds={field.value ?? []}
                 onChange={field.onChange}
                 disabled={isPending || !especialidadeId}
+                required
                 error={errors.procedimentos?.message}
               />
             )}
           />
+        ) : null}
 
-          <Controller
-            name="prestadorId"
-            control={control}
-            render={({ field }) => (
-              <Select
-                id="prestador-id"
-                label="Prestador de destino"
-                required
-                placeholder="Selecione o prestador"
-                options={prestadorOptions}
-                value={field.value}
-                onValueChange={field.onChange}
-                disabled={isPending || !especialidadeId}
-                error={errors.prestadorId?.message}
-              />
-            )}
-          />
+        <Controller
+          name="especialidadeId"
+          control={control}
+          render={({ field }) => (
+            <Select
+              id="especialidade-id"
+              label="Especialidade"
+              required={especialidadeObrigatoria}
+              placeholder="Selecione a especialidade"
+              options={especialidadeOptions}
+              value={field.value ?? ''}
+              onValueChange={field.onChange}
+              disabled={isPending}
+              error={errors.especialidadeId?.message}
+            />
+          )}
+        />
 
-          <Controller
-            name="tipoAtendimento"
-            control={control}
-            render={({ field }) => (
-              <Select
-                id="tipo-atendimento"
-                label="Tipo de atendimento"
-                required
-                options={[...TIPO_ATENDIMENTO_OPTIONS]}
-                value={field.value}
-                onValueChange={field.onChange}
-                disabled={isPending}
-                error={errors.tipoAtendimento?.message}
-              />
-            )}
-          />
+        <Controller
+          name="prestadorId"
+          control={control}
+          render={({ field }) => (
+            <Select
+              id="prestador-id"
+              label="Prestador de destino"
+              required
+              placeholder="Selecione o prestador"
+              options={prestadorOptions}
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={isPending || (especialidadeObrigatoria && !especialidadeId)}
+              error={errors.prestadorId?.message}
+            />
+          )}
+        />
 
-          <Controller
-            name="urgencia"
-            control={control}
-            render={({ field }) => (
-              <Select
-                id="urgencia"
-                label="Urgência"
-                required
-                options={URGENCIA_OPTIONS}
-                value={field.value}
-                onValueChange={field.onChange}
-                disabled={isPending}
-                error={errors.urgencia?.message}
-              />
-            )}
-          />
+        <Controller
+          name="urgencia"
+          control={control}
+          render={({ field }) => (
+            <Select
+              id="urgencia"
+              label="Urgência"
+              required
+              options={URGENCIA_OPTIONS}
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={isPending}
+              error={errors.urgencia?.message}
+            />
+          )}
+        />
       </Card>
+
+      {session && processoId && dadosClinicos ? (
+        <DadosClinicosSection
+          session={session}
+          processoId={processoId}
+          dadosIniciais={dadosClinicos}
+        />
+      ) : null}
 
       {tipoAtendimento === 'RETORNO' ? (
         <Card header={<CardHeader>Retorno</CardHeader>} bodyClassName={formFieldsStackClassName()}>
@@ -535,7 +604,7 @@ export function SolicitacaoForm({
                   className="size-4 accent-[var(--color-primary)]"
                   checked={field.value}
                   onChange={(event) => field.onChange(event.target.checked)}
-                  disabled={isPending || !paciente.possuiCpf}
+                  disabled={isPending}
                 />
                 <span className="text-[length:var(--text-sm)] text-[var(--color-text)]">
                   Paciente necessita de acompanhante (justificado no laudo)
@@ -544,16 +613,9 @@ export function SolicitacaoForm({
             )}
           />
 
-          {!paciente.possuiCpf ? (
-            <Alert variant="warning">
-              Cadastre o CPF do paciente para habilitar o registro de acompanhante.
-            </Alert>
-          ) : null}
-
           {acompanhanteNecessario ? (
             <SolicitacaoAcompanhanteFields
               register={register}
-              control={control}
               errors={errors}
               disabled={isPending}
             />

@@ -16,7 +16,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/saude/tfd/fila',
-        destination: '/saude/tfd/solicitacoes',
+        destination: '/saude/tfd/processos',
         permanent: false,
       },
       {

@@ -283,6 +283,7 @@ export interface TfdPacienteVinculadoItem {
 
 export interface TfdSolicitacaoListItem {
   id: string
+  processoId: string
   protocolo: string
   status: string
   urgencia: string

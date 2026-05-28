@@ -30,7 +30,6 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
-import { AgendamentosSection } from './components/agendamentos-section'
 import { DadosClinicosSection } from './components/dados-clinicos-section'
 import { SolicitacaoAcoes } from './components/solicitacao-acoes'
 import { SolicitacaoDetalhe } from './components/solicitacao-detalhe'
@@ -203,13 +202,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
 
       <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
-          <SolicitacaoDetalhe solicitacao={solicitacao} viagens={viagens} />
-          <AgendamentosSection
-            session={session}
-            processoId={solicitacao.processoId}
-            solicitacaoId={solicitacao.id}
-            solicitacaoStatus={solicitacao.status}
-          />
+          <SolicitacaoDetalhe solicitacao={solicitacao} />
           {dadosClinicos ? (
             <DadosClinicosSection
               session={session}

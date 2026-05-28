@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { Prisma } from '@prisma/client'
+import { z } from 'zod'
 import {
   assertModuleActive,
   requirePermission,
@@ -44,6 +45,48 @@ const MSG_PROCESSO_PACIENTE_DIVERGENTE =
   'O paciente da solicitação deve ser o mesmo vinculado ao processo.'
 const MSG_PROCESSO_ENCERRADO = 'Não é possível abrir solicitação em processo encerrado.'
 const PROCESSO_STATUS_ENCERRADOS = new Set(['CONCLUIDO', 'CANCELADO', 'ARQUIVADO'])
+
+const reclassificarUrgenciaValues = ['BAIXA', 'INTERMEDIARIA', 'GRAVE'] as const
+
+const reclassificarSolicitacaoSchema = z
+  .object({
+    solicitacaoId: z.string().uuid('ID da solicitação inválido.'),
+    novaUrgencia: z.string(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.novaUrgencia === 'MUITO_URGENTE') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Reclassificação não permite urgência Muito Urgente.',
+        path: ['novaUrgencia'],
+      })
+      return
+    }
+
+    if (
+      !(reclassificarUrgenciaValues as readonly string[]).includes(data.novaUrgencia)
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Urgência inválida para reclassificação.',
+        path: ['novaUrgencia'],
+      })
+    }
+  })
+
+const URGENCIA_RECLASSIFICACAO_LABEL: Record<string, string> = {
+  BAIXA: 'Baixa',
+  INTERMEDIARIA: 'Intermediária',
+  GRAVE: 'Alta',
+  MUITO_URGENTE: 'Muito urgente',
+}
+
+const STATUS_PERMITE_RECLASSIFICAR = new Set([
+  'ENVIADO',
+  'EM_ANALISE',
+  'PENDENTE',
+  'APROVADO',
+])
 
 const STATUS_SOLICITACAO_LABEL: Record<string, string> = {
   RASCUNHO: 'Rascunho',
@@ -125,7 +168,7 @@ async function validarReferenciasAbertura(
   tenantId: string,
   data: {
     pacienteId: string
-    especialidadeId: string
+    especialidadeId?: string
     prestadorId: string
     procedimentos: string[]
     tipoAtendimento: 'CONSULTA' | 'RETORNO' | 'EXAME' | 'CIRURGIA'
@@ -133,10 +176,13 @@ async function validarReferenciasAbertura(
     laudoAnexoId?: string
     acompanhanteNecessario: boolean
     acompanhante?: {
-      cpf: string
+      nome: string
+      cpf?: string
+      relacao: 'CONJUGE' | 'FILHO_A' | 'PAI_MAE' | 'RESPONSAVEL_LEGAL' | 'CUIDADOR' | 'OUTRO'
+      telefone?: string
     }
   }
-): Promise<{ especialidadeNome: string }> {
+): Promise<{ especialidadeNome: string | null }> {
   const paciente = await tx.paciente.findFirst({
     where: {
       id: data.pacienteId,
@@ -153,10 +199,10 @@ async function validarReferenciasAbertura(
     throw new SolicitacaoBusinessError('Paciente não encontrado.')
   }
 
-  if (data.acompanhanteNecessario && data.acompanhante) {
+  if (data.acompanhanteNecessario && data.acompanhante?.cpf) {
     if (!paciente.cpf) {
       throw new SolicitacaoBusinessError(
-        'Paciente sem CPF cadastrado. Atualize o cadastro antes de informar acompanhante.'
+        'Paciente sem CPF cadastrado. Atualize o cadastro antes de informar CPF do acompanhante.'
       )
     }
 
@@ -189,17 +235,23 @@ async function validarReferenciasAbertura(
     }
   }
 
-  const especialidade = await tx.tfdEspecialidade.findFirst({
-    where: {
-      id: data.especialidadeId,
-      tenant_id: tenantId,
-      ativa: true,
-    },
-    select: { id: true, nome: true },
-  })
+  let especialidadeNome: string | null = null
 
-  if (!especialidade) {
-    throw new SolicitacaoBusinessError('Especialidade inválida ou inativa.')
+  if (data.especialidadeId) {
+    const especialidade = await tx.tfdEspecialidade.findFirst({
+      where: {
+        id: data.especialidadeId,
+        tenant_id: tenantId,
+        ativa: true,
+      },
+      select: { id: true, nome: true },
+    })
+
+    if (!especialidade) {
+      throw new SolicitacaoBusinessError('Especialidade inválida ou inativa.')
+    }
+
+    especialidadeNome = especialidade.nome
   }
 
   const prestador = await tx.tfdPrestador.findFirst({
@@ -215,27 +267,37 @@ async function validarReferenciasAbertura(
     throw new SolicitacaoBusinessError('Prestador inválido ou inativo.')
   }
 
-  const especialidadesPrestador = parsePrestadorEspecialidades(prestador.especialidades)
-  if (!especialidadesPrestador.includes(data.especialidadeId)) {
-    throw new SolicitacaoBusinessError(
-      'O prestador selecionado não atende a especialidade informada.'
-    )
+  if (data.especialidadeId) {
+    const especialidadesPrestador = parsePrestadorEspecialidades(prestador.especialidades)
+    if (!especialidadesPrestador.includes(data.especialidadeId)) {
+      throw new SolicitacaoBusinessError(
+        'O prestador selecionado não atende a especialidade informada.'
+      )
+    }
   }
 
   const procedimentosUnicos = [...new Set(data.procedimentos)]
-  const procedimentosAtivos = await tx.tfdProcedimento.count({
-    where: {
-      tenant_id: tenantId,
-      especialidade_id: data.especialidadeId,
-      ativo: true,
-      id: { in: procedimentosUnicos },
-    },
-  })
+  if (procedimentosUnicos.length > 0) {
+    if (!data.especialidadeId) {
+      throw new SolicitacaoBusinessError(
+        'Informe a especialidade para validar os procedimentos selecionados.'
+      )
+    }
 
-  if (procedimentosAtivos !== procedimentosUnicos.length) {
-    throw new SolicitacaoBusinessError(
-      'Um ou mais procedimentos são inválidos, inativos ou não pertencem à especialidade.'
-    )
+    const procedimentosAtivos = await tx.tfdProcedimento.count({
+      where: {
+        tenant_id: tenantId,
+        especialidade_id: data.especialidadeId,
+        ativo: true,
+        id: { in: procedimentosUnicos },
+      },
+    })
+
+    if (procedimentosAtivos !== procedimentosUnicos.length) {
+      throw new SolicitacaoBusinessError(
+        'Um ou mais procedimentos são inválidos, inativos ou não pertencem à especialidade.'
+      )
+    }
   }
 
   if (data.laudoAnexoId) {
@@ -252,7 +314,7 @@ async function validarReferenciasAbertura(
     }
   }
 
-  return { especialidadeNome: especialidade.nome }
+  return { especialidadeNome }
 }
 
 export async function abrirSolicitacaoTfd(
@@ -279,11 +341,13 @@ export async function abrirSolicitacaoTfd(
     const db = await getPrismaForTenant(tenantId)
 
     const resultado = await db.$transaction(async (tx) => {
+      const procedimentos = data.procedimentos ?? []
+
       const { especialidadeNome } = await validarReferenciasAbertura(tx, tenantId, {
         pacienteId: data.pacienteId,
         especialidadeId: data.especialidadeId,
         prestadorId: data.prestadorId,
-        procedimentos: data.procedimentos,
+        procedimentos,
         tipoAtendimento: data.tipoAtendimento,
         solicitacaoOrigemId: data.solicitacaoOrigemId,
         laudoAnexoId: data.laudoAnexoId,
@@ -347,7 +411,7 @@ export async function abrirSolicitacaoTfd(
             protocolo: protocoloProcesso,
             modulo: MODULO_TFD,
             status: 'ABERTO',
-            titulo: `TFD — ${especialidadeNome}`,
+            titulo: especialidadeNome ? `TFD — ${especialidadeNome}` : 'TFD',
             setor_id: moduloResponsavel?.setor_id ?? null,
             aberto_por_id: session.user.id,
             paciente_id: data.pacienteId,
@@ -366,9 +430,9 @@ export async function abrirSolicitacaoTfd(
           protocolo,
           paciente_id: data.pacienteId,
           solicitante_id: session.user.id,
-          especialidade_id: data.especialidadeId,
+          especialidade_id: data.especialidadeId ?? null,
           prestador_id: data.prestadorId,
-          procedimentos: data.procedimentos,
+          procedimentos,
           tipo_atendimento: data.tipoAtendimento,
           solicitacao_origem_id: data.solicitacaoOrigemId ?? null,
           urgencia: data.urgencia,
@@ -395,7 +459,7 @@ export async function abrirSolicitacaoTfd(
             tenant_id: tenantId,
             solicitacao_id: solicitacao.id,
             nome: data.acompanhante.nome,
-            cpf: data.acompanhante.cpf,
+            cpf: data.acompanhante.cpf ?? null,
             relacao: data.acompanhante.relacao,
             telefone: data.acompanhante.telefone ?? null,
           },
@@ -846,6 +910,151 @@ export async function cancelarSolicitacaoTfd(
     return {
       success: false,
       error: 'Não foi possível cancelar a solicitação. Tente novamente.',
+    }
+  }
+}
+
+function urgenciaReclassificacaoLabel(valor: string): string {
+  return URGENCIA_RECLASSIFICACAO_LABEL[valor] ?? valor
+}
+
+export async function reclassificarSolicitacaoTfd(
+  rawInput: unknown
+): Promise<
+  ActionResponse<{
+    solicitacaoId: string
+    urgenciaAnterior: string
+    urgenciaNova: string
+  }>
+> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+
+  await requirePermission(session, TFD_PERMISSIONS.DECIDIR_SOLICITACAO)
+
+  const parsed = reclassificarSolicitacaoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    const primeiraMensagem = parsed.error.issues[0]?.message
+    if (primeiraMensagem === 'Reclassificação não permite urgência Muito Urgente.') {
+      return { success: false, error: primeiraMensagem }
+    }
+
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+  const novaUrgencia = data.novaUrgencia as (typeof reclassificarUrgenciaValues)[number]
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const solicitacao = await db.tfdSolicitacao.findFirst({
+      where: {
+        id: data.solicitacaoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        urgencia: true,
+        processo_id: true,
+      },
+    })
+
+    if (!solicitacao) {
+      return { success: false, error: 'Solicitação não encontrada.' }
+    }
+
+    if (!STATUS_PERMITE_RECLASSIFICAR.has(solicitacao.status)) {
+      const statusLabel =
+        STATUS_SOLICITACAO_LABEL[solicitacao.status] ?? solicitacao.status
+      return {
+        success: false,
+        error: `Não é possível reclassificar a urgência no status "${statusLabel}".`,
+      }
+    }
+
+    const urgenciaAnterior = solicitacao.urgencia
+    const urgenciaNova = novaUrgencia
+
+    if (urgenciaAnterior === urgenciaNova) {
+      return {
+        success: true,
+        data: {
+          solicitacaoId: solicitacao.id,
+          urgenciaAnterior,
+          urgenciaNova,
+        },
+      }
+    }
+
+    const labelAnterior = urgenciaReclassificacaoLabel(urgenciaAnterior)
+    const labelNova = urgenciaReclassificacaoLabel(urgenciaNova)
+
+    const resultado = await db.$transaction(async (tx) => {
+      await tx.tfdSolicitacao.update({
+        where: { id: solicitacao.id },
+        data: { urgencia: urgenciaNova },
+      })
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: solicitacao.processo_id,
+          tipo: 'RECLASSIFICACAO',
+          descricao: `Urgência reclassificada de ${labelAnterior} para ${labelNova}.`,
+          usuarioId: session.user.id,
+          metadata: {
+            urgenciaAnterior,
+            urgenciaNova,
+          },
+        },
+        tx
+      )
+
+      return {
+        solicitacaoId: solicitacao.id,
+        processoId: solicitacao.processo_id,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_solicitacao',
+      entidadeId: resultado.solicitacaoId,
+      payloadAntes: { urgencia: urgenciaAnterior },
+      payloadDepois: { urgencia: urgenciaNova, modulo: MODULO_TFD },
+    })
+
+    revalidateSolicitacaoPaths(resultado.solicitacaoId)
+
+    return {
+      success: true,
+      data: {
+        solicitacaoId: resultado.solicitacaoId,
+        urgenciaAnterior,
+        urgenciaNova,
+      },
+    }
+  } catch (error) {
+    if (error instanceof SolicitacaoBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[reclassificarSolicitacaoTfd] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível reclassificar a urgência da solicitação.',
     }
   }
 }

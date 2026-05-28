@@ -21,7 +21,6 @@ export function DadosMunicipioForm({ name, slug, initialValores }: DadosMunicipi
 
   const [cnpj, setCnpj] = useState(initialValores.cnpj)
   const [timezone, setTimezone] = useState<BrazilTimezone>(initialValores.timezone)
-  const [notificationEmail, setNotificationEmail] = useState(initialValores.notificationEmail)
   const [municipioOrigemCidade, setMunicipioOrigemCidade] = useState(
     initialValores.municipioOrigemCidade
   )
@@ -39,7 +38,6 @@ export function DadosMunicipioForm({ name, slug, initialValores }: DadosMunicipi
       const res = await atualizarDadosMunicipio({
         cnpj: cnpj || undefined,
         timezone,
-        notificationEmail: notificationEmail || undefined,
         municipioOrigemCidade: municipioOrigemCidade || undefined,
         municipioOrigemEstado: municipioOrigemEstado || undefined,
       })
@@ -98,17 +96,6 @@ export function DadosMunicipioForm({ name, slug, initialValores }: DadosMunicipi
           error={fieldErrors.timezone?.[0]}
           required
           disabled={isPending}
-        />
-
-        <Input
-          label="E-mail de notificação"
-          type="email"
-          value={notificationEmail}
-          onChange={(e) => setNotificationEmail(e.target.value)}
-          placeholder="saude@municipio.gov.br"
-          error={fieldErrors.notificationEmail?.[0]}
-          disabled={isPending}
-          hint="Opcional. E-mail institucional para alertas do sistema."
         />
 
         <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">

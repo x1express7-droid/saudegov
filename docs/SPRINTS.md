@@ -372,7 +372,7 @@ A Fase 2 fecha **lacunas entre código e documentação** (`BUSINESS_RULES.md`, 
 | Relatórios exportáveis (prestador, motorista, produção, CSV) | Entregue na 2.1 | ✅ 2.1 |
 | Navegação e dashboard financeiro do gestor | Menu, KPI saldo, extrato resumido, acesso GESTOR | ✅ 2.2 |
 | Regras `BUSINESS_RULES` não codificadas | — | ✅ 2.3 |
-| Notificações §1.14 | Canal e-mail + retry/fallback | 2.4 |
+| Notificações §1.14 | Canal e-mail + retry/fallback | ✅ 2.4 |
 | CADSUS produção | RNDS real | 2.5 |
 | Config TFD incompleta na UI | Aba Procedimentos; inativar saldo | ✅ 2.2 |
 
@@ -534,16 +534,17 @@ npm run db:verify:sprint-2-3
 ---
 
 ### Sprint 2.4 — Notificações por e-mail (TFD)
-**Status:** 💡 Planejado
+**Status:** ✅ Concluído
 
-**Referência:** `BUSINESS_RULES.md` §1.14; hoje apenas canal `in_app` (`core-notifications`).
+**Referência:** `BUSINESS_RULES.md` §1.14; `core-notifications` com canais `IN_APP` e `EMAIL`.
 
 **Entregas:**
-- [ ] Canal `email` em `core-notifications` com template mínimo por evento TFD
-- [ ] Eventos com e-mail conforme §1.14: envio solicitação, MUITO_URGENTE, complemento, aprovação/negativa, lembrete viagem 48h, lembrete PC 48h, prestação enviada/aprovada/rejeitada
-- [ ] Fila/retry: falha → `status = FALHOU'`; retentar após 15 min; após 3 falhas → falha definitiva + in-app ao gestor
-- [ ] Configuração por tenant: e-mail remetente / habilitar canal (stub aceitável em dev)
-- [ ] Manter contexto sem dados sensíveis (LGPD Art. 11)
+- [x] Canal `email` em `core-notifications` com template mínimo por evento TFD e matriz evento × canal
+- [x] Eventos com e-mail conforme §1.14 (solicitação, MUITO_URGENTE, complemento, aprovação/negativa, lembretes 48h, prestação enviada/rejeitada); exceções in-app apenas: `PRESTACAO_APROVADA`, `SALDO_BAIXO`, `RETORNO_REGISTRADO`, `NOTIFICACAO_EMAIL_FALHOU`
+- [x] Fila/retry: falha → `status = FALHOU`; retentar após 15 min; após 3 falhas → `NOTIFICACAO_EMAIL_FALHOU` in-app ao gestor
+- [x] Configuração por tenant: toggle `email_notifications_enabled`, `notification_email`, SMTP custom (`smtp_password_enc` AES-256-GCM) em `/configuracoes/municipio`
+- [x] Disparo in-app `RETORNO_REGISTRADO` ao servidor responsável (viagem e agendamento)
+- [x] Manter contexto sem dados sensíveis (LGPD Art. 11)
 
 **Critério de conclusão:** eventos principais disparam in-app + e-mail em staging; falhas registradas e retentadas.
 
@@ -595,7 +596,7 @@ npm run db:verify:sprint-2-3
 | 2.1 | Relatórios e exportação TFD | ✅ Concluído |
 | 2.2 | Financeiro TFD — UX e paridade gestor | ✅ Concluído |
 | 2.3 | Regras operacionais e automações | ✅ Concluído |
-| 2.4 | Notificações e-mail TFD | 💡 Planejado |
+| 2.4 | Notificações e-mail TFD | ✅ Concluído |
 | 2.5 | CADSUS real | 💡 Planejado |
 | 3.1 | Dados clínicos, perfil do paciente e fila auditada (TFD) | ✅ Concluído |
 | 3.2 | Agendamento como entidade própria (TFD) | ✅ Concluído |

@@ -51,6 +51,7 @@ enum TramitacaoTipo {
   CANCELAMENTO
   CONCLUSAO
   OBSERVACAO_INTERNA
+  RECLASSIFICACAO
 
   @@map("tramitacao_tipo")
   @@schema("public")
@@ -374,22 +375,25 @@ model Anexo {
   @@schema("public")
 }
 
+/// Índice parcial `idx_notif_email_retry` (canal EMAIL + status PENDENTE/FALHOU): migration `20260531120000_sprint_2_4_notificacoes_email_retry`.
 model Notificacao {
-  id          String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  tenant_id   String            @db.Uuid
-  user_id     String?           @db.Uuid
-  processo_id String?           @db.Uuid
-  canal       NotificacaoCanal
-  status      NotificacaoStatus @default(PENDENTE)
-  titulo      String            @db.VarChar(200)
-  corpo       String            @db.Text
-  tentativas  Int               @default(0)
-  lido_at     DateTime?         @db.Timestamptz
-  enviado_at  DateTime?         @db.Timestamptz
-  created_at  DateTime          @default(now()) @db.Timestamptz
-  tenant      Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  user        User?             @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  processo    Processo?         @relation(fields: [processo_id], references: [id], onDelete: Cascade)
+  id                   String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id            String            @db.Uuid
+  user_id              String?           @db.Uuid
+  processo_id          String?           @db.Uuid
+  canal                NotificacaoCanal
+  status               NotificacaoStatus @default(PENDENTE)
+  evento               String?           @db.VarChar(80)
+  titulo               String            @db.VarChar(200)
+  corpo                String            @db.Text
+  tentativas           Int               @default(0)
+  proxima_tentativa_at DateTime?         @db.Timestamptz
+  lido_at              DateTime?         @db.Timestamptz
+  enviado_at           DateTime?         @db.Timestamptz
+  created_at           DateTime          @default(now()) @db.Timestamptz
+  tenant               Tenant            @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
+  user                 User?             @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  processo             Processo?         @relation(fields: [processo_id], references: [id], onDelete: Cascade)
 
   @@index([tenant_id], map: "idx_notif_tenant")
   @@index([user_id], map: "idx_notif_user")
@@ -939,7 +943,7 @@ model TfdAcompanhante {
   tenant_id      String                 @db.Uuid
   solicitacao_id String                 @db.Uuid
   nome           String                 @db.VarChar(200)
-  cpf            String                 @db.VarChar(11)
+  cpf            String?                @db.VarChar(11)
   relacao        TfdRelacaoAcompanhante
   telefone       String?                @db.VarChar(20)
   created_at     DateTime               @default(now()) @db.Timestamptz

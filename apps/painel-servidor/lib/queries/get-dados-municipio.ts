@@ -5,8 +5,12 @@ import {
   parseSettingsJson,
   settingsToCadsusFormValues,
   settingsToFormValues,
+  settingsToNotificacoesEmailFormValues,
+  settingsToSmtpFormValues,
   type CadsusConfigFormValues,
   type DadosMunicipioFormValues,
+  type NotificacoesEmailFormValues,
+  type SmtpConfigFormValues,
 } from '../utils/parse-settings'
 
 export interface DadosMunicipioPageData {
@@ -14,6 +18,8 @@ export interface DadosMunicipioPageData {
   slug: string
   valores: DadosMunicipioFormValues
   cadsus: CadsusConfigFormValues
+  notificacoesEmail: NotificacoesEmailFormValues
+  smtp: SmtpConfigFormValues
 }
 
 export async function getDadosMunicipio(): Promise<DadosMunicipioPageData> {
@@ -43,5 +49,7 @@ export async function getDadosMunicipio(): Promise<DadosMunicipioPageData> {
     slug: tenant.slug,
     valores: settingsToFormValues(settings),
     cadsus: settingsToCadsusFormValues(settings),
+    notificacoesEmail: settingsToNotificacoesEmailFormValues(settings),
+    smtp: settingsToSmtpFormValues(settings),
   }
 }

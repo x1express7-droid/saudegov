@@ -9,12 +9,14 @@ import { seedSprint18TfdPlatformFeatures } from './seeds/sprint-1-8-platform-fea
 import { seedSprint21TfdPlatformFeatures } from './seeds/sprint-2-1-platform-features'
 import { seedSprint22TfdPlatformFeatures } from './seeds/sprint-2-2-platform-features'
 import { seedSprint23TfdPlatformFeatures } from './seeds/sprint-2-3-platform-features'
+import { seedSprint24TfdPlatformFeatures } from './seeds/sprint-2-4-platform-features'
 import { seedSprint31TfdPlatformFeatures } from './seeds/sprint-3-1-platform-features'
 import { seedSprint32TfdPlatformFeatures } from './seeds/sprint-3-2-platform-features'
 import { seedSprint33TfdPlatformFeatures } from './seeds/sprint-3-3-platform-features'
 import { seedSprint34TfdPlatformFeatures } from './seeds/sprint-3-4-platform-features'
 import { seedSprint35TfdPlatformFeatures } from './seeds/sprint-3-5-platform-features'
 import { seedSprint36TfdPlatformFeatures } from './seeds/sprint-3-6-platform-features'
+import { seedSprint36AjustesTfdPlatformFeatures } from './seeds/sprint-3-6-ajustes-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 import { seedTfdCatalogoExemplo } from './seeds/tfd-catalogo-exemplo'
 
@@ -705,6 +707,11 @@ async function main() {
     `\n📌 platform_features (Sprint 2.3 TFD): ${sprint23TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
   )
 
+  const sprint24TfdFeaturesCount = await seedSprint24TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 2.4 TFD): ${sprint24TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
   const sprint31TfdFeaturesCount = await seedSprint31TfdPlatformFeatures()
   console.log(
     `\n📌 platform_features (Sprint 3.1 TFD): ${sprint31TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
@@ -733,6 +740,11 @@ async function main() {
   const sprint36TfdFeaturesCount = await seedSprint36TfdPlatformFeatures()
   console.log(
     `\n📌 platform_features (Sprint 3.6 TFD): ${sprint36TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint36AjustesTfdFeaturesCount = await seedSprint36AjustesTfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 3.6 ajustes TFD): ${sprint36AjustesTfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
   )
 
   await seedTfdSaldoExemplo(prisma, campograndems.id, gestorCampograndems.id)

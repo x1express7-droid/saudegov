@@ -411,24 +411,30 @@ CREATE TYPE public.notificacao_canal AS ENUM ('EMAIL', 'IN_APP');
 CREATE TYPE public.notificacao_status AS ENUM ('PENDENTE', 'ENVIADO', 'FALHOU', 'LIDO');
 
 CREATE TABLE public.notificacoes (
-  id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  tenant_id    UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
-  user_id      UUID REFERENCES public.users(id) ON DELETE CASCADE,
-  processo_id  UUID REFERENCES public.processos(id) ON DELETE CASCADE,
-  canal        public.notificacao_canal NOT NULL,
-  status       public.notificacao_status NOT NULL DEFAULT 'PENDENTE',
-  titulo       VARCHAR(200) NOT NULL,
-  corpo        TEXT NOT NULL,
-  tentativas   INTEGER NOT NULL DEFAULT 0,
-  lido_at      TIMESTAMPTZ,
-  enviado_at   TIMESTAMPTZ,
-  created_at   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+  id                    UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id             UUID NOT NULL REFERENCES public.tenants(id) ON DELETE CASCADE,
+  user_id               UUID REFERENCES public.users(id) ON DELETE CASCADE,
+  processo_id           UUID REFERENCES public.processos(id) ON DELETE CASCADE,
+  canal                 public.notificacao_canal NOT NULL,
+  status                public.notificacao_status NOT NULL DEFAULT 'PENDENTE',
+  evento                VARCHAR(80),
+  titulo                VARCHAR(200) NOT NULL,
+  corpo                 TEXT NOT NULL,
+  tentativas            INTEGER NOT NULL DEFAULT 0,
+  proxima_tentativa_at  TIMESTAMPTZ,
+  lido_at               TIMESTAMPTZ,
+  enviado_at            TIMESTAMPTZ,
+  created_at            TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE INDEX idx_notif_tenant   ON public.notificacoes(tenant_id);
 CREATE INDEX idx_notif_user     ON public.notificacoes(user_id);
 CREATE INDEX idx_notif_pendente ON public.notificacoes(status)
   WHERE status = 'PENDENTE';
+
+-- Sprint 2.4 — fila de retry do canal e-mail (job cron)
+CREATE INDEX idx_notif_email_retry ON public.notificacoes(tenant_id, canal, status)
+  WHERE canal = 'EMAIL' AND status IN ('PENDENTE', 'FALHOU');
 
 ALTER TABLE public.notificacoes ENABLE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.notificacoes

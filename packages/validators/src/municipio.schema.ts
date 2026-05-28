@@ -36,7 +36,7 @@ const cnpjField = z
       .optional()
   )
 
-const notificationEmailField = z
+export const tenantNotificationEmailField = z
   .string()
   .trim()
   .optional()
@@ -78,7 +78,6 @@ export const atualizarDadosMunicipioSchema = z.object({
   timezone: z.enum(BRAZIL_TIMEZONES, {
     errorMap: () => ({ message: 'Selecione um fuso horário válido.' }),
   }),
-  notificationEmail: notificationEmailField,
   municipioOrigemCidade: municipioOrigemCidadeField,
   municipioOrigemEstado: municipioOrigemEstadoField,
 })

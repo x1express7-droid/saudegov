@@ -114,7 +114,7 @@ dependem da fila `/saude/tfd` como destino principal desses alertas.
 **Notificação in-app `SALDO_BAIXO` (§1.14):** disparada **automaticamente** quando o saldo
 disponível de um saldo **ativo** entra em estado de alerta (&lt; 20%) — ou seja, na **transição**
 para alerta após reserva na aprovação da solicitação ou consumo na aprovação da prestação de
-contas. Canal: **in-app apenas** (e-mail na Sprint 2.4). Destinatários: gestores do setor TFD
+contas. Canal: **in-app apenas**. Destinatários: gestores do setor TFD
 com permissão `saude.tfd.ver_dashboard`. A mensagem informa apenas o **nome do saldo** e o
 **percentual disponível** (sem valores monetários nem dados sensíveis). Não dispara para saldo
 inativo nem reenvia enquanto o saldo já estava em alerta antes da mesma operação.
@@ -501,14 +501,17 @@ Contratos: `docs/API_CONTRACTS.md` §7.4–7.8.
 | Processo cancelado | Servidor responsável | In-app |
 | PENDENTE há 30 dias | Gestor | In-app |
 | Saldo < 20% disponível | Gestor com `saude.tfd.ver_dashboard` (setor TFD) | In-app (`SALDO_BAIXO`) |
+| Falha definitiva de e-mail (3 tentativas) | Gestor com `saude.tfd.ver_dashboard` (setor TFD) | In-app (`NOTIFICACAO_EMAIL_FALHOU`) |
 
 **Implementação `SALDO_BAIXO` (Sprint 2.2):** evento `SALDO_BAIXO` em `core-notifications`; disparo automático na
 **transição** para alerta após reserva (aprovação da solicitação) ou consumo (aprovação da prestação); mensagem com
-nome do saldo e percentual disponível apenas; sem e-mail até Sprint 2.4. Detalhes de UI e deduplicação: §1.2.1.
+nome do saldo e percentual disponível apenas; in-app apenas (sem e-mail). Detalhes de UI e deduplicação: §1.2.1.
 
 **Regra de fallback:**
 - Se envio de e-mail falhar → registra `status = 'FALHOU'` + tenta novamente após 15min
-- Após 3 falhas → registra como falha definitiva + notifica gestor via in-app
+- Após 3 falhas → registra como falha definitiva + notifica gestor via in-app (`NOTIFICACAO_EMAIL_FALHOU`)
+
+**Implementação `NOTIFICACAO_EMAIL_FALHOU` (Sprint 2.4):** disparado pelo job `processarFilaEmail` após a 3ª falha de envio SMTP. Mensagem in-app ao gestor com `saude.tfd.ver_dashboard` informa protocolo (quando houver `processo_id`), evento de origem (`notificacoes.evento`) e resumo do destinatário previsto (papel do usuário — sem endereço de e-mail). Sem reenvio por e-mail para este evento.
 
 ---
 

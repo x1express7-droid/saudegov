@@ -94,7 +94,7 @@ export async function processarLembretesPrestacao(): Promise<ProcessarLembretesP
     const protocolo = prestacao.viagem.solicitacao.processo.protocolo
     const processoId = prestacao.viagem.solicitacao.processo_id
 
-    const notificacaoEnviada = await dispararNotificacao({
+    const resultadoNotificacao = await dispararNotificacao({
       tenantId: prestacao.tenant_id,
       evento: NOTIFICATION_EVENTS.LEMBRETE_PRESTACAO_48H,
       modulo: MODULO_TFD,
@@ -109,7 +109,7 @@ export async function processarLembretesPrestacao(): Promise<ProcessarLembretesP
 
     const agoraGravacao = new Date()
 
-    if (notificacaoEnviada) {
+    if (resultadoNotificacao.ok) {
       await db.tfdPrestacaoConta.update({
         where: { id: prestacao.id },
         data: {

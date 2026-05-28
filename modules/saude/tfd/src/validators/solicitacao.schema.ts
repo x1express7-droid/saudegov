@@ -25,10 +25,24 @@ const acompanhanteSchema = z.object({
     .trim()
     .min(3, 'Nome do acompanhante deve ter pelo menos 3 caracteres.')
     .max(200, 'Nome do acompanhante deve ter no máximo 200 caracteres.'),
-  cpf: cpfAcompanhanteField,
-  relacao: z.enum(relacaoAcompanhanteValues, {
-    errorMap: () => ({ message: 'Relação do acompanhante inválida.' }),
-  }),
+  cpf: z.preprocess(
+    (value) => {
+      if (value === undefined || value === null) {
+        return undefined
+      }
+      if (typeof value === 'string' && value.trim() === '') {
+        return undefined
+      }
+      return value
+    },
+    cpfAcompanhanteField.optional()
+  ),
+  relacao: z
+    .enum(relacaoAcompanhanteValues, {
+      errorMap: () => ({ message: 'Relação do acompanhante inválida.' }),
+    })
+    .optional()
+    .default('OUTRO'),
   telefone: z
     .string()
     .trim()
@@ -42,10 +56,12 @@ export const abrirSolicitacaoSchema = z
     pacienteId: z.string().uuid('ID de paciente inválido.'),
     /** CPF do paciente (11 dígitos) — usado na validação cruzada com o acompanhante no formulário. */
     pacienteCpf: cpfPacienteRefinementField,
-    especialidadeId: z.string().uuid('Especialidade inválida.'),
+    especialidadeId: z.string().uuid('Especialidade inválida.').optional(),
     procedimentos: z
       .array(z.string().uuid('Procedimento inválido.'))
-      .min(1, 'Selecione pelo menos um procedimento.'),
+      .min(0)
+      .optional()
+      .default([]),
     prestadorId: z.string().uuid('Prestador inválido.'),
     tipoAtendimento: z.enum(tipoAtendimentoValues, {
       errorMap: () => ({ message: 'Tipo de atendimento inválido.' }),
@@ -64,6 +80,33 @@ export const abrirSolicitacaoSchema = z
     acompanhanteNecessario: z.boolean().default(false),
     acompanhante: acompanhanteSchema.optional(),
   })
+  .refine(
+    (data) => {
+      if (
+        (data.tipoAtendimento === 'CONSULTA' || data.tipoAtendimento === 'RETORNO') &&
+        !data.especialidadeId
+      ) {
+        return false
+      }
+      return true
+    },
+    {
+      message: 'Especialidade obrigatória para consultas e retornos.',
+      path: ['especialidadeId'],
+    }
+  )
+  .refine(
+    (data) => {
+      if (data.tipoAtendimento === 'EXAME' && (data.procedimentos?.length ?? 0) < 1) {
+        return false
+      }
+      return true
+    },
+    {
+      message: 'Selecione pelo menos um procedimento para exames.',
+      path: ['procedimentos'],
+    }
+  )
   .refine(
     (data) => {
       if (data.tipoAtendimento === 'RETORNO' && !data.solicitacaoOrigemId) {
@@ -105,8 +148,13 @@ export const abrirSolicitacaoSchema = z
     }
   )
   .refine(
-    (data) =>
-      cpfsAcompanhanteEDiferenteDoPaciente(data.pacienteCpf, data.acompanhante?.cpf),
+    (data) => {
+      const cpfAcompanhante = data.acompanhante?.cpf
+      if (!data.pacienteCpf || !cpfAcompanhante) {
+        return true
+      }
+      return cpfsAcompanhanteEDiferenteDoPaciente(data.pacienteCpf, cpfAcompanhante)
+    },
     {
       message: 'CPF do acompanhante deve ser diferente do CPF do paciente.',
       path: ['acompanhante', 'cpf'],

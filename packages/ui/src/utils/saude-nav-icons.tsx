@@ -15,9 +15,7 @@ import {
   type LucideIcon,
 } from 'lucide-react'
 
-import type { SaudeNavIconName } from '../config/saude-modules-nav'
-
-const SAUDE_NAV_ICONS: Record<SaudeNavIconName, LucideIcon> = {
+const SAUDE_NAV_ICONS: Record<string, LucideIcon> = {
   BarChart3,
   CalendarDays,
   ClipboardList,
@@ -31,6 +29,6 @@ const SAUDE_NAV_ICONS: Record<SaudeNavIconName, LucideIcon> = {
   Wallet,
 }
 
-export function resolveSaudeNavIcon(name: SaudeNavIconName): LucideIcon {
-  return SAUDE_NAV_ICONS[name]
+export function resolveSaudeNavIcon(name: string): LucideIcon | null {
+  return SAUDE_NAV_ICONS[name] ?? null
 }

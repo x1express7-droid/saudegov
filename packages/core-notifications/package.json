@@ -8,9 +8,12 @@
     "type-check": "tsc --noEmit"
   },
   "dependencies": {
-    "@saude/core-db": "*"
+    "@saude/core-auth": "*",
+    "@saude/core-db": "*",
+    "nodemailer": "^7.0.13"
   },
   "devDependencies": {
-    "@types/node": "^20.19.41"
+    "@types/node": "^20.19.41",
+    "@types/nodemailer": "^8.0.0"
   }
 }
