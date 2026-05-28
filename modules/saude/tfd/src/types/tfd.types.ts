@@ -803,6 +803,7 @@ export interface TfdPacientePerfilOutput {
 
 export interface AgendamentoProcessoListItem {
   id: string
+  solicitacaoId: string
   sequencia: number
   dataConsulta: string
   horaConsulta: string | null

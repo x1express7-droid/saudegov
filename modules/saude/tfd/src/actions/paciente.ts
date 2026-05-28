@@ -245,6 +245,28 @@ export async function vincularPaciente(
       }
     }
 
+    const cpfDuplicadoOutroCns = await db.paciente.findFirst({
+      where: {
+        tenant_id: tenantId,
+        cpf: cpfEfetivo,
+        cns: { not: cns },
+      },
+      select: { id: true },
+    })
+
+    if (cpfDuplicadoOutroCns) {
+      return {
+        success: false,
+        error:
+          'Já existe um paciente cadastrado com este CPF. Verifique os dados ou utilize o paciente existente.',
+        fieldErrors: {
+          cpf: [
+            'Já existe um paciente cadastrado com este CPF. Verifique os dados ou utilize o paciente existente.',
+          ],
+        },
+      }
+    }
+
     const tenantSettings = await loadTenantSettings(db, tenantId)
 
     if (tenantSettings.cadsus_enabled !== true) {

@@ -1,17 +1,17 @@
 'use client'
 
 import { TFD_SOLICITACOES_PATH } from '@/lib/tfd/routes'
+import { resolverProcessoIdSolicitacaoTfd } from '@/lib/actions/resolver-processo-solicitacao-tfd'
 import {
   abrirSolicitacaoSchema,
   type AbrirSolicitacaoInput,
   type TfdEspecialidadeListItem,
   type TfdPrestadorListItem,
-  type TfdProcessoDadosClinicosOutput,
   type TfdProcedimentoListItem,
   type TfdSolicitacaoOrigemRetornoItem,
 } from '@saude/mod-saude-tfd/client'
-import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/solicitacao'
+import { salvarDadosClinicosTfd } from '@saude/mod-saude-tfd'
 import {
   Alert,
   Button,
@@ -34,12 +34,80 @@ import {
   type Resolver,
 } from 'react-hook-form'
 
-import { DadosClinicosSection } from '../[id]/components/dados-clinicos-section'
 import { SolicitacaoAcompanhanteFields } from './solicitacao-acompanhante-fields'
 import { SolicitacaoLaudoUpload } from './solicitacao-laudo-upload'
 import { SolicitacaoRetornoPicker } from './solicitacao-retorno-picker'
 
 const TFD_LIST_PATH = TFD_SOLICITACOES_PATH
+
+const SOAP_MAX_LENGTH = 5000
+
+interface SoapLocalState {
+  subjetivo: string
+  objetivo: string
+  avaliacao: string
+  plano: string
+  motivoQuadro: string
+  observacao: string
+}
+
+const SOAP_INITIAL: SoapLocalState = {
+  subjetivo: '',
+  objetivo: '',
+  avaliacao: '',
+  plano: '',
+  motivoQuadro: '',
+  observacao: '',
+}
+
+function hasSoapContent(soap: SoapLocalState): boolean {
+  return Boolean(
+    soap.subjetivo.trim() ||
+      soap.objetivo.trim() ||
+      soap.avaliacao.trim() ||
+      soap.plano.trim() ||
+      soap.motivoQuadro.trim() ||
+      soap.observacao.trim()
+  )
+}
+
+async function persistirDadosClinicosPosAbertura(
+  solicitacaoId: string,
+  processoIdConhecido: string | undefined,
+  soap: SoapLocalState
+): Promise<void> {
+  if (!hasSoapContent(soap)) {
+    return
+  }
+
+  let processoId = processoIdConhecido
+  if (!processoId) {
+    processoId = (await resolverProcessoIdSolicitacaoTfd(solicitacaoId)) ?? undefined
+  }
+
+  if (!processoId) {
+    console.error('[SolicitacaoForm] processoId não encontrado para salvar dados clínicos.')
+    return
+  }
+
+  try {
+    const result = await salvarDadosClinicosTfd({
+      processoId,
+      subjetivo: soap.subjetivo.trim() || undefined,
+      objetivo: soap.objetivo.trim() || undefined,
+      avaliacao: soap.avaliacao.trim() || undefined,
+      plano: soap.plano.trim() || undefined,
+      motivoQuadro: soap.motivoQuadro.trim() || undefined,
+      observacao: soap.observacao.trim() || undefined,
+    })
+
+    if (!result.success) {
+      console.error('[SolicitacaoForm] Falha ao salvar dados clínicos:', result.error)
+    }
+  } catch (error) {
+    console.error('[SolicitacaoForm] Erro ao salvar dados clínicos:', error)
+  }
+}
 
 const TIPO_ATENDIMENTO_OPTIONS = [
   { value: 'CONSULTA', label: 'Consulta' },
@@ -111,8 +179,84 @@ export interface SolicitacaoFormProps {
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
   /** Quando informado, vincula a solicitação a um processo TFD existente. */
   processoId?: string
-  session?: SaudeMunicSession
-  dadosClinicos?: TfdProcessoDadosClinicosOutput | null
+}
+
+function SoapFieldsSection({
+  soap,
+  onChange,
+  disabled,
+}: {
+  soap: SoapLocalState
+  onChange: (field: keyof SoapLocalState, value: string) => void
+  disabled?: boolean
+}) {
+  return (
+    <Card
+      header={<CardHeader>Dados clínicos</CardHeader>}
+      bodyClassName={formFieldsStackClassName()}
+    >
+      <Textarea
+        id="soap-subjetivo"
+        label="Subjetivo"
+        rows={3}
+        maxLength={SOAP_MAX_LENGTH}
+        placeholder="Relato do paciente / queixa principal"
+        value={soap.subjetivo}
+        onChange={(event) => onChange('subjetivo', event.target.value)}
+        disabled={disabled}
+      />
+      <Textarea
+        id="soap-objetivo"
+        label="Objetivo"
+        rows={3}
+        maxLength={SOAP_MAX_LENGTH}
+        placeholder="Dados objetivos observados"
+        value={soap.objetivo}
+        onChange={(event) => onChange('objetivo', event.target.value)}
+        disabled={disabled}
+      />
+      <Textarea
+        id="soap-avaliacao"
+        label="Avaliação"
+        rows={3}
+        maxLength={SOAP_MAX_LENGTH}
+        placeholder="Avaliação clínica"
+        value={soap.avaliacao}
+        onChange={(event) => onChange('avaliacao', event.target.value)}
+        disabled={disabled}
+      />
+      <Textarea
+        id="soap-plano"
+        label="Plano"
+        rows={3}
+        maxLength={SOAP_MAX_LENGTH}
+        placeholder="Plano de tratamento"
+        value={soap.plano}
+        onChange={(event) => onChange('plano', event.target.value)}
+        disabled={disabled}
+      />
+      <Textarea
+        id="soap-motivo-quadro"
+        label="Motivo/Quadro"
+        rows={3}
+        maxLength={SOAP_MAX_LENGTH}
+        placeholder="Motivo do encaminhamento / quadro clínico"
+        value={soap.motivoQuadro}
+        onChange={(event) => onChange('motivoQuadro', event.target.value)}
+        disabled={disabled}
+      />
+      <Textarea
+        id="soap-observacao"
+        label="Observação"
+        rows={3}
+        maxLength={SOAP_MAX_LENGTH}
+        placeholder="Observações adicionais"
+        value={soap.observacao}
+        onChange={(event) => onChange('observacao', event.target.value)}
+        disabled={disabled}
+      />
+    </Card>
+  )
 }
 
 function ProcedimentosCheckboxGroup({
@@ -193,15 +337,18 @@ export function SolicitacaoForm({
   prestadores,
   solicitacoesOrigem,
   processoId,
-  session,
-  dadosClinicos = null,
 }: SolicitacaoFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [serverError, setServerError] = useState<string | null>(null)
   const [successToast, setSuccessToast] = useState<string | null>(null)
-  const [laudoAnexoId, setLaudoAnexoId] = useState<string | null>(null)
+  const [laudoAnexoIds, setLaudoAnexoIds] = useState<string[]>([])
   const [laudoError, setLaudoError] = useState<string | null>(null)
+  const [soap, setSoap] = useState<SoapLocalState>(SOAP_INITIAL)
+
+  function handleSoapChange(field: keyof SoapLocalState, value: string) {
+    setSoap((prev) => ({ ...prev, [field]: value }))
+  }
 
   const {
     register,
@@ -224,7 +371,7 @@ export function SolicitacaoForm({
       urgencia: 'BAIXA',
       acompanhanteNecessario: false,
       solicitacaoOrigemId: undefined,
-      laudoAnexoId: undefined,
+      laudoAnexoIds: [],
       observacoesAbertura: '',
     },
   })
@@ -304,10 +451,8 @@ export function SolicitacaoForm({
   }, [acompanhanteNecessario, setValue, clearErrors])
 
   useEffect(() => {
-    if (laudoAnexoId) {
-      setValue('laudoAnexoId', laudoAnexoId)
-    }
-  }, [laudoAnexoId, setValue])
+    setValue('laudoAnexoIds', laudoAnexoIds)
+  }, [laudoAnexoIds, setValue])
 
   function applyFieldErrors(
     fieldErrors?: Partial<Record<string, string[] | undefined>>
@@ -344,7 +489,7 @@ export function SolicitacaoForm({
       pacienteCpf: undefined,
       especialidadeId: especialidadeIdValue,
       procedimentos: values.procedimentos ?? [],
-      laudoAnexoId: laudoAnexoId ?? values.laudoAnexoId,
+      laudoAnexoIds: laudoAnexoIds.length > 0 ? laudoAnexoIds : (values.laudoAnexoIds ?? []),
       solicitacaoOrigemId:
         values.tipoAtendimento === 'RETORNO' ? values.solicitacaoOrigemId : undefined,
       acompanhante:
@@ -372,6 +517,12 @@ export function SolicitacaoForm({
         return
       }
 
+      await persistirDadosClinicosPosAbertura(
+        response.data.solicitacaoId,
+        processoId,
+        soap
+      )
+
       router.push(
         `${TFD_LIST_PATH}?rascunho=${encodeURIComponent(response.data.protocolo)}`
       )
@@ -392,6 +543,12 @@ export function SolicitacaoForm({
         }
         return
       }
+
+      await persistirDadosClinicosPosAbertura(
+        abrirResponse.data.solicitacaoId,
+        processoId,
+        soap
+      )
 
       const enviarResponse = await enviarSolicitacaoTfd({
         solicitacaoId: abrirResponse.data.solicitacaoId,
@@ -524,13 +681,7 @@ export function SolicitacaoForm({
         />
       </Card>
 
-      {session && processoId && dadosClinicos ? (
-        <DadosClinicosSection
-          session={session}
-          processoId={processoId}
-          dadosIniciais={dadosClinicos}
-        />
-      ) : null}
+      <SoapFieldsSection soap={soap} onChange={handleSoapChange} disabled={isPending} />
 
       {tipoAtendimento === 'RETORNO' ? (
         <Card header={<CardHeader>Retorno</CardHeader>} bodyClassName={formFieldsStackClassName()}>
@@ -556,14 +707,11 @@ export function SolicitacaoForm({
         bodyClassName={formFieldsStackClassName()}
       >
         <SolicitacaoLaudoUpload
+          processoId={processoId}
           disabled={isPending}
-          onUploadComplete={(anexoId) => {
-            setLaudoAnexoId(anexoId)
+          onUploadComplete={(anexoIds) => {
+            setLaudoAnexoIds(anexoIds)
             setLaudoError(null)
-          }}
-          onUploadClear={() => {
-            setLaudoAnexoId(null)
-            setValue('laudoAnexoId', undefined)
           }}
         />
         {laudoError ? (
@@ -571,9 +719,9 @@ export function SolicitacaoForm({
             {laudoError}
           </Alert>
         ) : null}
-        {errors.laudoAnexoId?.message ? (
+        {errors.laudoAnexoIds?.message ? (
           <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-error)]">
-            {errors.laudoAnexoId.message}
+            {errors.laudoAnexoIds.message}
           </p>
         ) : null}
       </Card>

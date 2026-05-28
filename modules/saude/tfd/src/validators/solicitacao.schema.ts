@@ -70,8 +70,8 @@ export const abrirSolicitacaoSchema = z
     urgencia: z.enum(urgenciaValues, {
       errorMap: () => ({ message: 'Urgência inválida.' }),
     }),
-    /** Opcional; se informado, deve estar confirmado no storage ao enviar (`enviarSolicitacaoTfd`). */
-    laudoAnexoId: z.string().uuid('ID do laudo inválido.').optional(),
+    /** Opcional; cada item deve estar confirmado no storage ao enviar (`enviarSolicitacaoTfd`). */
+    laudoAnexoIds: z.array(z.string().uuid('ID do laudo inválido.')).optional().default([]),
     observacoesAbertura: z
       .string()
       .trim()

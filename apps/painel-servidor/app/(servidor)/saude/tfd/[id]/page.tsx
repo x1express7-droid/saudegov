@@ -5,6 +5,7 @@ import {
   requireTenantRole,
 } from '@saude/core-auth/server'
 import {
+  getAgendamentosPorProcesso,
   getContextoDecisaoTfd,
   getDadosClinicosProcesso,
   getSaldosTfd,
@@ -12,6 +13,7 @@ import {
   getVeiculosAgendamentoTfd,
   getViagensSolicitacaoTfd,
   TFD_PERMISSIONS,
+  type AgendamentoProcessoListItem,
   type ContextoDecisaoTfd,
   type SaldoListItem,
   type TfdProcessoDadosClinicosOutput,
@@ -140,6 +142,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
 
   let viagens: TfdViagemSolicitacaoItem[] = []
   let veiculosAgendamento: TfdVeiculoAgendamentoItem[] = []
+  let agendamentos: AgendamentoProcessoListItem[] = []
 
   if (statusComViagens) {
     const acompanhanteNecessario = solicitacao.acompanhante !== null
@@ -147,8 +150,16 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
     const veiculosPromise = statusAgendavel
       ? getVeiculosAgendamentoTfd(acompanhanteNecessario)
       : Promise.resolve([] as TfdVeiculoAgendamentoItem[])
+    const agendamentosPromise =
+      solicitacao.status === 'AGUARDANDO_PC' || solicitacao.status === 'PC_EM_ANALISE'
+        ? getAgendamentosPorProcesso(solicitacao.processoId)
+        : Promise.resolve([] as AgendamentoProcessoListItem[])
 
-    ;[viagens, veiculosAgendamento] = await Promise.all([viagensPromise, veiculosPromise])
+    ;[viagens, veiculosAgendamento, agendamentos] = await Promise.all([
+      viagensPromise,
+      veiculosPromise,
+      agendamentosPromise,
+    ])
   }
 
   const podeVerDadosClinicos =
@@ -222,6 +233,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
             contextoDecisao={contextoDecisao}
             veiculosAgendamento={veiculosAgendamento}
             viagens={viagens}
+            agendamentos={agendamentos}
             abrirCancelamentoInicial={abrirCancelamentoInicial}
           />
         </aside>

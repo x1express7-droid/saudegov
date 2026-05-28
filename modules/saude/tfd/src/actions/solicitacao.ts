@@ -173,7 +173,7 @@ async function validarReferenciasAbertura(
     procedimentos: string[]
     tipoAtendimento: 'CONSULTA' | 'RETORNO' | 'EXAME' | 'CIRURGIA'
     solicitacaoOrigemId?: string
-    laudoAnexoId?: string
+    laudoAnexoIds?: string[]
     acompanhanteNecessario: boolean
     acompanhante?: {
       nome: string
@@ -300,17 +300,20 @@ async function validarReferenciasAbertura(
     }
   }
 
-  if (data.laudoAnexoId) {
-    const anexo = await tx.anexo.findFirst({
-      where: {
-        id: data.laudoAnexoId,
-        tenant_id: tenantId,
-      },
-      select: { id: true },
-    })
+  if (data.laudoAnexoIds && data.laudoAnexoIds.length > 0) {
+    const idsUnicos = [...new Set(data.laudoAnexoIds)]
+    for (const laudoAnexoId of idsUnicos) {
+      const anexo = await tx.anexo.findFirst({
+        where: {
+          id: laudoAnexoId,
+          tenant_id: tenantId,
+        },
+        select: { id: true },
+      })
 
-    if (!anexo) {
-      throw new SolicitacaoBusinessError('Laudo médico não encontrado.')
+      if (!anexo) {
+        throw new SolicitacaoBusinessError('Laudo médico não encontrado.')
+      }
     }
   }
 
@@ -350,7 +353,7 @@ export async function abrirSolicitacaoTfd(
         procedimentos,
         tipoAtendimento: data.tipoAtendimento,
         solicitacaoOrigemId: data.solicitacaoOrigemId,
-        laudoAnexoId: data.laudoAnexoId,
+        laudoAnexoIds: data.laudoAnexoIds,
         acompanhanteNecessario: data.acompanhanteNecessario,
         acompanhante: data.acompanhante,
       })
@@ -437,16 +440,17 @@ export async function abrirSolicitacaoTfd(
           solicitacao_origem_id: data.solicitacaoOrigemId ?? null,
           urgencia: data.urgencia,
           status: 'RASCUNHO',
-          laudo_anexo_id: data.laudoAnexoId ?? null,
+          laudo_anexo_id: data.laudoAnexoIds[0] ?? null,
           acompanhante_necessario: data.acompanhanteNecessario,
           observacoes_abertura: data.observacoesAbertura?.trim() || null,
         },
       })
 
-      if (data.laudoAnexoId) {
-        await tx.anexo.update({
+      const laudoIdsUnicos = [...new Set(data.laudoAnexoIds ?? [])]
+      if (laudoIdsUnicos.length > 0) {
+        await tx.anexo.updateMany({
           where: {
-            id: data.laudoAnexoId,
+            id: { in: laudoIdsUnicos },
             tenant_id: tenantId,
           },
           data: { processo_id: processoId },
@@ -592,20 +596,19 @@ export async function enviarSolicitacaoTfd(
       }
     }
 
-    if (solicitacao.laudo_anexo_id) {
-      const laudo = await db.anexo.findFirst({
-        where: {
-          id: solicitacao.laudo_anexo_id,
-          tenant_id: tenantId,
-        },
-        select: { confirmado: true },
-      })
+    const laudosProcesso = await db.anexo.findMany({
+      where: {
+        tenant_id: tenantId,
+        processo_id: solicitacao.processo_id,
+      },
+      select: { id: true, confirmado: true },
+    })
 
-      if (!laudo?.confirmado) {
-        return {
-          success: false,
-          error: 'O laudo médico precisa estar confirmado no storage antes do envio.',
-        }
+    const laudoNaoConfirmado = laudosProcesso.find((anexo) => !anexo.confirmado)
+    if (laudoNaoConfirmado) {
+      return {
+        success: false,
+        error: 'Todos os laudos médicos precisam estar confirmados no storage antes do envio.',
       }
     }
 

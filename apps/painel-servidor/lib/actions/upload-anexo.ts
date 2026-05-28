@@ -72,7 +72,11 @@ function mapStorageErrorToMessage(error: unknown): string {
   }
 
   if (error instanceof StorageConfigError) {
-    return 'Serviço de armazenamento temporariamente indisponível. Tente novamente mais tarde.'
+    return error.message
+  }
+
+  if (error instanceof Error && error.message.includes('AUTH_SECRET')) {
+    return error.message
   }
 
   return 'Não foi possível concluir a operação. Tente novamente.'
@@ -118,7 +122,8 @@ export async function solicitarUrlUploadAction(
   } catch (error) {
     console.error('[solicitarUrlUploadAction] Erro:', {
       tenantId,
-      error: error instanceof Error ? error.name : 'Erro desconhecido',
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+      name: error instanceof Error ? error.name : undefined,
     })
     return {
       success: false,
