@@ -4,11 +4,11 @@ import { criarProcedimentoSchema, type TfdProcedimentoListItem } from '@saude/mo
 import { atualizarProcedimentoTfd, criarProcedimentoTfd } from '@saude/mod-saude-tfd/actions/configuracao'
 import {
   Button,
+  Combobox,
   Dialog,
   DialogContent,
   DialogFooter,
   Input,
-  Select,
   type SelectOption,
   Spinner,
 } from '@saude/ui'
@@ -144,10 +144,10 @@ export function ProcedimentoForm({
             name="especialidadeId"
             control={control}
             render={({ field }) => (
-              <Select
+              <Combobox
                 label="Especialidade"
                 value={field.value}
-                onValueChange={field.onChange}
+                onChange={field.onChange}
                 options={especialidadeOptions}
                 required
                 disabled={isPending || semEspecialidades}

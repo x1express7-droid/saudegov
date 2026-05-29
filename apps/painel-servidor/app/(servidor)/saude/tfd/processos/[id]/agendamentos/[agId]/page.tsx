@@ -17,13 +17,11 @@ import {
   type TfdUrgencia,
 } from '@saude/ui'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { AgendamentoStatusBadge } from '../../../../components/agendamento-status-badge'
-import { PRESTACAO_STATUS_CONFIG } from './components/transporte-constants'
 import { AgendamentoAcoesSidebar } from './components/agendamento-acoes-sidebar'
-import { TransportesSection } from './components/transportes-section'
+import { DeslocamentoSection } from './components/deslocamento-section'
 
 const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
   CONSULTA: 'Consulta',
@@ -104,7 +102,7 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
   const protocolo = agendamento.protocolo
   const protocoloSolicitacao = solicitacao.protocolo
 
-  const transportes = await getTransportesPorAgendamento(agId)
+  const transportesLegado = await getTransportesPorAgendamento(agId)
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -183,41 +181,12 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
             </dl>
           </Card>
 
-          <TransportesSection
+          <DeslocamentoSection
             session={session}
-            processoId={processoId}
             agendamentoId={agId}
-            transportes={transportes}
+            viagensVinculadas={agendamento.viagensVinculadas}
+            transportesLegado={transportesLegado}
           />
-
-          <Card header={<CardHeader>Prestação de contas</CardHeader>}>
-            {agendamento.prestacaoConta ? (
-              <div className="flex flex-col gap-[var(--space-2)]">
-                <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  <Link
-                    href={`/saude/tfd/processos/${processoId}/agendamentos/${agId}/prestacao`}
-                    className="font-medium text-[var(--color-primary)] hover:underline"
-                  >
-                    Abrir prestação de contas do agendamento
-                  </Link>
-                </p>
-                <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                  Status:{' '}
-                  {PRESTACAO_STATUS_CONFIG[agendamento.prestacaoConta.status]?.label ??
-                    agendamento.prestacaoConta.status}
-                  {' · '}
-                  Prazo de envio até{' '}
-                  {new Date(agendamento.prestacaoConta.prazoEnvioAt).toLocaleDateString('pt-BR')}
-                </p>
-              </div>
-            ) : (
-              <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                {agendamento.status === 'REALIZADO'
-                  ? 'Prestação de contas em abertura.'
-                  : 'Aguardando registro de retorno para abrir a prestação de contas.'}
-              </p>
-            )}
-          </Card>
         </div>
 
         <aside className="min-w-0">
@@ -225,6 +194,7 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
             session={session}
             agendamentoId={agendamento.id}
             status={agendamento.status}
+            viagensVinculadas={agendamento.viagensVinculadas}
           />
         </aside>
       </div>

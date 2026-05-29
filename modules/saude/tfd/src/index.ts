@@ -7,6 +7,8 @@ export {
   TFD_PERMISSION_KEYS,
 } from './permissions'
 
+export { TFD_CATALOGO_OPCOES_PER_PAGE } from './constants'
+
 export type {
   TfdPermissionDefinition,
   TfdPermissionKey,
@@ -40,6 +42,7 @@ export type {
   ExtratoMovimentacaoOrigemRef,
   TfdPacienteVinculadoItem,
   TfdSolicitacaoListItem,
+  ViagemPorAgendamentoItem,
   TfdSolicitacaoDetalhe,
   AlertaLembreteViagemFalhou,
   AlertaPrestacaoPrazo,
@@ -481,6 +484,7 @@ export { getPerfilPacienteTfd } from './queries/get-perfil-paciente-tfd'
 export { getHistoricoFilaSolicitacao } from './queries/get-historico-fila-solicitacao'
 export { getAgendamentosPorProcesso } from './queries/get-agendamentos-por-processo'
 export { getAgendamentoDetalhe } from './queries/get-agendamento-detalhe'
+export { getViagensPorAgendamento } from './queries/get-viagens-por-agendamento'
 export { getAgendamentosConsulta } from './queries/get-agendamentos-consulta'
 export type {
   GetAgendamentosConsultaFiltros,

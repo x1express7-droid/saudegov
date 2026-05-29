@@ -5,6 +5,7 @@ import {
   registrarRetornoAgendamento,
 } from '@saude/mod-saude-tfd/actions/agendamento'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
+import type { ViagemPorAgendamentoItem } from '@saude/mod-saude-tfd/client'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   Alert,
@@ -18,6 +19,7 @@ import {
   Textarea,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
@@ -35,12 +37,14 @@ export interface AgendamentoAcoesSidebarProps {
   session: SaudeMunicSession
   agendamentoId: string
   status: string
+  viagensVinculadas: ViagemPorAgendamentoItem[]
 }
 
 export function AgendamentoAcoesSidebar({
   session,
   agendamentoId,
   status,
+  viagensVinculadas,
 }: AgendamentoAcoesSidebarProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -53,6 +57,8 @@ export function AgendamentoAcoesSidebar({
   const podeRegistrarRetorno = status === 'AGENDADO' || status === 'EM_VIAGEM'
   const podeCancelar = status === 'AGENDADO'
   const semAcoes = status === 'REALIZADO' || status === 'CANCELADO'
+
+  const viagensConcluidas = viagensVinculadas.filter((viagem) => viagem.status === 'CONCLUIDA')
 
   function handleRegistrarRetorno() {
     setServerError(null)
@@ -100,6 +106,20 @@ export function AgendamentoAcoesSidebar({
   return (
     <Card header={<CardHeader>Ações</CardHeader>} className="lg:sticky lg:top-[var(--space-4)]">
       <div className="flex flex-col gap-[var(--space-3)]">
+        {viagensConcluidas.length > 0 ? (
+          <div className="flex flex-col gap-[var(--space-2)] border-b border-[var(--color-border)] pb-[var(--space-3)]">
+            {viagensConcluidas.map((viagem) => (
+              <Link
+                key={`${viagem.id}-${viagem.tipoTrecho}`}
+                href={`/saude/tfd/viagens/${viagem.id}?tab=prestacao`}
+                className="text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
+              >
+                Ver prestação de contas → {viagem.protocolo}
+              </Link>
+            ))}
+          </div>
+        ) : null}
+
         {semAcoes ? (
           <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
             Nenhuma ação disponível para este agendamento.

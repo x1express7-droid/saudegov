@@ -6,7 +6,7 @@ import {
   type TfdVeiculoAgendamentoItem,
 } from '@saude/mod-saude-tfd/client'
 import { criarAgendamentoTfd, listarMotoristasAgendamentoTfd } from '@saude/mod-saude-tfd/actions/viagem'
-import { Button, Input, Select, Spinner, Textarea } from '@saude/ui'
+import { Button, Combobox, Input, Spinner, Textarea } from '@saude/ui'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 
@@ -155,20 +155,20 @@ export function AgendamentoForm({
         disabled={isPending}
       />
 
-      <Select
+      <Combobox
         label="Motorista"
-        value={motoristaId || undefined}
+        value={motoristaId}
         placeholder={
           !dataViagem
             ? 'Informe a data da viagem'
             : loadingMotoristas
               ? 'Carregando motoristas…'
-              : 'Selecione o motorista'
+              : 'Buscar motorista...'
         }
         options={motoristaOptions}
-        onValueChange={setMotoristaId}
+        onChange={setMotoristaId}
+        loading={loadingMotoristas}
         disabled={isPending || !dataViagem || loadingMotoristas || motoristas.length === 0}
-        required
       />
       {motoristasError ? (
         <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]" role="status">
@@ -176,14 +176,15 @@ export function AgendamentoForm({
         </p>
       ) : null}
 
-      <Select
+      <Combobox
         label="Veículo"
-        value={veiculoId || undefined}
-        placeholder={veiculoOptions.length > 0 ? 'Selecione o veículo' : 'Nenhum veículo disponível'}
+        value={veiculoId}
+        placeholder={
+          veiculoOptions.length > 0 ? 'Buscar veículo...' : 'Nenhum veículo disponível'
+        }
         options={veiculoOptions}
-        onValueChange={setVeiculoId}
+        onChange={setVeiculoId}
         disabled={isPending || veiculoOptions.length === 0}
-        required
       />
 
       <Textarea

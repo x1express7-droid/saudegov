@@ -12,6 +12,7 @@ import {
   getProcedimentosTfd,
   getSolicitacoesOrigemRetornoTfd,
   isCadsusEnabledForTenant,
+  TFD_CATALOGO_OPCOES_PER_PAGE,
   TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
@@ -24,7 +25,7 @@ export const metadata: Metadata = {
   title: 'Atendimento da Solicitação TFD',
 }
 
-const CATALOGO_PER_PAGE = 100
+const CATALOGO_PER_PAGE = TFD_CATALOGO_OPCOES_PER_PAGE
 
 interface NovaSolicitacaoPageProps {
   searchParams: Promise<{ pacienteId?: string; processoId?: string }>

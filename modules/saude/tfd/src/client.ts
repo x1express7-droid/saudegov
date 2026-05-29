@@ -5,6 +5,8 @@ export {
   TFD_PERMISSION_KEYS,
 } from './permissions'
 
+export { TFD_CATALOGO_OPCOES_PER_PAGE } from './constants'
+
 export type {
   TfdPermissionDefinition,
   TfdPermissionKey,
@@ -73,6 +75,7 @@ export type {
   TfdFilaMovimentacaoHistoricoItem,
   TfdPacienteAgendamentoResumoItem,
   TransporteAgendamentoItem,
+  ViagemPorAgendamentoItem,
   ProcessoTfdListItem,
   TfdAgendamentoConsultaListItem,
   ProcessoTfdDetalheOutput,

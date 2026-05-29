@@ -3,6 +3,7 @@ import { getPrismaForTenant } from '@saude/core-db'
 
 import type { AgendamentoDetalheOutput } from '../types/tfd.types'
 import { formatHoraConsulta } from '../utils/agendamento-novo'
+import { getViagensPorAgendamento } from './get-viagens-por-agendamento'
 
 export async function getAgendamentoDetalhe(
   agendamentoId: string
@@ -68,6 +69,8 @@ export async function getAgendamentoDetalhe(
     return null
   }
 
+  const viagensVinculadas = await getViagensPorAgendamento(agendamentoId)
+
   return {
     id: row.id,
     protocolo: row.protocolo,
@@ -107,5 +110,6 @@ export async function getAgendamentoDetalhe(
           prazoEnvioAt: row.prestacao_conta.prazo_envio_at.toISOString(),
         }
       : null,
+    viagensVinculadas,
   }
 }

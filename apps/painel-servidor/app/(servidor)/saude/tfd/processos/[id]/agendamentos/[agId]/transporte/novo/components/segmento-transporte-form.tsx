@@ -75,6 +75,8 @@ export function SegmentoTransporteForm({
   const [observacoes, setObservacoes] = useState('')
   const [veiculoId, setVeiculoId] = useState('')
   const [motoristaId, setMotoristaId] = useState('')
+  const [origemAtalhoReset, setOrigemAtalhoReset] = useState(0)
+  const [destinoAtalhoReset, setDestinoAtalhoReset] = useState(0)
 
   const [motoristas, setMotoristas] = useState<TfdMotoristaAgendamentoItem[]>([])
   const [loadingMotoristas, setLoadingMotoristas] = useState(false)
@@ -222,20 +224,28 @@ export function SegmentoTransporteForm({
 
         {prestadores.length > 0 ? (
           <div className="grid gap-[var(--space-3)] sm:grid-cols-2">
-            <Select
+            <Combobox
+              key={`origem-atalho-${origemAtalhoReset}`}
               label="Atalho origem (prestador)"
-              value={undefined}
-              onValueChange={aplicarPrestadorOrigem}
+              value=""
+              onChange={(prestadorId) => {
+                aplicarPrestadorOrigem(prestadorId)
+                setOrigemAtalhoReset((current) => current + 1)
+              }}
               options={prestadorAtalhos}
-              placeholder="Selecionar prestador…"
+              placeholder="Buscar prestador…"
               disabled={isPending}
             />
-            <Select
+            <Combobox
+              key={`destino-atalho-${destinoAtalhoReset}`}
               label="Atalho destino (prestador)"
-              value={undefined}
-              onValueChange={aplicarPrestadorDestino}
+              value=""
+              onChange={(prestadorId) => {
+                aplicarPrestadorDestino(prestadorId)
+                setDestinoAtalhoReset((current) => current + 1)
+              }}
               options={prestadorAtalhos}
-              placeholder="Selecionar prestador…"
+              placeholder="Buscar prestador…"
               disabled={isPending}
             />
           </div>

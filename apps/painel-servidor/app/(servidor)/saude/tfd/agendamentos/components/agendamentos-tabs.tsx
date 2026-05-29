@@ -23,9 +23,13 @@ export function AgendamentosTabs() {
     return query ? `${pathname}?${query}` : pathname
   }
 
-  const tabs: { id: AgendamentosFonte; label: string }[] = [
+  const tabs: { id: AgendamentosFonte; label: string; title?: string }[] = [
     { id: 'consultas', label: 'Agendamentos' },
-    { id: 'viagens', label: 'Viagens legadas' },
+    {
+      id: 'viagens',
+      label: 'Histórico (legado)',
+      title: 'Registros do sistema anterior — somente visualização',
+    },
   ]
 
   return (
@@ -39,6 +43,7 @@ export function AgendamentosTabs() {
           <Link
             key={tab.id}
             href={hrefPara(tab.id)}
+            title={tab.title}
             className={cn(
               '-mb-px border-b-2 px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium transition-colors',
               ativo

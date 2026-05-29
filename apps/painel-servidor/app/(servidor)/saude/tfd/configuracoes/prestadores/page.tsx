@@ -7,6 +7,7 @@ import {
 import {
   getEspecialidadesTfd,
   getPrestadoresTfd,
+  TFD_CATALOGO_OPCOES_PER_PAGE,
   TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
@@ -38,7 +39,7 @@ export default async function PrestadoresPage({ searchParams }: PrestadoresPageP
 
   const [{ items, total, perPage }, especialidadesResult] = await Promise.all([
     getPrestadoresTfd({ page, perPage: 20, ativo }),
-    getEspecialidadesTfd({ ativo: true, perPage: 500, page: 1 }),
+    getEspecialidadesTfd({ ativo: true, perPage: TFD_CATALOGO_OPCOES_PER_PAGE, page: 1 }),
   ])
 
   const especialidadeOptions = especialidadesResult.items.map((item) => ({

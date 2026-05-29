@@ -3,15 +3,15 @@ import {
   getTenantContext,
   requireTenantRole,
 } from '@saude/core-auth/server'
-import { getAgendamentoDetalhe, getPrestadoresTfd, getSolicitacaoTfd, getVeiculosAgendamentoTfd } from '@saude/mod-saude-tfd'
-import { Alert, PageHeader } from '@saude/ui'
+import { getAgendamentoDetalhe, getPrestadoresTfd, getSolicitacaoTfd, getVeiculosAgendamentoTfd, TFD_CATALOGO_OPCOES_PER_PAGE } from '@saude/mod-saude-tfd'
+import { Alert, Button, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { SegmentoTransporteForm } from './components/segmento-transporte-form'
 
-const CATALOGO_PER_PAGE = 200
+const CATALOGO_PER_PAGE = TFD_CATALOGO_OPCOES_PER_PAGE
 
 function formatDataConsultaLabel(iso: string, hora: string | null): string {
   const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
@@ -84,26 +84,32 @@ export default async function NovoTransportePage({ params }: NovoTransportePageP
         ]}
       />
 
-      <Alert variant="info" titulo="Gerenciamento de deslocamentos">
-        <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-          O gerenciamento de transporte agora é feito através das Viagens TFD. Recomendamos criar
-          uma viagem para organizar os deslocamentos deste agendamento.{' '}
-          <Link
-            href={`/saude/tfd/viagens/nova?agendamentoId=${encodeURIComponent(agendamentoId)}`}
-            className="font-medium text-[var(--color-primary)] hover:underline"
-          >
-            Criar viagem →
-          </Link>
-        </p>
+      <Alert variant="info" titulo="Deslocamento via Viagem TFD">
+        <div className="flex flex-col gap-[var(--space-3)]">
+          <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
+            O deslocamento agora é gerenciado pela Viagem TFD. Use o botão abaixo para criar uma
+            viagem e vincular este agendamento.
+          </p>
+          <Button asChild variant="primary" className="w-full sm:w-auto">
+            <Link href={`/saude/tfd/viagens/nova?agendamentoId=${encodeURIComponent(agendamentoId)}`}>
+              Criar viagem para este agendamento
+            </Link>
+          </Button>
+        </div>
       </Alert>
 
-      <SegmentoTransporteForm
-        session={session}
-        processoId={processoId}
-        agendamentoId={agendamentoId}
-        prestadores={prestadoresResult.items}
-        veiculos={veiculos}
-      />
+      <div className="flex flex-col gap-[var(--space-3)]">
+        <h2 className="text-[length:var(--text-base)] font-semibold text-[var(--color-text)]">
+          Adicionar segmento avulso (uso específico)
+        </h2>
+        <SegmentoTransporteForm
+          session={session}
+          processoId={processoId}
+          agendamentoId={agendamentoId}
+          prestadores={prestadoresResult.items}
+          veiculos={veiculos}
+        />
+      </div>
     </div>
   )
 }

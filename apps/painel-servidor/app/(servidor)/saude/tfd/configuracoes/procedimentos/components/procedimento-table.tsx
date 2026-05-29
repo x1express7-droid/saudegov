@@ -7,6 +7,7 @@ import { DeactivateDialog } from '@/app/(admin)/configuracoes/organograma/compon
 import {
   Badge,
   Button,
+  Combobox,
   DataTable,
   Select,
   type ColumnDef,
@@ -166,10 +167,10 @@ export function ProcedimentoTable({
     <div className="flex flex-col gap-[var(--space-4)]">
       <div className="flex flex-col gap-[var(--space-4)] lg:flex-row lg:items-end lg:justify-between">
         <div className="flex flex-col gap-[var(--space-4)] sm:flex-row sm:flex-wrap sm:items-end">
-          <Select
+          <Combobox
             label="Especialidade"
             value={especialidadeSelectValue}
-            onValueChange={(value) => {
+            onChange={(value) => {
               navigate({
                 page: '1',
                 ativo: ativoSelectValue === 'all' ? undefined : ativoSelectValue,
@@ -177,6 +178,7 @@ export function ProcedimentoTable({
               })
             }}
             options={filtroEspecialidadeOptions}
+            placeholder="Buscar especialidade..."
             className="w-full sm:max-w-xs"
           />
           <Select

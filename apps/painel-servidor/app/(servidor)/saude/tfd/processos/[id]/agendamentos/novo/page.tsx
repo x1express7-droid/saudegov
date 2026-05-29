@@ -11,6 +11,7 @@ import {
   getProcedimentosTfd,
   getProcessoTfdDetalhe,
   getSolicitacaoTfd,
+  TFD_CATALOGO_OPCOES_PER_PAGE,
 } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import { formatInTimeZone } from 'date-fns-tz'
@@ -19,7 +20,7 @@ import { notFound, redirect } from 'next/navigation'
 
 import { AgendamentoNovoForm } from './components/agendamento-novo-form'
 
-const CATALOGO_PER_PAGE = 200
+const CATALOGO_PER_PAGE = TFD_CATALOGO_OPCOES_PER_PAGE
 const DEFAULT_TIMEZONE = 'America/Sao_Paulo'
 
 interface NovoAgendamentoPageProps {

@@ -838,6 +838,16 @@ export interface AgendamentoProcessoListItem {
   createdAt: string
 }
 
+export interface ViagemPorAgendamentoItem {
+  id: string
+  protocolo: string
+  status: string
+  dataSaida: string
+  origemDescricao: string
+  destinoDescricao: string
+  tipoTrecho: string
+}
+
 export interface AgendamentoDetalheOutput extends AgendamentoProcessoListItem {
   processoId: string
   solicitacaoId: string
@@ -853,6 +863,7 @@ export interface AgendamentoDetalheOutput extends AgendamentoProcessoListItem {
     status: string
     prazoEnvioAt: string
   } | null
+  viagensVinculadas: ViagemPorAgendamentoItem[]
 }
 
 export interface AgendamentoNovoOutput {

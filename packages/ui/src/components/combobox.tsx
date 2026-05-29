@@ -100,10 +100,17 @@ export function Combobox({
     if (disabled) {
       return
     }
+
+    const selectedIndex =
+      value != null && value !== ''
+        ? options.findIndex((option) => option.value === value)
+        : -1
+
     setIsOpen(true)
-    setQuery(selectedOption?.label ?? '')
-    setHighlightedIndex(0)
-  }, [disabled, selectedOption?.label])
+    // Busca vazia ao abrir: exibe todas as opções e permite filtrar digitando.
+    setQuery('')
+    setHighlightedIndex(selectedIndex >= 0 ? selectedIndex : 0)
+  }, [disabled, options, value])
 
   const selectOption = useCallback(
     (option: ComboboxOption) => {
@@ -250,7 +257,11 @@ export function Combobox({
           value={inputValue}
           onChange={(event) => handleInputChange(event.target.value)}
           onFocus={openDropdown}
-          onClick={openDropdown}
+          onClick={() => {
+            if (!isOpen) {
+              openDropdown()
+            }
+          }}
           onKeyDown={handleKeyDown}
           className={fieldControlClassName({
             error: hasError,

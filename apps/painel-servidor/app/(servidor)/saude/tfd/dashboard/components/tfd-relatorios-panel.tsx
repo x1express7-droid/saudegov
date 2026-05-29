@@ -13,7 +13,7 @@ import {
   gerarRelatorioProducaoMensalTfd,
 } from '@saude/mod-saude-tfd/actions/relatorio'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
-import { Alert, Button, Card, Input, Select } from '@saude/ui'
+import { Alert, Button, Card, Combobox, Input, Select } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useCallback, useMemo, useState } from 'react'
 
@@ -413,13 +413,14 @@ export function TfdRelatoriosPanel({
                 />
               </div>
             </div>
-            <Select
+            <Combobox
               id="relatorio-prestador-id"
               label="Prestador"
               value={prestadorId}
-              onValueChange={setPrestadorId}
+              onChange={setPrestadorId}
               disabled={loadingPrestador}
               options={prestadorSelectOptions}
+              placeholder="Buscar prestador..."
             />
             {erroPrestador ? (
               <Alert variant="error" role="alert">
@@ -476,13 +477,14 @@ export function TfdRelatoriosPanel({
                 />
               </div>
             </div>
-            <Select
+            <Combobox
               id="relatorio-motorista-id"
               label="Motorista"
               value={motoristaId}
-              onValueChange={setMotoristaId}
+              onChange={setMotoristaId}
               disabled={loadingMotorista}
               options={motoristaSelectOptions}
+              placeholder="Buscar motorista..."
             />
             {erroMotorista ? (
               <Alert variant="error" role="alert">

@@ -121,7 +121,7 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
 
   const subtitulo =
     fonte === 'viagens'
-      ? 'Viagens legadas (motorista e veículo) do Tratamento Fora de Domicílio.'
+      ? 'Registros do sistema anterior — somente visualização. Viagens legadas com motorista e veículo.'
       : 'Consultas agendadas na nova entidade de agendamentos TFD.'
 
   return (
@@ -138,6 +138,13 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
       <Suspense fallback={null}>
         <AgendamentosTabs />
       </Suspense>
+
+      {fonte === 'viagens' ? (
+        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+          Registros do sistema anterior — somente visualização. Não é possível criar novos registros
+          nesta aba.
+        </p>
+      ) : null}
 
       <Suspense
         fallback={
