@@ -10,7 +10,7 @@ const DEFAULT_PER_PAGE = 20
 export interface GetSolicitacoesFiltros {
   status?: TfdStatusSolicitacao
   urgencia?: TfdUrgencia
-  /** Busca parcial em `processo.protocolo` (case-insensitive). */
+  /** Busca parcial em `solicitacao.protocolo` (case-insensitive). */
   protocolo?: string
   page?: number
   perPage?: number
@@ -19,6 +19,7 @@ export interface GetSolicitacoesFiltros {
 type SolicitacaoListRow = {
   id: string
   processo_id: string
+  protocolo: string
   status: TfdStatusSolicitacao
   urgencia: TfdUrgencia
   tipo_atendimento: string
@@ -27,14 +28,13 @@ type SolicitacaoListRow = {
   paciente: { nome: string }
   especialidade: { nome: string } | null
   prestador: { nome: string; cidade: string; estado: string } | null
-  processo: { protocolo: string }
 }
 
 function mapToListItem(row: SolicitacaoListRow): TfdSolicitacaoListItem {
   return {
     id: row.id,
     processoId: row.processo_id,
-    protocolo: row.processo.protocolo,
+    protocolo: row.protocolo,
     status: row.status,
     urgencia: row.urgencia,
     especialidade: row.especialidade?.nome ?? '—',
@@ -55,6 +55,7 @@ function mapToListItem(row: SolicitacaoListRow): TfdSolicitacaoListItem {
 const solicitacaoListSelect = {
   id: true,
   processo_id: true,
+  protocolo: true,
   status: true,
   urgencia: true,
   tipo_atendimento: true,
@@ -63,7 +64,6 @@ const solicitacaoListSelect = {
   paciente: { select: { nome: true } },
   especialidade: { select: { nome: true } },
   prestador: { select: { nome: true, cidade: true, estado: true } },
-  processo: { select: { protocolo: true } },
 } as const
 
 export async function getSolicitacoesTfd(
@@ -86,8 +86,12 @@ export async function getSolicitacoesTfd(
 
   const protocoloBusca = filtros.protocolo?.trim()
 
-  const processoWhere = {
-    ...(session.user.role === 'SERVIDOR' ? { setor_id: session.user.setorId! } : {}),
+  const processoSetorWhere =
+    session.user.role === 'SERVIDOR' ? { setor_id: session.user.setorId! } : undefined
+
+  const whereClause = {
+    tenant_id: tenantId,
+    ...(processoSetorWhere ? { processo: processoSetorWhere } : {}),
     ...(protocoloBusca
       ? {
           protocolo: {
@@ -96,11 +100,6 @@ export async function getSolicitacoesTfd(
           },
         }
       : {}),
-  }
-
-  const whereClause = {
-    tenant_id: tenantId,
-    ...(Object.keys(processoWhere).length > 0 ? { processo: processoWhere } : {}),
     ...(filtros.status ? { status: filtros.status } : {}),
     ...(filtros.urgencia ? { urgencia: filtros.urgencia } : {}),
   }

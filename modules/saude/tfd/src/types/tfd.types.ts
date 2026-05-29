@@ -178,6 +178,7 @@ export interface TfdVeiculoAgendamentoItem {
 /** Item da listagem de agendamentos (viagens) com contexto da solicitação. */
 export interface TfdAgendamentoListItem {
   id: string
+  protocolo: string
   sequencia: number
   dataViagem: string
   horaSaida: string | null
@@ -815,6 +816,7 @@ export interface TfdPacientePerfilOutput {
 
 export interface AgendamentoProcessoListItem {
   id: string
+  protocolo: string
   solicitacaoId: string
   sequencia: number
   dataConsulta: string
@@ -975,6 +977,7 @@ export interface ProcessoTfdDetalheOutput {
   }>
   agendamentos: Array<{
     id: string
+    protocolo: string
     sequencia: number
     dataConsulta: string
     horaConsulta: string | null

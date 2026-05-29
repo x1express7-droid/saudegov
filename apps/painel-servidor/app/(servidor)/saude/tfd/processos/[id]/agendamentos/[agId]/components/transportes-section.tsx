@@ -23,7 +23,6 @@ import { RegistrarChegadaDialog } from './registrar-chegada-dialog'
 import {
   currencyFormatter,
   formatDataHora,
-  labelTipoSegmento,
   TIPO_SEGMENTO_CONFIG,
   TRANSPORTE_STATUS_CONFIG,
 } from './transporte-constants'
@@ -106,7 +105,6 @@ function RotaTimeline({ transportes }: { transportes: TransporteAgendamentoItem[
 
 function SegmentoCard({
   session,
-  processoId,
   segmento,
   onConfirmar,
   onChegada,
@@ -114,7 +112,6 @@ function SegmentoCard({
   onAnexo,
 }: {
   session: SaudeMunicSession
-  processoId: string
   segmento: TransporteAgendamentoItem
   onConfirmar: () => void
   onChegada: () => void
@@ -319,7 +316,6 @@ export function TransportesSection({
                 <li key={segmento.id}>
                   <SegmentoCard
                     session={session}
-                    processoId={processoId}
                     segmento={segmento}
                     onConfirmar={() => {
                       setDialogTransporte(segmento)

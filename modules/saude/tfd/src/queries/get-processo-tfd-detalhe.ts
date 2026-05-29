@@ -91,6 +91,7 @@ export async function getProcessoTfdDetalhe(
         orderBy: { created_at: 'desc' },
         select: {
           id: true,
+          protocolo: true,
           status: true,
           urgencia: true,
           tipo_atendimento: true,
@@ -103,6 +104,7 @@ export async function getProcessoTfdDetalhe(
         orderBy: [{ sequencia: 'asc' }, { created_at: 'asc' }],
         select: {
           id: true,
+          protocolo: true,
           sequencia: true,
           data_consulta: true,
           hora_consulta: true,
@@ -188,7 +190,7 @@ export async function getProcessoTfdDetalhe(
     },
     solicitacoes: processo.tfd_solicitacoes.map((row) => ({
       id: row.id,
-      protocolo: processo.protocolo,
+      protocolo: row.protocolo,
       status: row.status,
       urgencia: row.urgencia,
       tipoAtendimento: row.tipo_atendimento,
@@ -198,6 +200,7 @@ export async function getProcessoTfdDetalhe(
     })),
     agendamentos: processo.tfd_agendamentos.map((row) => ({
       id: row.id,
+      protocolo: row.protocolo,
       sequencia: row.sequencia,
       dataConsulta: row.data_consulta.toISOString().slice(0, 10),
       horaConsulta: formatHoraConsulta(row.hora_consulta),

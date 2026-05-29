@@ -101,7 +101,8 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
     notFound()
   }
 
-  const protocolo = solicitacao.protocolo
+  const protocolo = agendamento.protocolo
+  const protocoloSolicitacao = solicitacao.protocolo
 
   const transportes = await getTransportesPorAgendamento(agId)
 
@@ -112,7 +113,7 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
         subtitulo="Consulta vinculada ao processo TFD."
         breadcrumbs={[
           { label: 'Processos TFD', href: '/saude/tfd' },
-          { label: protocolo, href: `/saude/tfd/${solicitacao.id}` },
+          { label: protocoloSolicitacao, href: `/saude/tfd/${solicitacao.id}` },
           { label: `Agendamento ${agendamento.sequencia}` },
         ]}
         acoes={

@@ -230,6 +230,11 @@ export function ProcessoDetalheView({
   const agendamentosColumns = useMemo<ColumnDef<AgendamentoProcessoListItem>[]>(
     () => [
       {
+        id: 'protocolo',
+        header: 'Protocolo',
+        cell: ({ row }) => <ProtocoloBadge protocolo={row.original.protocolo} />,
+      },
+      {
         id: 'sequencia',
         header: 'Seq.',
         cell: ({ row }) => (

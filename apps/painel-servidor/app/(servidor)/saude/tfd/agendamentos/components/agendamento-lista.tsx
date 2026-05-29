@@ -162,7 +162,7 @@ export function AgendamentoLista({ items, total, session }: AgendamentoListaProp
             onKeyDown={(event) => event.stopPropagation()}
           >
             <Link href={`${TFD_DETAIL_BASE}/${row.original.solicitacao.id}`}>
-              <ProtocoloBadge protocolo={row.original.solicitacao.protocolo} />
+              <ProtocoloBadge protocolo={row.original.protocolo} />
             </Link>
           </div>
         ),

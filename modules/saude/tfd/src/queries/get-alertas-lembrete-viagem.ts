@@ -17,12 +17,13 @@ export async function getAlertasLembreteViagemTfd(): Promise<AlertaLembreteViage
     },
     select: {
       id: true,
+      protocolo: true,
       data_viagem: true,
       lembrete_48h_falhou_at: true,
       solicitacao: {
         select: {
           id: true,
-          processo: { select: { protocolo: true } },
+          protocolo: true,
         },
       },
     },
@@ -35,7 +36,7 @@ export async function getAlertasLembreteViagemTfd(): Promise<AlertaLembreteViage
     lembrete48hFalhouAt: row.lembrete_48h_falhou_at!.toISOString(),
     solicitacao: {
       id: row.solicitacao.id,
-      protocolo: row.solicitacao.processo.protocolo,
+      protocolo: row.protocolo,
     },
   }))
 }

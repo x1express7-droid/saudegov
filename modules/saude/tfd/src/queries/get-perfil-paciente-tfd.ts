@@ -79,6 +79,7 @@ export async function getPerfilPacienteTfd(
         take: MAX_PROCESSOS,
         select: {
           id: true,
+          protocolo: true,
           status: true,
           posicao_fila: true,
           created_at: true,
@@ -86,7 +87,6 @@ export async function getPerfilPacienteTfd(
           processo: {
             select: {
               id: true,
-              protocolo: true,
               status: true,
             },
           },
@@ -119,15 +119,13 @@ export async function getPerfilPacienteTfd(
         take: MAX_AGENDAMENTOS,
         select: {
           id: true,
+          protocolo: true,
           data_viagem: true,
           status: true,
           sequencia: true,
           solicitacao: {
             select: {
               id: true,
-              processo: {
-                select: { protocolo: true },
-              },
               prestador: {
                 select: { nome: true },
               },
@@ -148,7 +146,7 @@ export async function getPerfilPacienteTfd(
   const processos: TfdPacienteProcessoListItem[] = processosRows.map((row) => ({
     processoId: row.processo.id,
     solicitacaoId: row.id,
-    protocolo: row.processo.protocolo,
+    protocolo: row.protocolo,
     statusSolicitacao: row.status,
     statusProcesso: row.processo.status,
     especialidadeNome: row.especialidade?.nome ?? null,
@@ -163,7 +161,7 @@ export async function getPerfilPacienteTfd(
   const agendamentos: TfdPacienteAgendamentoResumoItem[] = agendamentosRows.map(
     (row) => ({
       viagemId: row.id,
-      protocolo: row.solicitacao.processo.protocolo,
+      protocolo: row.protocolo,
       dataViagem: formatDateOnly(row.data_viagem) ?? '',
       statusViagem: row.status,
       prestadorNome: row.solicitacao.prestador?.nome ?? null,

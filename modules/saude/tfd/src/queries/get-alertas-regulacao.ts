@@ -22,12 +22,10 @@ export async function getAlertasPendente30Dias(): Promise<AlertaPendente30Dias[]
     },
     select: {
       id: true,
+      protocolo: true,
       processo_id: true,
       paciente: {
         select: { nome: true },
-      },
-      processo: {
-        select: { protocolo: true },
       },
     },
   })
@@ -56,7 +54,7 @@ export async function getAlertasPendente30Dias(): Promise<AlertaPendente30Dias[]
   const rows = pendentes.map((solicitacao) => ({
     id: solicitacao.id,
     processo_id: solicitacao.processo_id,
-    protocolo: solicitacao.processo.protocolo,
+    protocolo: solicitacao.protocolo,
     paciente: { nome: solicitacao.paciente.nome },
   }))
 

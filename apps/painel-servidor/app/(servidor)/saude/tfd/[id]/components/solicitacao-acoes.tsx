@@ -17,8 +17,6 @@ import {
   Button,
   Card,
   CardHeader,
-  Input,
-  Select,
   Spinner,
   Textarea,
 } from '@saude/ui'
@@ -104,7 +102,6 @@ function ServerError({ message }: { message: string }) {
 export function SolicitacaoAcoes({
   session,
   solicitacao,
-  veiculosAgendamento,
   viagens,
   agendamentos = [],
   viagensNovaPorAgendamento = [],

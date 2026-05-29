@@ -11,9 +11,10 @@ function mapRowToAlerta(
     lembrete_48h_falhou_at: Date | null
     viagem: {
       sequencia: number
+      protocolo: string
       solicitacao: {
         id: string
-        processo: { protocolo: string }
+        protocolo: string
       }
     }
   },
@@ -27,7 +28,7 @@ function mapRowToAlerta(
     sequenciaViagem: row.viagem.sequencia,
     solicitacao: {
       id: row.viagem.solicitacao.id,
-      protocolo: row.viagem.solicitacao.processo.protocolo,
+      protocolo: row.viagem.solicitacao.protocolo,
     },
   }
 }
@@ -39,10 +40,11 @@ const prestacaoSelect = {
   viagem: {
     select: {
       sequencia: true,
+      protocolo: true,
       solicitacao: {
         select: {
           id: true,
-          processo: { select: { protocolo: true } },
+          protocolo: true,
         },
       },
     },

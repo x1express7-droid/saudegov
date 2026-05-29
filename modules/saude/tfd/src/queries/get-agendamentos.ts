@@ -23,6 +23,7 @@ export interface GetAgendamentosFiltros {
 
 type ViagemListRow = {
   id: string
+  protocolo: string
   sequencia: number
   data_viagem: Date
   hora_saida: Date | null
@@ -31,8 +32,8 @@ type ViagemListRow = {
   lembrete_48h_falhou_at: Date | null
   solicitacao: {
     id: string
+    protocolo: string
     paciente: { nome: string }
-    processo: { protocolo: string }
   }
   motorista: {
     id: string
@@ -47,14 +48,15 @@ type ViagemListRow = {
 
 type AgendamentoNovoListRow = {
   id: string
+  protocolo: string
   sequencia: number
   data_consulta: Date
   hora_consulta: Date | null
   status: TfdAgendamentoStatus
   solicitacao: {
     id: string
+    protocolo: string
     paciente: { nome: string }
-    processo: { protocolo: string }
   }
   transportes: Array<{
     motorista: {
@@ -97,13 +99,14 @@ function sortKeyDataHora(dataIso: string, hora: string | null): number {
 function mapViagemToListItem(row: ViagemListRow): TfdAgendamentoListItem {
   return {
     id: row.id,
+    protocolo: row.protocolo,
     sequencia: row.sequencia,
     dataViagem: row.data_viagem.toISOString().slice(0, 10),
     horaSaida: formatHoraSaida(row.hora_saida),
     status: row.status,
     solicitacao: {
       id: row.solicitacao.id,
-      protocolo: row.solicitacao.processo.protocolo,
+      protocolo: row.solicitacao.protocolo,
       paciente: { nome: row.solicitacao.paciente.nome },
     },
     motorista: row.motorista
@@ -126,13 +129,14 @@ function mapAgendamentoNovoToListItem(row: AgendamentoNovoListRow): TfdAgendamen
 
   return {
     id: row.id,
+    protocolo: row.protocolo,
     sequencia: row.sequencia,
     dataViagem: row.data_consulta.toISOString().slice(0, 10),
     horaSaida: formatHoraConsulta(row.hora_consulta),
     status: row.status,
     solicitacao: {
       id: row.solicitacao.id,
-      protocolo: row.solicitacao.processo.protocolo,
+      protocolo: row.solicitacao.protocolo,
       paciente: { nome: row.solicitacao.paciente.nome },
     },
     motorista: transporte?.motorista
@@ -152,6 +156,7 @@ function mapAgendamentoNovoToListItem(row: AgendamentoNovoListRow): TfdAgendamen
 
 const viagemListSelect = {
   id: true,
+  protocolo: true,
   sequencia: true,
   data_viagem: true,
   hora_saida: true,
@@ -161,8 +166,8 @@ const viagemListSelect = {
   solicitacao: {
     select: {
       id: true,
+      protocolo: true,
       paciente: { select: { nome: true } },
-      processo: { select: { protocolo: true } },
     },
   },
   motorista: {
@@ -182,6 +187,7 @@ const viagemListSelect = {
 
 const agendamentoNovoListSelect = {
   id: true,
+  protocolo: true,
   sequencia: true,
   data_consulta: true,
   hora_consulta: true,
@@ -189,8 +195,8 @@ const agendamentoNovoListSelect = {
   solicitacao: {
     select: {
       id: true,
+      protocolo: true,
       paciente: { select: { nome: true } },
-      processo: { select: { protocolo: true } },
     },
   },
   transportes: {

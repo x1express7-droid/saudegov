@@ -95,14 +95,14 @@ export function ExtratoDialog({ saldo, open, onOpenChange, session }: ExtratoDia
     setSuccessMessage(null)
     setMovimentacaoEstorno(null)
     setEstornoOpen(false)
-  }, [open, saldo?.id])
+  }, [open, saldo])
 
   useEffect(() => {
     if (!open || !saldo) {
       return
     }
     carregarExtrato()
-  }, [open, saldo?.id, carregarExtrato, reloadToken])
+  }, [open, saldo, carregarExtrato, reloadToken])
 
   function handleAplicarPeriodo() {
     setPage(1)

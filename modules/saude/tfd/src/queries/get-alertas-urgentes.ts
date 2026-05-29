@@ -8,12 +8,12 @@ const STATUS_OPERACIONAIS: TfdStatusSolicitacao[] = ['ENVIADO', 'EM_ANALISE', 'P
 
 const solicitacaoUrgenteSelect = {
   id: true,
+  protocolo: true,
   status: true,
   urgencia: true,
   created_at: true,
   paciente: { select: { nome: true } },
   especialidade: { select: { nome: true } },
-  processo: { select: { protocolo: true } },
 } as const
 
 /**
@@ -38,7 +38,7 @@ export async function getAlertasUrgentesTfd(): Promise<TfdAlertaUrgente[]> {
 
   return rows.map((row) => ({
     solicitacaoId: row.id,
-    protocolo: row.processo.protocolo,
+    protocolo: row.protocolo,
     status: row.status,
     urgencia: row.urgencia,
     especialidade: row.especialidade?.nome ?? '—',

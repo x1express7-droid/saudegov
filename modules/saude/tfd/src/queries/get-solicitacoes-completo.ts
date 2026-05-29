@@ -25,6 +25,7 @@ export interface SolicitacaoExportRow {
 }
 
 const solicitacaoExportSelect = {
+  protocolo: true,
   status: true,
   urgencia: true,
   tipo_atendimento: true,
@@ -34,7 +35,6 @@ const solicitacaoExportSelect = {
   updated_at: true,
   especialidade: { select: { nome: true } },
   prestador: { select: { nome: true, cidade: true, estado: true } },
-  processo: { select: { protocolo: true } },
 } as const
 
 /**
@@ -62,11 +62,9 @@ export async function getSolicitacoesCompleto(
     tenant_id: tenantId,
     ...(protocoloBusca
       ? {
-          processo: {
-            protocolo: {
-              contains: protocoloBusca,
-              mode: 'insensitive' as const,
-            },
+          protocolo: {
+            contains: protocoloBusca,
+            mode: 'insensitive' as const,
           },
         }
       : {}),
@@ -84,7 +82,7 @@ export async function getSolicitacoesCompleto(
   })
 
   const items: SolicitacaoExportRow[] = rows.map((row) => ({
-    protocolo: row.processo.protocolo,
+    protocolo: row.protocolo,
     status: row.status,
     urgencia: row.urgencia,
     especialidade: row.especialidade?.nome ?? '—',

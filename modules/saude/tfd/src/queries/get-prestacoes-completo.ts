@@ -23,12 +23,8 @@ const prestacaoExportSelect = {
   aprovado_at: true,
   viagem: {
     select: {
+      protocolo: true,
       itens_despesa: { select: { valor: true } },
-      solicitacao: {
-        select: {
-          processo: { select: { protocolo: true } },
-        },
-      },
     },
   },
 } as const
@@ -79,7 +75,7 @@ export async function getPrestacoesCompleto(
 
     return [
       {
-        protocolo: row.viagem.solicitacao.processo.protocolo,
+        protocolo: row.viagem.protocolo,
         status: row.status,
         valorTotal,
         enviadoEm,

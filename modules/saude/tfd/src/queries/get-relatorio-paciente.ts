@@ -45,9 +45,9 @@ export async function getRelatorioPacienteTfd(
     },
     select: {
       status: true,
+      protocolo: true,
       created_at: true,
       decidido_at: true,
-      processo: { select: { protocolo: true } },
       especialidade: { select: { nome: true } },
     },
     orderBy: { created_at: 'desc' },
@@ -56,7 +56,7 @@ export async function getRelatorioPacienteTfd(
   return {
     paciente: { id: paciente.id, nome: paciente.nome },
     itens: rows.map((row) => ({
-      protocolo: row.processo.protocolo,
+      protocolo: row.protocolo,
       especialidade: row.especialidade?.nome ?? '—',
       status: row.status,
       criadoEm: row.created_at.toISOString(),
@@ -94,9 +94,7 @@ export async function buscarPacienteRelatorioTfd(termo: string): Promise<Pacient
     db.tfdSolicitacao.findMany({
       where: {
         tenant_id: tenantId,
-        processo: {
-          protocolo: { contains: trimmed, mode: 'insensitive' },
-        },
+        protocolo: { contains: trimmed, mode: 'insensitive' },
       },
       select: {
         paciente: { select: { id: true, nome: true } },

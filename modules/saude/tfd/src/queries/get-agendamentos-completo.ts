@@ -34,12 +34,12 @@ function formatHoraSaida(hora: Date | null): string | null {
 }
 
 const agendamentoExportSelect = {
+  protocolo: true,
   data_viagem: true,
   hora_saida: true,
   status: true,
   solicitacao: {
     select: {
-      processo: { select: { protocolo: true } },
       prestador: { select: { cidade: true, estado: true } },
     },
   },
@@ -107,7 +107,7 @@ export async function getAgendamentosCompleto(
         : prestador?.cidade ?? prestador?.estado ?? '—'
 
     return {
-      protocolo: row.solicitacao.processo.protocolo,
+      protocolo: row.protocolo,
       dataViagem: row.data_viagem.toISOString().slice(0, 10),
       horaSaida: formatHoraSaida(row.hora_saida),
       motoristaNome: row.motorista?.user.name ?? '—',

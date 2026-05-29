@@ -20,6 +20,7 @@ export async function getAgendamentoDetalhe(
     },
     select: {
       id: true,
+      protocolo: true,
       processo_id: true,
       solicitacao_id: true,
       sequencia: true,
@@ -69,6 +70,7 @@ export async function getAgendamentoDetalhe(
 
   return {
     id: row.id,
+    protocolo: row.protocolo,
     processoId: row.processo_id,
     solicitacaoId: row.solicitacao_id,
     sequencia: row.sequencia,

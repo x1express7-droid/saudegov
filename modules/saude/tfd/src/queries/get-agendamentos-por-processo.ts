@@ -36,6 +36,7 @@ export async function getAgendamentosPorProcesso(
     orderBy: [{ sequencia: 'asc' }, { created_at: 'asc' }],
     select: {
       id: true,
+      protocolo: true,
       solicitacao_id: true,
       sequencia: true,
       data_consulta: true,
@@ -64,6 +65,7 @@ export async function getAgendamentosPorProcesso(
 
   return rows.map((row) => ({
     id: row.id,
+    protocolo: row.protocolo,
     solicitacaoId: row.solicitacao_id,
     sequencia: row.sequencia,
     dataConsulta: row.data_consulta.toISOString().slice(0, 10),

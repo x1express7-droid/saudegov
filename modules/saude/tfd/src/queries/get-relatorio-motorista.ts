@@ -50,6 +50,7 @@ export async function getRelatorioMotoristaTfd(
     },
     select: {
       id: true,
+      protocolo: true,
       data_viagem: true,
       status: true,
       motorista_id: true,
@@ -57,11 +58,6 @@ export async function getRelatorioMotoristaTfd(
         select: {
           id: true,
           user: { select: { name: true } },
-        },
-      },
-      solicitacao: {
-        select: {
-          processo: { select: { protocolo: true } },
         },
       },
       itens_despesa: {
@@ -104,7 +100,7 @@ export async function getRelatorioMotoristaTfd(
 
     detalhes.push({
       motoristaNome,
-      protocolo: viagem.solicitacao.processo.protocolo,
+      protocolo: viagem.protocolo,
       dataViagem,
       statusViagem: viagem.status,
       valorDespesas,

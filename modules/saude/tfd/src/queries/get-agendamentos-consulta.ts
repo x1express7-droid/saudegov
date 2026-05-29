@@ -70,6 +70,7 @@ export async function getAgendamentosConsulta(
         id: true,
         processo_id: true,
         solicitacao_id: true,
+        protocolo: true,
         sequencia: true,
         data_consulta: true,
         hora_consulta: true,
@@ -86,7 +87,6 @@ export async function getAgendamentosConsulta(
         solicitacao: {
           select: {
             paciente: { select: { nome: true } },
-            processo: { select: { protocolo: true } },
           },
         },
       },
@@ -107,7 +107,7 @@ export async function getAgendamentosConsulta(
       horaConsulta: formatHoraConsulta(row.hora_consulta),
       tipoAtendimento: row.tipo_atendimento,
       status: row.status,
-      protocolo: row.solicitacao.processo.protocolo,
+      protocolo: row.protocolo,
       pacienteNome: row.solicitacao.paciente.nome,
       prestador: {
         id: row.prestador?.id ?? null,

@@ -145,11 +145,11 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
       },
       select: {
         id: true,
+        protocolo: true,
         status: true,
         urgencia: true,
         created_at: true,
         paciente: { select: { nome: true } },
-        processo: { select: { protocolo: true } },
       },
       orderBy: { created_at: 'asc' },
     }),
@@ -161,6 +161,7 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
       },
       select: {
         id: true,
+        protocolo: true,
         data_viagem: true,
         hora_saida: true,
         motorista_id: true,
@@ -169,7 +170,6 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
           select: {
             id: true,
             paciente: { select: { nome: true } },
-            processo: { select: { protocolo: true } },
           },
         },
       },
@@ -194,6 +194,7 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
               take: 1,
               select: {
                 id: true,
+                protocolo: true,
                 status: true,
                 paciente: { select: { nome: true } },
               },
@@ -215,7 +216,7 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
     if (URGENCIAS_PRIORITARIAS.includes(row.urgencia)) {
       alertasUrgencia.push({
         solicitacaoId: row.id,
-        protocolo: row.processo.protocolo,
+        protocolo: row.protocolo,
         urgencia: row.urgencia,
         status: row.status,
         pacienteNomeParcial,
@@ -228,7 +229,7 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
     if (motivo) {
       alertasPrazo.push({
         solicitacaoId: row.id,
-        protocolo: row.processo.protocolo,
+        protocolo: row.protocolo,
         urgencia: row.urgencia,
         status: row.status,
         motivo,
@@ -272,7 +273,7 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
     alertasTransporte.push({
       viagemId: viagem.id,
       solicitacaoId: viagem.solicitacao.id,
-      protocolo: viagem.solicitacao.processo.protocolo,
+      protocolo: viagem.protocolo,
       dataViagem: dataViagem.toISOString().slice(0, 10),
       horaSaida: formatHoraSaida(horaSaida),
       pacienteNomeParcial: mascararNomePaciente(viagem.solicitacao.paciente.nome),
@@ -295,7 +296,7 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
       tipoAcao: labelTramitacao(item.tipo),
       descricaoAcao: item.descricao,
       pacienteNomeParcial: mascararNomePaciente(solicitacao.paciente.nome),
-      protocolo: item.processo.protocolo,
+      protocolo: solicitacao.protocolo,
       solicitacaoId: solicitacao.id,
       statusAtual: solicitacao.status,
     })

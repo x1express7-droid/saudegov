@@ -19,12 +19,13 @@ type PrestacaoListRow = {
   prazo_envio_at: Date
   viagem: {
     sequencia: number
+    protocolo: string
     itens_despesa: { valor: { toString(): string } | number }[]
     solicitacao: {
       id: string
+      protocolo: string
       paciente: { nome: string }
       especialidade: { nome: string } | null
-      processo: { protocolo: string }
     }
   }
 }
@@ -39,7 +40,7 @@ function mapToListItem(row: PrestacaoListRow): TfdPrestacaoListItem {
     valorTotal,
     quantidadeItens: row.viagem.itens_despesa.length,
     sequenciaViagem: row.viagem.sequencia,
-    protocolo: row.viagem.solicitacao.processo.protocolo,
+    protocolo: row.viagem.protocolo,
     solicitacaoId: row.viagem.solicitacao.id,
     paciente: { nome: row.viagem.solicitacao.paciente.nome },
     especialidade: row.viagem.solicitacao.especialidade?.nome ?? '—',
@@ -53,15 +54,16 @@ const prestacaoListSelect = {
   viagem: {
     select: {
       sequencia: true,
+      protocolo: true,
       itens_despesa: {
         select: { valor: true },
       },
       solicitacao: {
         select: {
           id: true,
+          protocolo: true,
           paciente: { select: { nome: true } },
           especialidade: { select: { nome: true } },
-          processo: { select: { protocolo: true } },
         },
       },
     },

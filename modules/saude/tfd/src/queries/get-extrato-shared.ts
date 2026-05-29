@@ -121,12 +121,12 @@ export async function mapMovimentacoesToExtratoItems(
       },
       select: {
         id: true,
-        processo: { select: { protocolo: true } },
+        protocolo: true,
       },
     })
 
     for (const solicitacao of solicitacoes) {
-      protocoloPorSolicitacao.set(solicitacao.id, solicitacao.processo.protocolo)
+      protocoloPorSolicitacao.set(solicitacao.id, solicitacao.protocolo)
     }
   }
 

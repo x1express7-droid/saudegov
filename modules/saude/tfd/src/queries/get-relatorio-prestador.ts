@@ -44,6 +44,7 @@ export async function getRelatorioPrestadorTfd(
     select: {
       id: true,
       status: true,
+      protocolo: true,
       prestador_id: true,
       prestador: {
         select: {
@@ -53,7 +54,6 @@ export async function getRelatorioPrestadorTfd(
           estado: true,
         },
       },
-      processo: { select: { protocolo: true } },
       reservas: {
         where: { status: { in: RESERVA_STATUS_CONTABILIZADOS } },
         select: { valor_estimado: true },
@@ -100,7 +100,7 @@ export async function getRelatorioPrestadorTfd(
 
     detalhes.push({
       prestadorNome: row.prestador.nome,
-      protocolo: row.processo.protocolo,
+      protocolo: row.protocolo,
       status: row.status,
       valorReservado: valores.valorReservado,
       valorConsumido: valores.valorConsumido,

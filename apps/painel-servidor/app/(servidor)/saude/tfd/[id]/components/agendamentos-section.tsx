@@ -3,7 +3,7 @@ import type { AgendamentoProcessoListItem } from '@saude/mod-saude-tfd'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import { hasPermission } from '@saude/core-auth/server'
-import { Button, Card, CardHeader, EmptyState } from '@saude/ui'
+import { Button, Card, CardHeader, EmptyState, ProtocoloBadge } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { Calendar } from 'lucide-react'
 import Link from 'next/link'
@@ -107,6 +107,7 @@ export async function AgendamentosSection({
               >
                 <div className="flex min-w-0 flex-col gap-[var(--space-1)]">
                   <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+                    <ProtocoloBadge protocolo={item.protocolo} />
                     <span className="text-[length:var(--text-sm)] font-semibold text-[var(--color-text)]">
                       #{item.sequencia}
                     </span>

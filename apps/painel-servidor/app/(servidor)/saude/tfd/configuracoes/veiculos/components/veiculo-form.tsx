@@ -108,10 +108,14 @@ export function VeiculoForm({ open, mode, veiculo, onOpenChange }: VeiculoFormPr
       return
     }
 
-    const { anoInput: _anoInput, ...formValues } = values
     const payload = {
-      ...formValues,
       placa: values.placa.trim().toUpperCase(),
+      modelo: values.modelo,
+      fabricante: values.fabricante,
+      cor: values.cor,
+      renavam: values.renavam,
+      chassi: values.chassi,
+      capacidadePassageiros: values.capacidadePassageiros,
       ano: anoParsed,
     }
 

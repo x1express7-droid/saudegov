@@ -60,6 +60,7 @@ export async function getRelatorioCompetenciaTfd(
       select: {
         id: true,
         status: true,
+        protocolo: true,
         processo: { select: { protocolo: true } },
         reservas: {
           where: { status: { in: RESERVA_STATUS_CONTABILIZADOS } },
@@ -102,7 +103,7 @@ export async function getRelatorioCompetenciaTfd(
     valorTotalConsumido += valorConsumido
 
     return {
-      protocolo: row.processo.protocolo,
+      protocolo: row.protocolo,
       status: row.status,
       valorReservado,
       valorConsumido,

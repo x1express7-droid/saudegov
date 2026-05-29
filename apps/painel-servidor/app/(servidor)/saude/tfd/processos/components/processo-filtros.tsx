@@ -4,7 +4,7 @@ import { Card, Input, Select, TFD_URGENCIA_CONFIG, type TfdUrgencia } from '@sau
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 
-import { PROCESSO_STATUS_CONFIG, type ProcessoStatusValue } from '../../components/processo-status-badge'
+import { PROCESSO_STATUS_CONFIG } from '../../components/processo-status-badge'
 
 const ALL_FILTER_VALUE = '__all__'
 const TEXTO_DEBOUNCE_MS = 400

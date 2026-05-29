@@ -10,8 +10,8 @@ export interface GetSolicitacoesOrigemRetornoInput {
 
 type OrigemRetornoRow = {
   id: string
+  protocolo: string
   processo: {
-    protocolo: string
     concluido_at: Date | null
   }
   especialidade: { nome: string } | null
@@ -24,7 +24,7 @@ function mapToOrigemRetornoItem(row: OrigemRetornoRow): TfdSolicitacaoOrigemReto
 
   return {
     id: row.id,
-    protocolo: row.processo.protocolo,
+    protocolo: row.protocolo,
     especialidade: row.especialidade?.nome ?? '—',
     prestador: {
       nome: row.prestador?.nome ?? '—',
@@ -37,10 +37,10 @@ function mapToOrigemRetornoItem(row: OrigemRetornoRow): TfdSolicitacaoOrigemReto
 
 const origemRetornoSelect = {
   id: true,
+  protocolo: true,
   updated_at: true,
   processo: {
     select: {
-      protocolo: true,
       concluido_at: true,
     },
   },

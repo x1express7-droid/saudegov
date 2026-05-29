@@ -46,6 +46,7 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
     },
     select: {
       id: true,
+      protocolo: true,
       status: true,
       urgencia: true,
       tipo_atendimento: true,
@@ -157,7 +158,7 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
   const detalhe: TfdSolicitacaoDetalhe = {
     id: row.id,
     processoId: row.processo.id,
-    protocolo: row.processo.protocolo,
+    protocolo: row.protocolo,
     status: row.status,
     urgencia: row.urgencia,
     tipoAtendimento: row.tipo_atendimento,
