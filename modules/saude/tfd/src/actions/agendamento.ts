@@ -22,9 +22,14 @@ import {
 import { calcMinDataAgendamento72h, calcPrazoEnvioPrestacao } from '../utils/prazos'
 import { gerarProtocoloTfd } from '../utils/gerar-protocolo-tfd'
 import {
+  adicionarAcompanhanteAgendamentoSchema,
+  adicionarLocalAgendamentoSchema,
   cancelarAgendamentoSchema,
   criarAgendamentoNovoSchema,
   registrarRetornoAgendamentoSchema,
+  removerAcompanhanteAgendamentoSchema,
+  removerLocalAgendamentoSchema,
+  type CriarAgendamentoNovoInput,
 } from '../validators/agendamento-novo.schema'
 
 const MODULO_TFD = 'saude.tfd'
@@ -42,7 +47,160 @@ const MSG_PRESTACAO_JA_EXISTE = 'A prestação de contas deste agendamento já f
 const MSG_STATUS_CANCELAR_INVALIDO =
   'Somente agendamentos com status Agendado podem ser cancelados.'
 const MSG_PRESTADOR_INVALIDO = 'Prestador não encontrado ou inativo.'
+const MSG_PROCEDIMENTO_INVALIDO = 'Procedimento não encontrado ou inativo.'
 const MSG_ACOMPANHANTE_INVALIDO = 'Acompanhante não encontrado para esta solicitação.'
+const MSG_AGENDAMENTO_DUPLICADO =
+  'Já existe um agendamento para esta solicitação nesta data com este prestador.'
+const MSG_LOCAL_NAO_ENCONTRADO = 'Local adicional não encontrado.'
+const MSG_VINCULO_ACOMPANHANTE_NAO_ENCONTRADO =
+  'Acompanhante não vinculado a este agendamento.'
+
+type DbClient = Awaited<ReturnType<typeof getPrismaForTenant>>
+type PrismaTx = Omit<DbClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$extends'>
+
+function revalidateAgendamentoPaths(processoId: string, agendamentoId?: string) {
+  revalidatePath('/saude/tfd')
+  revalidatePath('/saude/tfd/agendamentos')
+  revalidatePath(`/saude/tfd/processos/${processoId}`)
+  if (agendamentoId) {
+    revalidatePath(`/saude/tfd/processos/${processoId}/agendamentos/${agendamentoId}`)
+  }
+}
+
+async function validarPrestadorAgendamento(
+  tx: PrismaTx,
+  tenantId: string,
+  prestadorId: string | undefined
+): Promise<boolean> {
+  if (!prestadorId) {
+    return true
+  }
+
+  const prestador = await tx.tfdPrestador.findFirst({
+    where: {
+      id: prestadorId,
+      tenant_id: tenantId,
+      ativo: true,
+    },
+    select: { id: true },
+  })
+
+  return Boolean(prestador)
+}
+
+async function validarProcedimentoAgendamento(
+  tx: PrismaTx,
+  tenantId: string,
+  procedimentoId: string | undefined
+): Promise<boolean> {
+  if (!procedimentoId) {
+    return true
+  }
+
+  const procedimento = await tx.tfdProcedimento.findFirst({
+    where: {
+      id: procedimentoId,
+      tenant_id: tenantId,
+      ativo: true,
+    },
+    select: { id: true },
+  })
+
+  return Boolean(procedimento)
+}
+
+async function validarAcompanhantesSolicitacao(
+  tx: PrismaTx,
+  tenantId: string,
+  solicitacaoId: string,
+  acompanhanteIds: string[]
+): Promise<boolean> {
+  if (acompanhanteIds.length === 0) {
+    return true
+  }
+
+  const encontrados = await tx.tfdAcompanhante.count({
+    where: {
+      tenant_id: tenantId,
+      solicitacao_id: solicitacaoId,
+      id: { in: acompanhanteIds },
+    },
+  })
+
+  return encontrados === acompanhanteIds.length
+}
+
+async function vincularAcompanhantesAgendamento(
+  tx: PrismaTx,
+  tenantId: string,
+  agendamentoId: string,
+  acompanhanteIds: string[]
+): Promise<void> {
+  if (acompanhanteIds.length === 0) {
+    return
+  }
+
+  await tx.tfdAgendamentoAcompanhante.createMany({
+    data: acompanhanteIds.map((acompanhanteId) => ({
+      tenant_id: tenantId,
+      agendamento_id: agendamentoId,
+      acompanhante_id: acompanhanteId,
+    })),
+    skipDuplicates: true,
+  })
+}
+
+async function criarLocaisAdicionaisAgendamento(
+  tx: PrismaTx,
+  tenantId: string,
+  agendamentoId: string,
+  locaisAdicionais: CriarAgendamentoNovoInput['locaisAdicionais']
+): Promise<void> {
+  if (!locaisAdicionais || locaisAdicionais.length === 0) {
+    return
+  }
+
+  await tx.tfdAgendamentoLocal.createMany({
+    data: locaisAdicionais.map((local, index) => ({
+      tenant_id: tenantId,
+      agendamento_id: agendamentoId,
+      ordem: index + 1,
+      prestador_id: local.prestadorId ?? null,
+      procedimento_id: local.procedimentoId ?? null,
+      horario: parseHoraConsultaUtc(local.horario),
+      observacao: local.observacao ?? null,
+    })),
+  })
+}
+
+async function criarNovosAcompanhantesSolicitacao(
+  tx: PrismaTx,
+  tenantId: string,
+  solicitacaoId: string,
+  novosAcompanhantes: CriarAgendamentoNovoInput['novosAcompanhantes']
+): Promise<string[]> {
+  if (!novosAcompanhantes || novosAcompanhantes.length === 0) {
+    return []
+  }
+
+  const ids: string[] = []
+
+  for (const acompanhante of novosAcompanhantes) {
+    const created = await tx.tfdAcompanhante.create({
+      data: {
+        tenant_id: tenantId,
+        solicitacao_id: solicitacaoId,
+        nome: acompanhante.nome,
+        relacao: 'OUTRO',
+        telefone: acompanhante.telefone ?? null,
+      },
+      select: { id: true },
+    })
+    ids.push(created.id)
+  }
+
+  return ids
+}
 
 class AgendamentoNovoBusinessError extends Error {
   constructor(message: string) {
@@ -108,31 +266,59 @@ export async function criarAgendamentoNovo(
     }
 
     if (data.prestadorId) {
-      const prestador = await db.tfdPrestador.findFirst({
-        where: {
-          id: data.prestadorId,
-          tenant_id: tenantId,
-          ativo: true,
-        },
-        select: { id: true },
-      })
-      if (!prestador) {
+      const prestadorValido = await validarPrestadorAgendamento(db, tenantId, data.prestadorId)
+      if (!prestadorValido) {
         return { success: false, error: MSG_PRESTADOR_INVALIDO }
       }
     }
 
-    if (data.acompanhanteId) {
-      const acompanhante = await db.tfdAcompanhante.findFirst({
-        where: {
-          id: data.acompanhanteId,
-          tenant_id: tenantId,
-          solicitacao_id: data.solicitacaoId,
-        },
-        select: { id: true },
-      })
-      if (!acompanhante) {
+    if (data.acompanhanteIds.length > 0) {
+      const acompanhantesValidos = await validarAcompanhantesSolicitacao(
+        db,
+        tenantId,
+        data.solicitacaoId,
+        data.acompanhanteIds
+      )
+      if (!acompanhantesValidos) {
         return { success: false, error: MSG_ACOMPANHANTE_INVALIDO }
       }
+    }
+
+    for (const local of data.locaisAdicionais) {
+      if (local.prestadorId) {
+        const prestadorValido = await validarPrestadorAgendamento(db, tenantId, local.prestadorId)
+        if (!prestadorValido) {
+          return { success: false, error: MSG_PRESTADOR_INVALIDO }
+        }
+      }
+
+      if (local.procedimentoId) {
+        const procedimentoValido = await validarProcedimentoAgendamento(
+          db,
+          tenantId,
+          local.procedimentoId
+        )
+        if (!procedimentoValido) {
+          return { success: false, error: MSG_PROCEDIMENTO_INVALIDO }
+        }
+      }
+    }
+
+    const dataConsultaDb = parseDataConsultaUtc(data.dataConsulta)
+
+    const agendamentoDuplicado = await db.tfdAgendamento.findFirst({
+      where: {
+        tenant_id: tenantId,
+        solicitacao_id: data.solicitacaoId,
+        data_consulta: dataConsultaDb,
+        prestador_id: data.prestadorId ?? null,
+        status: { not: 'CANCELADO' },
+      },
+      select: { id: true },
+    })
+
+    if (agendamentoDuplicado) {
+      return { success: false, error: MSG_AGENDAMENTO_DUPLICADO }
     }
 
     const inicioConsulta = buildInicioConsultaInstant(
@@ -147,8 +333,8 @@ export async function criarAgendamentoNovo(
 
     const protocoloSolicitacao = solicitacao.protocolo
     const especialidadeNome = solicitacao.especialidade?.nome ?? 'Não informada'
-    const dataConsultaDb = parseDataConsultaUtc(data.dataConsulta)
     const horaConsultaDb = parseHoraConsultaUtc(data.horaConsulta)
+    const acompanhantePrincipalId = data.acompanhanteIds[0] ?? null
 
     const resultado = await db.$transaction(async (tx) => {
       const maxSequencia = await tx.tfdAgendamento.aggregate({
@@ -173,7 +359,9 @@ export async function criarAgendamentoNovo(
           prestador_id: data.prestadorId ?? null,
           profissional_nome: data.profissionalNome ?? null,
           tipo_atendimento: data.tipoAtendimento,
-          acompanhante_id: data.acompanhanteId ?? null,
+          tipo_viagem: data.tipoViagem ?? null,
+          convenio: data.convenio ?? null,
+          acompanhante_id: acompanhantePrincipalId,
           orientacoes: data.orientacoes ?? null,
           status: 'AGENDADO',
         },
@@ -182,6 +370,29 @@ export async function criarAgendamentoNovo(
           sequencia: true,
         },
       })
+
+      const novosAcompanhanteIds = await criarNovosAcompanhantesSolicitacao(
+        tx,
+        tenantId,
+        data.solicitacaoId,
+        data.novosAcompanhantes
+      )
+
+      const todosAcompanhanteIds = [...new Set([...data.acompanhanteIds, ...novosAcompanhanteIds])]
+
+      await vincularAcompanhantesAgendamento(
+        tx,
+        tenantId,
+        agendamento.id,
+        todosAcompanhanteIds
+      )
+
+      await criarLocaisAdicionaisAgendamento(
+        tx,
+        tenantId,
+        agendamento.id,
+        data.locaisAdicionais
+      )
 
       await tx.tfdSolicitacao.update({
         where: { id: data.solicitacaoId },
@@ -230,6 +441,8 @@ export async function criarAgendamentoNovo(
         sequencia: resultado.sequencia,
         dataConsulta: data.dataConsulta,
         horaConsulta: data.horaConsulta ?? null,
+        convenio: data.convenio ?? null,
+        tipoViagem: data.tipoViagem ?? null,
         protocolo: resultado.protocolo,
         modulo: MODULO_TFD,
       },
@@ -248,9 +461,7 @@ export async function criarAgendamentoNovo(
       excludeUserIds: [session.user.id],
     })
 
-    revalidatePath('/saude/tfd')
-    revalidatePath('/saude/tfd/agendamentos')
-    revalidatePath(`/saude/tfd/processos/${data.processoId}`)
+    revalidateAgendamentoPaths(data.processoId, resultado.agendamentoId)
 
     return {
       success: true,
@@ -665,6 +876,382 @@ export async function cancelarAgendamento(
     return {
       success: false,
       error: 'Não foi possível cancelar o agendamento. Tente novamente.',
+    }
+  }
+}
+
+export async function adicionarLocalAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<{ localId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.CRIAR_AGENDAMENTO)
+
+  const parsed = adicionarLocalAgendamentoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const agendamento = await db.tfdAgendamento.findFirst({
+      where: {
+        id: data.agendamentoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        processo_id: true,
+      },
+    })
+
+    if (!agendamento) {
+      return { success: false, error: MSG_AGENDAMENTO_NAO_ENCONTRADO }
+    }
+
+    if (data.prestadorId) {
+      const prestadorValido = await validarPrestadorAgendamento(db, tenantId, data.prestadorId)
+      if (!prestadorValido) {
+        return { success: false, error: MSG_PRESTADOR_INVALIDO }
+      }
+    }
+
+    if (data.procedimentoId) {
+      const procedimentoValido = await validarProcedimentoAgendamento(
+        db,
+        tenantId,
+        data.procedimentoId
+      )
+      if (!procedimentoValido) {
+        return { success: false, error: MSG_PROCEDIMENTO_INVALIDO }
+      }
+    }
+
+    const resultado = await db.$transaction(async (tx) => {
+      const maxOrdem = await tx.tfdAgendamentoLocal.aggregate({
+        where: {
+          tenant_id: tenantId,
+          agendamento_id: data.agendamentoId,
+        },
+        _max: { ordem: true },
+      })
+
+      const local = await tx.tfdAgendamentoLocal.create({
+        data: {
+          tenant_id: tenantId,
+          agendamento_id: data.agendamentoId,
+          ordem: (maxOrdem._max.ordem ?? 0) + 1,
+          prestador_id: data.prestadorId ?? null,
+          procedimento_id: data.procedimentoId ?? null,
+          horario: parseHoraConsultaUtc(data.horario),
+          observacao: data.observacao ?? null,
+        },
+        select: { id: true },
+      })
+
+      return { localId: local.id, processoId: agendamento.processo_id }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_agendamento_local',
+      entidadeId: resultado.localId,
+      payloadDepois: {
+        agendamentoId: data.agendamentoId,
+        prestadorId: data.prestadorId ?? null,
+        procedimentoId: data.procedimentoId ?? null,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    revalidateAgendamentoPaths(resultado.processoId, data.agendamentoId)
+
+    return { success: true, data: { localId: resultado.localId } }
+  } catch (error) {
+    console.error('[adicionarLocalAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível adicionar o local ao agendamento. Tente novamente.',
+    }
+  }
+}
+
+export async function removerLocalAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.CRIAR_AGENDAMENTO)
+
+  const parsed = removerLocalAgendamentoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const { localId } = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const local = await db.tfdAgendamentoLocal.findFirst({
+      where: {
+        id: localId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        agendamento_id: true,
+        agendamento: {
+          select: {
+            processo_id: true,
+          },
+        },
+      },
+    })
+
+    if (!local) {
+      return { success: false, error: MSG_LOCAL_NAO_ENCONTRADO }
+    }
+
+    await db.tfdAgendamentoLocal.delete({
+      where: { id: local.id },
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'DELETE',
+      entidade: 'saude_tfd_agendamento_local',
+      entidadeId: local.id,
+      payloadAntes: {
+        agendamentoId: local.agendamento_id,
+        modulo: MODULO_TFD,
+        processoId: local.agendamento.processo_id,
+      },
+    })
+
+    revalidateAgendamentoPaths(local.agendamento.processo_id, local.agendamento_id)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    console.error('[removerLocalAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível remover o local do agendamento. Tente novamente.',
+    }
+  }
+}
+
+export async function adicionarAcompanhanteAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<{ acompanhanteId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.CRIAR_AGENDAMENTO)
+
+  const parsed = adicionarAcompanhanteAgendamentoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const agendamento = await db.tfdAgendamento.findFirst({
+      where: {
+        id: data.agendamentoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        processo_id: true,
+        solicitacao_id: true,
+      },
+    })
+
+    if (!agendamento) {
+      return { success: false, error: MSG_AGENDAMENTO_NAO_ENCONTRADO }
+    }
+
+    const resultado = await db.$transaction(async (tx) => {
+      let acompanhanteId = data.acompanhanteId
+
+      if (data.novoAcompanhante) {
+        const created = await tx.tfdAcompanhante.create({
+          data: {
+            tenant_id: tenantId,
+            solicitacao_id: agendamento.solicitacao_id,
+            nome: data.novoAcompanhante.nome,
+            relacao: 'OUTRO',
+            telefone: data.novoAcompanhante.telefone ?? null,
+          },
+          select: { id: true },
+        })
+        acompanhanteId = created.id
+      }
+
+      if (!acompanhanteId) {
+        throw new AgendamentoNovoBusinessError(MSG_ACOMPANHANTE_INVALIDO)
+      }
+
+      const acompanhanteValido = await validarAcompanhantesSolicitacao(
+        tx,
+        tenantId,
+        agendamento.solicitacao_id,
+        [acompanhanteId]
+      )
+
+      if (!acompanhanteValido) {
+        throw new AgendamentoNovoBusinessError(MSG_ACOMPANHANTE_INVALIDO)
+      }
+
+      await tx.tfdAgendamentoAcompanhante.create({
+        data: {
+          tenant_id: tenantId,
+          agendamento_id: agendamento.id,
+          acompanhante_id: acompanhanteId,
+        },
+      })
+
+      return {
+        acompanhanteId,
+        processoId: agendamento.processo_id,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_agendamento_acompanhante',
+      entidadeId: `${data.agendamentoId}:${resultado.acompanhanteId}`,
+      payloadDepois: {
+        agendamentoId: data.agendamentoId,
+        acompanhanteId: resultado.acompanhanteId,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    revalidateAgendamentoPaths(resultado.processoId, data.agendamentoId)
+
+    return { success: true, data: { acompanhanteId: resultado.acompanhanteId } }
+  } catch (error) {
+    if (error instanceof AgendamentoNovoBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[adicionarAcompanhanteAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível adicionar o acompanhante ao agendamento. Tente novamente.',
+    }
+  }
+}
+
+export async function removerAcompanhanteAgendamento(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.CRIAR_AGENDAMENTO)
+
+  const parsed = removerAcompanhanteAgendamentoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const vinculo = await db.tfdAgendamentoAcompanhante.findFirst({
+      where: {
+        tenant_id: tenantId,
+        agendamento_id: data.agendamentoId,
+        acompanhante_id: data.acompanhanteId,
+      },
+      select: {
+        id: true,
+        agendamento: {
+          select: {
+            processo_id: true,
+          },
+        },
+      },
+    })
+
+    if (!vinculo) {
+      return { success: false, error: MSG_VINCULO_ACOMPANHANTE_NAO_ENCONTRADO }
+    }
+
+    await db.tfdAgendamentoAcompanhante.delete({
+      where: { id: vinculo.id },
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'DELETE',
+      entidade: 'saude_tfd_agendamento_acompanhante',
+      entidadeId: vinculo.id,
+      payloadAntes: {
+        agendamentoId: data.agendamentoId,
+        acompanhanteId: data.acompanhanteId,
+        modulo: MODULO_TFD,
+        processoId: vinculo.agendamento.processo_id,
+      },
+    })
+
+    revalidateAgendamentoPaths(vinculo.agendamento.processo_id, data.agendamentoId)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    console.error('[removerAcompanhanteAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível remover o acompanhante do agendamento. Tente novamente.',
     }
   }
 }

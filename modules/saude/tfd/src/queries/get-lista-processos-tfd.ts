@@ -17,6 +17,7 @@ const URGENCIA_RANK: Record<TfdUrgencia, number> = {
   GRAVE: 3,
   INTERMEDIARIA: 2,
   BAIXA: 1,
+  NAO_AGUDA: 0,
 }
 
 export interface GetListaProcessosFiltros {

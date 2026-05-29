@@ -90,10 +90,10 @@ export async function getAgendamentosCompleto(
     ...(dataViagemFilter ? { data_viagem: dataViagemFilter } : {}),
   }
 
-  const total = await db.tfdViagem.count({ where: whereClause })
+  const total = await db.tfdViagemLegado.count({ where: whereClause })
   assertListagemExportWithinLimit(total, 'agendamentos')
 
-  const rows = await db.tfdViagem.findMany({
+  const rows = await db.tfdViagemLegado.findMany({
     where: whereClause,
     select: agendamentoExportSelect,
     orderBy: [{ data_viagem: 'asc' }, { sequencia: 'asc' }],

@@ -604,6 +604,13 @@ npm run db:verify:sprint-2-3
 | 3.4 | Prestação de contas unificada por agendamento (TFD) | ✅ Concluído |
 | 3.5 | Processo como raiz + perfil do servidor (TFD) | ✅ Concluído |
 | 3.6 | Limpeza, consolidação e documentação (TFD) | ✅ Concluído |
+| 4.0 | Saneamento de migrations — Fase 4 TFD | ✅ Concluído |
+| 4.1 | Combobox com busca — Fase 4 TFD | ✅ Concluído |
+| 4.2 | Agendamento ampliado — Fase 4 TFD | ✅ Concluído |
+| 4.3 | Nova entidade Viagem — Fase 4 TFD | ✅ Concluído |
+| 4.4 | Detalhe veículos e motoristas — Fase 4 TFD | ✅ Concluído |
+| 4.5 | Prestação de Contas na Viagem — Fase 4 TFD | ✅ Concluído |
+| 4.6 | Polimento UX e consolidação — Fase 4 TFD | ✅ Concluído |
 
 ---
 

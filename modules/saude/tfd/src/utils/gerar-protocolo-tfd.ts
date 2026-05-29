@@ -22,3 +22,15 @@ export async function gerarProtocoloTfd(
   const { sistema, sigla } = TFD_PROTOCOLO_ENTIDADE[entidade]
   return gerarProtocolo(tenantId, sistema, sigla, tx)
 }
+
+/** Nova viagem — formato `VGM-AAAA-XXXXXX` (reutiliza sequência TFD-VGM). */
+export async function gerarProtocoloViagemNova(
+  tenantId: string,
+  tx: PrismaTransactionClient
+): Promise<string> {
+  const raw = await gerarProtocoloTfd(tenantId, 'VIAGEM', tx)
+  const parts = raw.split('-')
+  const ano = parts[0]!
+  const sequencia = parts[parts.length - 1]!
+  return `VGM-${ano}-${sequencia}`
+}

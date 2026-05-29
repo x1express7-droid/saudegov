@@ -27,14 +27,19 @@ import {
 import {
   decidirPrestacaoContasAgendamentoSchema,
   decidirPrestacaoContasSchema,
+  decidirPrestacaoContasViagemNovaSchema,
   enviarPrestacaoContasSchema,
+  enviarPrestacaoContasViagemNovaSchema,
   MIN_VALOR_COMPROVANTE,
   registrarDespesaAgendamentoSchema,
   registrarDespesaSchema,
   registrarDespesaTransporteSchema,
+  registrarDespesaViagemNovaSchema,
   registrarVisualizacaoComprovanteSchema,
+  registrarVisualizacaoComprovanteViagemNovaSchema,
 } from '../validators/despesa.schema'
 import { buscarItensDespesaDoAgendamento } from '../utils/itens-despesa-agendamento'
+import { buscarItensDespesaDaViagemNova } from '../utils/itens-despesa-viagem-nova'
 import { estornarMovimentacaoSaldoSchema } from '../validators/financeiro.schema'
 import { isTipoMovimentacaoEstornavel } from '../utils/saldo-movimentacao'
 
@@ -44,12 +49,16 @@ const SALDOS_PATH = '/saude/tfd/configuracoes/saldos'
 const DASHBOARD_TFD_PATH = '/saude/tfd/dashboard'
 
 const MSG_VIAGEM_NAO_ENCONTRADA = 'Viagem não encontrada.'
+const MSG_VIAGEM_NAO_REALIZADA =
+  'Registre o retorno da viagem antes de lançar despesas.'
 const MSG_PRESTACAO_NAO_ENCONTRADA =
   'Prestação de contas não encontrada para esta viagem.'
 const MSG_PRESTACAO_STATUS_INVALIDO =
   'Só é possível lançar despesas enquanto a prestação está pendente ou foi rejeitada para correção.'
-const MSG_VIAGEM_NAO_REALIZADA =
-  'Registre o retorno da viagem antes de lançar despesas.'
+const MSG_VIAGEM_NOVA_NAO_CONCLUIDA =
+  'A viagem precisa estar concluída para esta operação.'
+const MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA =
+  'Prestação de contas não encontrada para esta viagem.'
 const MSG_COMPROVANTE_OBRIGATORIO = `Comprovante obrigatório para valores iguais ou superiores a R$ ${MIN_VALOR_COMPROVANTE},00.`
 const MSG_COMPROVANTE_NAO_ENCONTRADO =
   'Comprovante não encontrado ou ainda não confirmado no envio.'
@@ -305,7 +314,7 @@ export async function registrarDespesa(
     const tenantId = session.user.tenantId!
     const db = await getPrismaForTenant(tenantId)
 
-    const viagem = await db.tfdViagem.findFirst({
+    const viagem = await db.tfdViagemLegado.findFirst({
       where: {
         id: data.viagemId,
         tenant_id: tenantId,
@@ -347,7 +356,7 @@ export async function registrarDespesa(
     }
 
     const resultado = await db.$transaction(async (tx) => {
-      const viagemLocked = await tx.tfdViagem.findFirst({
+      const viagemLocked = await tx.tfdViagemLegado.findFirst({
         where: {
           id: data.viagemId,
           tenant_id: tenantId,
@@ -1520,6 +1529,20 @@ function revalidateAgendamentoFinanceiroPaths(
   revalidatePath('/saude/tfd/prestacoes')
   revalidatePath(`/saude/tfd/${solicitacaoId}`)
   revalidatePath(`/saude/tfd/processos/${processoId}/agendamentos/${agendamentoId}`)
+}
+
+function extrairSequenciaProtocoloViagemNova(protocolo: string): number {
+  const ultimoSegmento = protocolo.split('-').pop()
+  const sequencia = Number.parseInt(ultimoSegmento ?? '', 10)
+  return Number.isFinite(sequencia) ? sequencia : 1
+}
+
+function revalidateViagemNovaFinanceiroPaths(processoId: string, viagemNovaId: string): void {
+  revalidatePath('/saude/tfd')
+  revalidatePath('/saude/tfd/viagens')
+  revalidatePath('/saude/tfd/prestacoes')
+  revalidatePath(`/saude/tfd/viagens/${viagemNovaId}`)
+  revalidatePath(`/saude/tfd/processos/${processoId}`)
 }
 
 export async function registrarDespesaAgendamento(
@@ -2898,6 +2921,983 @@ export async function decidirPrestacaoContasAgendamento(
     }
 
     console.error('[decidirPrestacaoContasAgendamento] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar a decisão da prestação. Tente novamente.',
+    }
+  }
+}
+
+/** Despesa vinculada à prestação da viagem nova (saude_tfd.viagens). */
+export async function registrarDespesaViagemNova(
+  rawInput: unknown
+): Promise<ActionResponse<{ despesaId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
+
+  const parsed = registrarDespesaViagemNovaSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
+    return {
+      success: false,
+      error: MSG_COMPROVANTE_OBRIGATORIO,
+      fieldErrors: {
+        comprovanteAnexoId: [MSG_COMPROVANTE_OBRIGATORIO],
+      },
+    }
+  }
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const viagem = await db.tfdViagem.findFirst({
+      where: {
+        id: data.viagemNovaId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        protocolo: true,
+        processo_id: true,
+        prestacao_conta: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    })
+
+    if (!viagem) {
+      return { success: false, error: MSG_VIAGEM_NAO_ENCONTRADA }
+    }
+
+    if (viagem.status !== 'CONCLUIDA') {
+      return { success: false, error: MSG_VIAGEM_NOVA_NAO_CONCLUIDA }
+    }
+
+    if (!viagem.prestacao_conta) {
+      return { success: false, error: MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA }
+    }
+
+    const statusPrestacao = viagem.prestacao_conta.status
+    if (statusPrestacao !== 'PENDENTE' && statusPrestacao !== 'REJEITADA') {
+      return { success: false, error: MSG_PRESTACAO_STATUS_INVALIDO }
+    }
+
+    const resultado = await db.$transaction(async (tx) => {
+      const viagemLocked = await tx.tfdViagem.findFirst({
+        where: {
+          id: data.viagemNovaId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          status: true,
+          protocolo: true,
+          processo_id: true,
+          prestacao_conta: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      })
+
+      if (!viagemLocked) {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NAO_ENCONTRADA)
+      }
+
+      if (viagemLocked.status !== 'CONCLUIDA') {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NOVA_NAO_CONCLUIDA)
+      }
+
+      if (!viagemLocked.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+      }
+
+      const statusPc = viagemLocked.prestacao_conta.status
+      if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
+        throw new FinanceiroBusinessError(MSG_COMPROVANTE_OBRIGATORIO)
+      }
+
+      if (data.comprovanteAnexoId) {
+        await validarComprovanteAnexo(tx, tenantId, data.comprovanteAnexoId)
+      }
+
+      const item = await tx.tfdItemDespesa.create({
+        data: {
+          tenant_id: tenantId,
+          viagem_nova_id: viagemLocked.id,
+          viagem_id: null,
+          agendamento_id: null,
+          transporte_id: null,
+          tipo: data.tipo,
+          descricao: data.descricao?.trim() || null,
+          valor: data.valor,
+          comprovante_anexo_id: data.comprovanteAnexoId ?? null,
+          responsavel_pagamento: data.responsavelPagamento,
+        },
+        select: { id: true },
+      })
+
+      return {
+        despesaId: item.id,
+        viagemNovaId: viagemLocked.id,
+        prestacaoId: viagemLocked.prestacao_conta.id,
+        processoId: viagemLocked.processo_id,
+        protocolo: viagemLocked.protocolo,
+        tipo: data.tipo,
+        valor: data.valor,
+        possuiComprovante: Boolean(data.comprovanteAnexoId),
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_item_despesa',
+      entidadeId: resultado.despesaId,
+      payloadDepois: {
+        viagemNovaId: resultado.viagemNovaId,
+        prestacaoId: resultado.prestacaoId,
+        tipo: resultado.tipo,
+        valor: resultado.valor,
+        possuiComprovante: resultado.possuiComprovante,
+        protocolo: resultado.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+    return {
+      success: true,
+      data: { despesaId: resultado.despesaId },
+    }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[registrarDespesaViagemNova] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar a despesa. Tente novamente.',
+    }
+  }
+}
+
+/** Envio da prestação de contas vinculada à viagem nova. */
+export async function enviarPrestacaoContasViagemNova(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.ENVIAR_PRESTACAO)
+
+  const parsed = enviarPrestacaoContasViagemNovaSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const viagem = await db.tfdViagem.findFirst({
+      where: {
+        id: data.viagemNovaId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        protocolo: true,
+        status: true,
+        processo_id: true,
+        processo: { select: { protocolo: true } },
+        prestacao_conta: {
+          select: {
+            id: true,
+            status: true,
+          },
+        },
+      },
+    })
+
+    if (!viagem) {
+      return { success: false, error: MSG_VIAGEM_NAO_ENCONTRADA }
+    }
+
+    if (viagem.status !== 'CONCLUIDA') {
+      return { success: false, error: MSG_VIAGEM_NOVA_NAO_CONCLUIDA }
+    }
+
+    if (!viagem.prestacao_conta) {
+      return { success: false, error: MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA }
+    }
+
+    const statusPc = viagem.prestacao_conta.status
+    if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+      return { success: false, error: MSG_PRESTACAO_STATUS_INVALIDO }
+    }
+
+    const itensDespesa = await buscarItensDespesaDaViagemNova(db, tenantId, viagem.id)
+
+    try {
+      validarItensDespesaComComprovante(itensDespesa)
+    } catch (error) {
+      if (error instanceof FinanceiroBusinessError) {
+        return { success: false, error: error.message }
+      }
+      throw error
+    }
+
+    const protocolo = viagem.processo.protocolo
+
+    const resultado = await db.$transaction(async (tx) => {
+      const viagemLocked = await tx.tfdViagem.findFirst({
+        where: {
+          id: data.viagemNovaId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          protocolo: true,
+          status: true,
+          processo_id: true,
+          prestacao_conta: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      })
+
+      if (!viagemLocked) {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NAO_ENCONTRADA)
+      }
+
+      if (viagemLocked.status !== 'CONCLUIDA') {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NOVA_NAO_CONCLUIDA)
+      }
+
+      if (!viagemLocked.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+      }
+
+      const statusLocked = viagemLocked.prestacao_conta.status
+      if (statusLocked !== 'PENDENTE' && statusLocked !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      const itensLocked = await buscarItensDespesaDaViagemNova(tx, tenantId, viagemLocked.id)
+      validarItensDespesaComComprovante(itensLocked)
+
+      const valorTotal = itensLocked.reduce((acc, item) => acc + Number(item.valor), 0)
+
+      await tx.tfdPrestacaoConta.update({
+        where: { id: viagemLocked.prestacao_conta.id },
+        data: {
+          status: 'ENVIADA',
+          comprovantes_vistos: [],
+          observacoes_gestor: null,
+        },
+      })
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: viagemLocked.processo_id,
+          tipo: 'PRESTACAO_ENVIADA',
+          descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} enviada para análise (total ${formatValorBrl(valorTotal)}).`,
+          usuarioId: session.user.id,
+          metadata: {
+            prestacaoId: viagemLocked.prestacao_conta.id,
+            viagemNovaId: viagemLocked.id,
+            valorTotal,
+            quantidadeItens: itensLocked.length,
+          },
+        },
+        tx
+      )
+
+      return {
+        prestacaoId: viagemLocked.prestacao_conta.id,
+        viagemNovaId: viagemLocked.id,
+        processoId: viagemLocked.processo_id,
+        protocolo: viagemLocked.protocolo,
+        sequenciaViagem: extrairSequenciaProtocoloViagemNova(viagemLocked.protocolo),
+        valorTotal,
+        quantidadeItens: itensLocked.length,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_prestacao_conta',
+      entidadeId: resultado.prestacaoId,
+      payloadDepois: {
+        statusPrestacao: 'ENVIADA',
+        valorTotal: resultado.valorTotal,
+        quantidadeItens: resultado.quantidadeItens,
+        viagemNovaId: resultado.viagemNovaId,
+        protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    await dispararNotificacao({
+      tenantId,
+      evento: NOTIFICATION_EVENTS.PRESTACAO_ENVIADA,
+      modulo: MODULO_TFD,
+      processoId: resultado.processoId,
+      context: {
+        protocolo,
+        especialidade: 'TFD',
+        sequenciaViagem: resultado.sequenciaViagem,
+        valorTotalFormatado: formatValorBrl(resultado.valorTotal),
+      },
+      excludeUserIds: [session.user.id],
+    })
+
+    revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[enviarPrestacaoContasViagemNova] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível enviar a prestação de contas. Tente novamente.',
+    }
+  }
+}
+
+/** Visualização de comprovante — prestação vinculada à viagem nova. */
+export async function registrarVisualizacaoComprovanteViagemNova(
+  rawInput: unknown
+): Promise<ActionResponse<{ url: string }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('GESTOR')
+  await requirePermission(session, TFD_PERMISSIONS.APROVAR_PRESTACAO)
+
+  const parsed = registrarVisualizacaoComprovanteViagemNovaSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const userId = session.user.id
+    const db = await getPrismaForTenant(tenantId)
+
+    const viagem = await db.tfdViagem.findFirst({
+      where: {
+        id: data.viagemNovaId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        protocolo: true,
+        status: true,
+        processo_id: true,
+        processo: { select: { protocolo: true } },
+        prestacao_conta: {
+          select: {
+            id: true,
+            status: true,
+            comprovantes_vistos: true,
+          },
+        },
+      },
+    })
+
+    if (!viagem) {
+      return { success: false, error: MSG_VIAGEM_NAO_ENCONTRADA }
+    }
+
+    if (!viagem.prestacao_conta) {
+      return { success: false, error: MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA }
+    }
+
+    if (viagem.status !== 'CONCLUIDA' || viagem.prestacao_conta.status !== 'ENVIADA') {
+      return { success: false, error: MSG_PRESTACAO_ANALISE_APENAS }
+    }
+
+    const visualizadoAt = new Date().toISOString()
+
+    const resultado = await db.$transaction(async (tx) => {
+      const viagemLocked = await tx.tfdViagem.findFirst({
+        where: {
+          id: data.viagemNovaId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          processo_id: true,
+          prestacao_conta: {
+            select: {
+              id: true,
+              status: true,
+              comprovantes_vistos: true,
+            },
+          },
+        },
+      })
+
+      if (!viagemLocked?.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+      }
+
+      if (viagemLocked.prestacao_conta.status !== 'ENVIADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ANALISE_APENAS)
+      }
+
+      const itensDespesa = await buscarItensDespesaDaViagemNova(tx, tenantId, viagemLocked.id)
+
+      const itemPertence = itensDespesa.some(
+        (item) => item.comprovante_anexo_id === data.comprovanteAnexoId
+      )
+
+      if (!itemPertence) {
+        throw new FinanceiroBusinessError(MSG_COMPROVANTE_NAO_PERTENCE_PRESTACAO)
+      }
+
+      const comprovantesAtualizados = upsertComprovanteVisto(
+        parseComprovantesVistos(viagemLocked.prestacao_conta.comprovantes_vistos),
+        data.comprovanteAnexoId,
+        userId,
+        visualizadoAt
+      )
+
+      await tx.tfdPrestacaoConta.update({
+        where: { id: viagemLocked.prestacao_conta.id },
+        data: {
+          comprovantes_vistos: JSON.parse(
+            JSON.stringify(comprovantesAtualizados)
+          ) as Prisma.InputJsonValue,
+        },
+      })
+
+      return {
+        prestacaoId: viagemLocked.prestacao_conta.id,
+        viagemNovaId: viagemLocked.id,
+        processoId: viagemLocked.processo_id,
+        quantidadeVistos: comprovantesAtualizados.length,
+      }
+    })
+
+    const { url } = await gerarUrlDownloadAnexo(
+      {
+        tenantId,
+        anexoId: data.comprovanteAnexoId,
+        downloadExpiresInMinutes: COMPROVANTE_DOWNLOAD_EXPIRES_MINUTES,
+      },
+      db
+    )
+
+    await createAuditLog({
+      tenantId,
+      userId,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_prestacao_conta',
+      entidadeId: resultado.prestacaoId,
+      payloadDepois: {
+        prestacaoId: resultado.prestacaoId,
+        viagemNovaId: resultado.viagemNovaId,
+        comprovanteAnexoId: data.comprovanteAnexoId,
+        visualizadoAt,
+        quantidadeComprovantesVistos: resultado.quantidadeVistos,
+        protocolo: viagem.processo.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+      },
+    })
+
+    revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+    return {
+      success: true,
+      data: { url },
+    }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    if (error instanceof StorageNotFoundError) {
+      return { success: false, error: MSG_COMPROVANTE_NAO_ENCONTRADO }
+    }
+
+    if (error instanceof StorageValidationError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[registrarVisualizacaoComprovanteViagemNova] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível registrar a visualização do comprovante. Tente novamente.',
+    }
+  }
+}
+
+/** Aprovação ou rejeição — prestação vinculada à viagem nova. */
+export async function decidirPrestacaoContasViagemNova(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('GESTOR')
+  await requirePermission(session, TFD_PERMISSIONS.APROVAR_PRESTACAO)
+
+  const parsed = decidirPrestacaoContasViagemNovaSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const viagem = await db.tfdViagem.findFirst({
+      where: {
+        id: data.viagemNovaId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        protocolo: true,
+        status: true,
+        processo_id: true,
+        processo: {
+          select: {
+            protocolo: true,
+            aberto_por_id: true,
+          },
+        },
+        prestacao_conta: {
+          select: {
+            id: true,
+            status: true,
+            comprovantes_vistos: true,
+          },
+        },
+      },
+    })
+
+    if (!viagem) {
+      return { success: false, error: MSG_VIAGEM_NAO_ENCONTRADA }
+    }
+
+    if (!viagem.prestacao_conta) {
+      return { success: false, error: MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA }
+    }
+
+    if (viagem.prestacao_conta.status !== 'ENVIADA') {
+      return { success: false, error: MSG_PRESTACAO_ENVIADA_APENAS }
+    }
+
+    const protocolo = viagem.processo.protocolo
+    const servidorResponsavelId = viagem.processo.aberto_por_id
+    const decididoAt = new Date()
+
+    const itensDespesaInicial = await buscarItensDespesaDaViagemNova(db, tenantId, viagem.id)
+
+    if (data.decisao === 'REJEITADA') {
+      const observacoesGestor = data.observacoesGestor!.trim()
+
+      const resultado = await db.$transaction(async (tx) => {
+        const viagemLocked = await tx.tfdViagem.findFirst({
+          where: {
+            id: data.viagemNovaId,
+            tenant_id: tenantId,
+          },
+          select: {
+            id: true,
+            protocolo: true,
+            processo_id: true,
+            prestacao_conta: {
+              select: {
+                id: true,
+                status: true,
+              },
+            },
+          },
+        })
+
+        if (!viagemLocked?.prestacao_conta) {
+          throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+        }
+
+        if (viagemLocked.prestacao_conta.status !== 'ENVIADA') {
+          throw new FinanceiroBusinessError(MSG_PRESTACAO_ENVIADA_APENAS)
+        }
+
+        await tx.tfdPrestacaoConta.update({
+          where: { id: viagemLocked.prestacao_conta.id },
+          data: {
+            status: 'REJEITADA',
+            observacoes_gestor: observacoesGestor,
+            aprovado_por_id: session.user.id,
+            aprovado_at: decididoAt,
+          },
+        })
+
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagemLocked.processo_id,
+            tipo: 'PRESTACAO_REJEITADA',
+            descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} rejeitada. ${observacoesGestor}`,
+            usuarioId: session.user.id,
+            metadata: {
+              prestacaoId: viagemLocked.prestacao_conta.id,
+              viagemNovaId: viagemLocked.id,
+            },
+          },
+          tx
+        )
+
+        return {
+          prestacaoId: viagemLocked.prestacao_conta.id,
+          viagemNovaId: viagemLocked.id,
+          processoId: viagemLocked.processo_id,
+          protocolo: viagemLocked.protocolo,
+          sequenciaViagem: extrairSequenciaProtocoloViagemNova(viagemLocked.protocolo),
+        }
+      })
+
+      await createAuditLog({
+        tenantId,
+        userId: session.user.id,
+        acao: 'UPDATE',
+        entidade: 'saude_tfd_prestacao_conta',
+        entidadeId: resultado.prestacaoId,
+        payloadAntes: { statusPrestacao: 'ENVIADA' },
+        payloadDepois: {
+          statusPrestacao: 'REJEITADA',
+          decisao: 'REJEITADA',
+          protocolo,
+          modulo: MODULO_TFD,
+          processoId: resultado.processoId,
+          viagemNovaId: resultado.viagemNovaId,
+        },
+      })
+
+      if (servidorResponsavelId) {
+        await dispararNotificacao({
+          tenantId,
+          evento: NOTIFICATION_EVENTS.PRESTACAO_REJEITADA,
+          modulo: MODULO_TFD,
+          processoId: resultado.processoId,
+          context: {
+            protocolo,
+            especialidade: 'TFD',
+            sequenciaViagem: resultado.sequenciaViagem,
+            observacoesGestor,
+          },
+          recipientUserIds: [servidorResponsavelId],
+          excludeUserIds: [session.user.id],
+        })
+      }
+
+      revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+      return { success: true, data: undefined }
+    }
+
+    const comprovantesVistos = parseComprovantesVistos(viagem.prestacao_conta.comprovantes_vistos)
+
+    try {
+      assertTodosComprovantesVisualizados(itensDespesaInicial, comprovantesVistos)
+    } catch (error) {
+      if (error instanceof FinanceiroBusinessError) {
+        return { success: false, error: error.message }
+      }
+      throw error
+    }
+
+    const reservaAtiva = await db.tfdReservaSaldo.findFirst({
+      where: {
+        tenant_id: tenantId,
+        status: 'ATIVA',
+        solicitacao: { processo_id: viagem.processo_id },
+      },
+      select: { saldo_id: true, solicitacao_id: true },
+    })
+
+    const saldoIdAfetado = reservaAtiva?.saldo_id ?? null
+    let jaEstavaEmAlertaBaixo = false
+
+    if (saldoIdAfetado) {
+      const estadoSaldoAntes = await resolveSaldoEstadoAlerta(db, tenantId, saldoIdAfetado)
+      jaEstavaEmAlertaBaixo = estadoSaldoAntes?.alertaBaixo ?? false
+    }
+
+    const resultado = await db.$transaction(async (tx) => {
+      const viagemLocked = await tx.tfdViagem.findFirst({
+        where: {
+          id: data.viagemNovaId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          protocolo: true,
+          processo_id: true,
+          prestacao_conta: {
+            select: {
+              id: true,
+              status: true,
+              comprovantes_vistos: true,
+            },
+          },
+        },
+      })
+
+      if (!viagemLocked?.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+      }
+
+      if (viagemLocked.prestacao_conta.status !== 'ENVIADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_ENVIADA_APENAS)
+      }
+
+      const itensLocked = await buscarItensDespesaDaViagemNova(tx, tenantId, viagemLocked.id)
+
+      assertTodosComprovantesVisualizados(
+        itensLocked,
+        parseComprovantesVistos(viagemLocked.prestacao_conta.comprovantes_vistos)
+      )
+      validarItensDespesaComComprovante(itensLocked)
+
+      const valorReal = roundMoney(
+        itensLocked.reduce((acc, item) => acc + Number(item.valor), 0)
+      )
+
+      const reservaLocked = reservaAtiva
+        ? await lockReservaForUpdate(tx, tenantId, reservaAtiva.solicitacao_id)
+        : null
+
+      let valorReservado = 0
+      let valorLiberacao = 0
+
+      if (reservaLocked) {
+        const saldoLocked = await lockSaldoForUpdate(tx, tenantId, reservaLocked.saldo_id)
+
+        if (!saldoLocked) {
+          throw new FinanceiroBusinessError(MSG_RESERVA_NAO_ENCONTRADA)
+        }
+
+        valorReservado = roundMoney(Number(reservaLocked.valor_estimado))
+        valorLiberacao = roundMoney(Math.max(0, valorReservado - valorReal))
+
+        await tx.tfdReservaSaldo.update({
+          where: { id: reservaLocked.id },
+          data: {
+            status: 'CONSUMIDA',
+            consumido_at: decididoAt,
+          },
+        })
+
+        await tx.tfdMovimentacaoSaldo.create({
+          data: {
+            tenant_id: tenantId,
+            saldo_id: reservaLocked.saldo_id,
+            tipo: 'CONSUMO',
+            valor: valorReal,
+            solicitacao_id: reservaAtiva!.solicitacao_id,
+            descricao: 'Consumo — prestação de contas da viagem aprovada',
+            usuario_id: session.user.id,
+          },
+        })
+
+        if (valorLiberacao > 0) {
+          await tx.tfdMovimentacaoSaldo.create({
+            data: {
+              tenant_id: tenantId,
+              saldo_id: reservaLocked.saldo_id,
+              tipo: 'LIBERACAO',
+              valor: valorLiberacao,
+              solicitacao_id: reservaAtiva!.solicitacao_id,
+              descricao: 'Liberação — diferença entre valor estimado e real da prestação',
+              usuario_id: session.user.id,
+            },
+          })
+        }
+      }
+
+      await tx.tfdPrestacaoConta.update({
+        where: { id: viagemLocked.prestacao_conta.id },
+        data: {
+          status: 'APROVADA',
+          aprovado_por_id: session.user.id,
+          aprovado_at: decididoAt,
+          observacoes_gestor: data.observacoesGestor?.trim() || null,
+        },
+      })
+
+      await tx.processo.update({
+        where: { id: viagemLocked.processo_id },
+        data: { status: 'CONCLUIDO' },
+      })
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: viagemLocked.processo_id,
+          tipo: 'PRESTACAO_APROVADA',
+          descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} aprovada (total ${formatValorBrl(valorReal)}).`,
+          usuarioId: session.user.id,
+          metadata: {
+            prestacaoId: viagemLocked.prestacao_conta.id,
+            viagemNovaId: viagemLocked.id,
+            valorReal,
+            valorReservado,
+            valorLiberacao,
+          },
+        },
+        tx
+      )
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: viagemLocked.processo_id,
+          tipo: 'CONCLUSAO',
+          descricao: `Processo TFD concluído após aprovação da prestação da viagem ${viagemLocked.protocolo}.`,
+          usuarioId: session.user.id,
+          metadata: {
+            prestacaoId: viagemLocked.prestacao_conta.id,
+            viagemNovaId: viagemLocked.id,
+          },
+        },
+        tx
+      )
+
+      return {
+        prestacaoId: viagemLocked.prestacao_conta.id,
+        viagemNovaId: viagemLocked.id,
+        processoId: viagemLocked.processo_id,
+        protocolo: viagemLocked.protocolo,
+        sequenciaViagem: extrairSequenciaProtocoloViagemNova(viagemLocked.protocolo),
+        valorReal,
+        valorReservado,
+        valorLiberacao,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_prestacao_conta',
+      entidadeId: resultado.prestacaoId,
+      payloadAntes: { statusPrestacao: 'ENVIADA' },
+      payloadDepois: {
+        statusPrestacao: 'APROVADA',
+        processoStatus: 'CONCLUIDO',
+        decisao: 'APROVADA',
+        valorReal: resultado.valorReal,
+        valorReservado: resultado.valorReservado,
+        valorLiberacao: resultado.valorLiberacao,
+        protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        viagemNovaId: resultado.viagemNovaId,
+      },
+    })
+
+    if (servidorResponsavelId) {
+      await dispararNotificacao({
+        tenantId,
+        evento: NOTIFICATION_EVENTS.PRESTACAO_APROVADA,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        context: {
+          protocolo,
+          especialidade: 'TFD',
+          sequenciaViagem: resultado.sequenciaViagem,
+          valorTotalFormatado: formatValorBrl(resultado.valorReal),
+        },
+        recipientUserIds: [servidorResponsavelId],
+        excludeUserIds: [session.user.id],
+      })
+    }
+
+    if (saldoIdAfetado) {
+      await tryNotificarSaldoBaixoAposMutacao({
+        tenantId,
+        saldoId: saldoIdAfetado,
+        jaEstavaEmAlertaBaixo,
+        excludeUserIds: [session.user.id],
+      })
+    }
+
+    revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[decidirPrestacaoContasViagemNova] Erro:', {
       tenantId: session.user.tenantId,
       error: error instanceof Error ? error.message : 'Erro desconhecido',
     })

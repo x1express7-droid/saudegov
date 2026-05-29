@@ -278,14 +278,14 @@ export async function getAgendamentosTfd(
 
   if (fonte === 'legado') {
     const [rows, total] = await Promise.all([
-      db.tfdViagem.findMany({
+      db.tfdViagemLegado.findMany({
         where: viagemWhere,
         select: viagemListSelect,
         orderBy: [{ data_viagem: 'asc' }, { sequencia: 'asc' }],
         skip: (page - 1) * perPage,
         take: perPage,
       }),
-      db.tfdViagem.count({ where: viagemWhere }),
+      db.tfdViagemLegado.count({ where: viagemWhere }),
     ])
 
     return {
@@ -313,7 +313,7 @@ export async function getAgendamentosTfd(
   }
 
   const [viagens, agendamentos, totalViagens, totalAgendamentos] = await Promise.all([
-    db.tfdViagem.findMany({
+    db.tfdViagemLegado.findMany({
       where: viagemWhere,
       select: viagemListSelect,
       orderBy: [{ data_viagem: 'asc' }, { sequencia: 'asc' }],
@@ -323,7 +323,7 @@ export async function getAgendamentosTfd(
       select: agendamentoNovoListSelect,
       orderBy: [{ data_consulta: 'asc' }, { sequencia: 'asc' }],
     }),
-    db.tfdViagem.count({ where: viagemWhere }),
+    db.tfdViagemLegado.count({ where: viagemWhere }),
     db.tfdAgendamento.count({ where: agendamentoWhere }),
   ])
 

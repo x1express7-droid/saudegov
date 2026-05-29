@@ -129,7 +129,7 @@ export async function getDashboardTfd(): Promise<TfdDashboardOutput> {
         },
       },
     }),
-    db.tfdViagem.count({
+    db.tfdViagemLegado.count({
       where: {
         tenant_id: tenantId,
         status: 'AGENDADA',

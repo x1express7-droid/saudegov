@@ -1078,9 +1078,53 @@ CREATE POLICY tenant_isolation ON saude_tfd.prestacoes_conta
 | **Índices** | `idx_tfd_transporte_anexos_tenant`, `idx_tfd_transporte_anexos_transporte`. |
 | **RLS** | `tenant_isolation` por `tenant_id`. |
 
-#### Depreciação de `saude_tfd.viagens`
+#### Depreciação de `saude_tfd.viagens_legado`
 
-Coluna `deprecated_at TIMESTAMPTZ NULL` marca registros da tabela legada; dados e fluxos antigos (prestação por `viagem_id`) permanecem consultáveis.
+A tabela legada foi renomeada para `viagens_legado` na Sprint 4.3. Coluna `deprecated_at TIMESTAMPTZ NULL` marca registros antigos; dados e fluxos legados (prestação por `viagem_id` legado) permanecem consultáveis.
+
+### 4.8 Tabelas da Fase 4 — Agendamento ampliado e Viagem nova
+
+> Implementadas nas sprints 4.2–4.5. A tabela `saude_tfd.viagens` (nova) concentra o deslocamento coletivo; `viagens_legado` permanece para histórico.
+
+#### `saude_tfd.agendamento_locais`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Schema** | `saude_tfd` |
+| **Propósito** | Locais adicionais de atendimento vinculados a um agendamento (além do prestador principal). |
+| **Campos principais** | `agendamento_id`, `ordem`, `prestador_id`, `procedimento_id`, `horario`, `observacao`, `created_at`. |
+| **Índices** | `idx_tfd_agendamento_locais_tenant`, `idx_tfd_agendamento_locais_agendamento`. |
+| **RLS** | `tenant_isolation` em `tenant_id = current_setting('app.current_tenant_id')::uuid`. |
+
+#### `saude_tfd.agendamento_acompanhantes`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Schema** | `saude_tfd` |
+| **Propósito** | Junção N:N entre agendamento e acompanhantes (`TfdAcompanhante`) — múltiplos acompanhantes por consulta. |
+| **Campos principais** | `agendamento_id`, `acompanhante_id`, `created_at`. UNIQUE `(agendamento_id, acompanhante_id)`. |
+| **Índices** | `idx_tfd_agendamento_acomp_tenant`, `idx_tfd_agendamento_acomp_agendamento`. |
+| **RLS** | `tenant_isolation` por `tenant_id`. |
+
+#### `saude_tfd.viagens` (nova)
+
+| Aspecto | Detalhe |
+|---|---|
+| **Schema** | `saude_tfd` |
+| **Propósito** | Viagem de deslocamento coletivo TFD vinculada ao processo — veículo, motorista, rota, custos e status operacional. |
+| **Campos principais** | `protocolo` (UNIQUE por tenant), `processo_id`, `veiculo_id`, `motorista_id`, `data_saida`, `hora_saida`, `data_chegada`, `hora_chegada`, `km_saida`, `km_chegada`, `origem_descricao`, `destino_descricao`, `tempo_estimado_min`, `custo_estimado`, `custo_real`, `status` (`TfdViagemStatusV2`), `observacoes`. |
+| **Índices** | `idx_tfd_viagens_nova_tenant`, `processo`, `motorista`, `veiculo`, `status`, `data_saida`, `uq_tfd_viagem_nova_protocolo`. |
+| **RLS** | `tenant_isolation` por `tenant_id`. |
+
+#### `saude_tfd.viagem_passageiros`
+
+| Aspecto | Detalhe |
+|---|---|
+| **Schema** | `saude_tfd` |
+| **Propósito** | Junção viagem ↔ agendamento (passageiro) com tipo de trecho e contagem de acompanhantes para cálculo de vagas. |
+| **Campos principais** | `viagem_id`, `agendamento_id`, `tipo_trecho` (`TfdTipoViagem`), `acompanhantes_count`, `status_presenca`, `created_at`. UNIQUE `(viagem_id, agendamento_id, tipo_trecho)`. |
+| **Índices** | `idx_tfd_viagem_passageiros_tenant`, `viagem`, `agendamento`. |
+| **RLS** | `tenant_isolation` por `tenant_id`. |
 
 ---
 

@@ -16,6 +16,7 @@ import {
   type ColumnDef,
 } from '@saude/ui'
 import { Pencil, Plus, Power } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { MotoristaForm } from './motorista-form'
@@ -110,7 +111,12 @@ export function MotoristaTable({
         header: 'Servidor',
         cell: ({ row }) => (
           <div>
-            <span className="font-medium text-[var(--color-text)]">{row.original.userNome}</span>
+            <Link
+              href={`${BASE_PATH}/${row.original.id}`}
+              className="font-medium text-[var(--color-primary)] hover:underline"
+            >
+              {row.original.userNome}
+            </Link>
             <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
               {row.original.userEmail}
             </p>

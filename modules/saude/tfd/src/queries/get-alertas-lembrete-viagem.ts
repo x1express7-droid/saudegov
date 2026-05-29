@@ -9,7 +9,7 @@ export async function getAlertasLembreteViagemTfd(): Promise<AlertaLembreteViage
   const tenantId = session.user.tenantId!
   const db = await getPrismaForTenant(tenantId)
 
-  const rows = await db.tfdViagem.findMany({
+  const rows = await db.tfdViagemLegado.findMany({
     where: {
       tenant_id: tenantId,
       lembrete_48h_falhou_at: { not: null },

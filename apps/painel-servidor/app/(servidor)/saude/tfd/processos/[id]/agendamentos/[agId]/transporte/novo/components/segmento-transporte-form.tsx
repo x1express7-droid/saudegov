@@ -10,7 +10,7 @@ import {
 import { listarMotoristasAgendamentoTfd } from '@saude/mod-saude-tfd/actions/viagem'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
-import { Alert, Button, Card, Input, Select, Spinner, Textarea } from '@saude/ui'
+import { Alert, Button, Card, Combobox, Input, Select, Spinner, Textarea } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
@@ -309,10 +309,10 @@ export function SegmentoTransporteForm({
 
         {isTerrestreProprio ? (
           <>
-            <Select
+            <Combobox
               label="Veículo"
-              value={veiculoId || undefined}
-              onValueChange={setVeiculoId}
+              value={veiculoId}
+              onChange={setVeiculoId}
               options={veiculoOptions}
               disabled={isPending || veiculoOptions.length === 0}
               placeholder={
@@ -322,11 +322,12 @@ export function SegmentoTransporteForm({
               }
             />
 
-            <Select
+            <Combobox
               label="Motorista"
-              value={motoristaId || undefined}
-              onValueChange={setMotoristaId}
+              value={motoristaId}
+              onChange={setMotoristaId}
               options={motoristaOptions}
+              loading={loadingMotoristas}
               disabled={isPending || loadingMotoristas || !dataSaida}
               placeholder={
                 !dataSaida

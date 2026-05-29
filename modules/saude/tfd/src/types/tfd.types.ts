@@ -101,6 +101,11 @@ export interface TfdVeiculoListItem {
   id: string
   placa: string
   modelo: string
+  fabricante: string | null
+  ano: number | null
+  cor: string | null
+  renavam: string | null
+  chassi: string | null
   capacidadePassageiros: number
   ativo: boolean
   createdAt: string
@@ -111,6 +116,11 @@ export interface TfdVeiculoOutput {
   tenantId: string
   placa: string
   modelo: string
+  fabricante: string | null
+  ano: number | null
+  cor: string | null
+  renavam: string | null
+  chassi: string | null
   capacidadePassageiros: number
   ativo: boolean
   createdAt: string
@@ -124,6 +134,7 @@ export interface TfdMotoristaListItem {
   userId: string
   userNome: string
   userEmail: string
+  cns: string | null
   cnh: string
   cnhCategoria: string
   cnhValidade: string
@@ -138,6 +149,7 @@ export interface TfdMotoristaOutput {
   tenantId: string
   userId: string
   userNome: string
+  cns: string | null
   cnh: string
   cnhCategoria: string
   cnhValidade: string

@@ -15,7 +15,7 @@ import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 
-type UrgenciaReclassificacao = 'BAIXA' | 'INTERMEDIARIA' | 'GRAVE'
+type UrgenciaReclassificacao = 'NAO_AGUDA' | 'BAIXA' | 'INTERMEDIARIA' | 'GRAVE'
 
 const OPCOES: Array<{
   value: UrgenciaReclassificacao
@@ -25,30 +25,42 @@ const OPCOES: Array<{
   selectedClass: string
 }> = [
   {
+    value: 'NAO_AGUDA',
+    label: 'Não aguda',
+    description: 'Menor prioridade clínica na fila de regulação.',
+    borderClass: 'border-2 border-[var(--color-info)]',
+    selectedClass: 'bg-[var(--color-info-light)] ring-2 ring-[var(--color-info)]',
+  },
+  {
     value: 'BAIXA',
-    label: 'Não aguda / Baixa',
+    label: 'Baixa',
     description: 'Prioridade padrão na fila de regulação.',
-    borderClass: 'border-[var(--color-success)]',
+    borderClass: 'border-2 border-[var(--color-success)]',
     selectedClass: 'bg-[var(--color-success-light)] ring-2 ring-[var(--color-success)]',
   },
   {
     value: 'INTERMEDIARIA',
     label: 'Intermediária',
     description: 'Atenção moderada na análise e na fila.',
-    borderClass: 'border-[var(--color-warning)]',
+    borderClass: 'border-2 border-[var(--color-warning)]',
     selectedClass: 'bg-[var(--color-warning-light)] ring-2 ring-[var(--color-warning)]',
   },
   {
     value: 'GRAVE',
     label: 'Alta',
     description: 'Alta prioridade clínica (urgência alta).',
-    borderClass: 'border-[var(--color-danger)]',
+    borderClass: 'border-2 border-[var(--color-danger)]',
     selectedClass: 'bg-[var(--color-danger-light)] ring-2 ring-[var(--color-danger)]',
   },
 ]
 
 function mapUrgenciaInicial(urgencia: string): UrgenciaReclassificacao | null {
-  if (urgencia === 'BAIXA' || urgencia === 'INTERMEDIARIA' || urgencia === 'GRAVE') {
+  if (
+    urgencia === 'NAO_AGUDA' ||
+    urgencia === 'BAIXA' ||
+    urgencia === 'INTERMEDIARIA' ||
+    urgencia === 'GRAVE'
+  ) {
     return urgencia
   }
   return null
@@ -161,7 +173,7 @@ export function ReclassificarDialog({
                     disabled={isPending}
                     onClick={() => setSelecionada(opcao.value)}
                     className={cn(
-                      'flex flex-col gap-[var(--space-1)] rounded-[var(--radius-md)] border p-[var(--space-4)] text-left transition-colors',
+                      'flex flex-col gap-[var(--space-1)] rounded-[var(--radius-md)] p-[var(--space-4)] text-left transition-colors',
                       opcao.borderClass,
                       selected ? opcao.selectedClass : 'bg-[var(--color-bg)] hover:bg-[var(--color-bg-subtle)]'
                     )}

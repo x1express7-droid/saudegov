@@ -3,9 +3,10 @@ import { Badge } from './badge'
 import { cn } from '../utils/cn'
 
 export const TFD_URGENCIA_CONFIG = {
-  BAIXA: { label: 'Baixa', color: 'gray', icon: '●' },
+  NAO_AGUDA: { label: 'Não aguda', color: 'blue', icon: '●' },
+  BAIXA: { label: 'Baixa', color: 'green', icon: '●' },
   INTERMEDIARIA: { label: 'Intermediária', color: 'yellow', icon: '●' },
-  GRAVE: { label: 'Grave', color: 'orange', icon: '▲' },
+  GRAVE: { label: 'Grave', color: 'red', icon: '▲' },
   MUITO_URGENTE: { label: 'Muito Urgente', color: 'red', icon: '⚠' },
 } as const
 

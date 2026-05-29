@@ -23,6 +23,7 @@
     "./actions/fila": "./src/actions/fila.ts",
     "./actions/agendamento": "./src/actions/agendamento.ts",
     "./actions/transporte": "./src/actions/transporte.ts",
+    "./actions/viagem-nova": "./src/actions/viagem-nova.ts",
     "./actions/servidor": "./src/actions/servidor.ts",
     "./utils/cancelamento": "./src/utils/cancelamento.ts"
   },

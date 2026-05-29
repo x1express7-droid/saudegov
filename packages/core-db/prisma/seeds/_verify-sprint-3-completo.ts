@@ -64,7 +64,7 @@ async function main(): Promise<void> {
     }
   }
 
-  await db.tfdViagem.findFirst({ select: { deprecated_at: true } })
+  await db.tfdViagemLegado.findFirst({ select: { deprecated_at: true } })
   console.log('\n✓ TfdViagem.deprecated_at — coluna acessível no Prisma')
 
   await db.tfdProcessoDadosClinicos.findFirst({ select: { id: true } })

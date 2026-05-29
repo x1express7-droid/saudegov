@@ -108,7 +108,7 @@ export async function getPerfilPacienteTfd(
           paciente_id: pacienteId,
         },
       }),
-      db.tfdViagem.findMany({
+      db.tfdViagemLegado.findMany({
         where: {
           tenant_id: tenantId,
           solicitacao: {
@@ -135,7 +135,7 @@ export async function getPerfilPacienteTfd(
           },
         },
       }),
-      db.tfdViagem.count({
+      db.tfdViagemLegado.count({
         where: {
           tenant_id: tenantId,
           solicitacao: {

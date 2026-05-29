@@ -17,6 +17,7 @@ import {
   Button,
   Card,
   CardHeader,
+  Combobox,
   Select,
   Spinner,
   Textarea,
@@ -34,7 +35,6 @@ import {
   type Resolver,
 } from 'react-hook-form'
 
-import { SolicitacaoAcompanhanteFields } from './solicitacao-acompanhante-fields'
 import { SolicitacaoLaudoUpload } from './solicitacao-laudo-upload'
 import { SolicitacaoRetornoPicker } from './solicitacao-retorno-picker'
 
@@ -192,7 +192,7 @@ function SoapFieldsSection({
 }) {
   return (
     <Card
-      header={<CardHeader>Dados clínicos</CardHeader>}
+      header={<CardHeader>Dados clínicos (SOAP)</CardHeader>}
       bodyClassName={formFieldsStackClassName()}
     >
       <Textarea
@@ -378,7 +378,6 @@ export function SolicitacaoForm({
 
   const especialidadeId = watch('especialidadeId')
   const tipoAtendimento = watch('tipoAtendimento')
-  const acompanhanteNecessario = watch('acompanhanteNecessario')
 
   const especialidadeObrigatoria =
     tipoAtendimento === 'CONSULTA' || tipoAtendimento === 'RETORNO'
@@ -435,20 +434,6 @@ export function SolicitacaoForm({
       clearErrors('procedimentos')
     }
   }, [tipoAtendimento, setValue, clearErrors])
-
-  useEffect(() => {
-    if (!acompanhanteNecessario) {
-      setValue('acompanhante', undefined)
-      clearErrors('acompanhante')
-      return
-    }
-
-    setValue('acompanhante', {
-      nome: '',
-      relacao: 'OUTRO',
-      telefone: '',
-    } as AbrirSolicitacaoInput['acompanhante'])
-  }, [acompanhanteNecessario, setValue, clearErrors])
 
   useEffect(() => {
     setValue('laudoAnexoIds', laudoAnexoIds)
@@ -610,6 +595,24 @@ export function SolicitacaoForm({
           )}
         />
 
+        <Controller
+          name="especialidadeId"
+          control={control}
+          render={({ field }) => (
+            <Combobox
+              id="especialidade-id"
+              label="Especialidade"
+              required={especialidadeObrigatoria}
+              placeholder="Selecione a especialidade"
+              options={especialidadeOptions}
+              value={field.value ?? ''}
+              onChange={field.onChange}
+              disabled={isPending}
+              error={errors.especialidadeId?.message}
+            />
+          )}
+        />
+
         {exibirProcedimentos ? (
           <Controller
             name="procedimentos"
@@ -628,35 +631,17 @@ export function SolicitacaoForm({
         ) : null}
 
         <Controller
-          name="especialidadeId"
-          control={control}
-          render={({ field }) => (
-            <Select
-              id="especialidade-id"
-              label="Especialidade"
-              required={especialidadeObrigatoria}
-              placeholder="Selecione a especialidade"
-              options={especialidadeOptions}
-              value={field.value ?? ''}
-              onValueChange={field.onChange}
-              disabled={isPending}
-              error={errors.especialidadeId?.message}
-            />
-          )}
-        />
-
-        <Controller
           name="prestadorId"
           control={control}
           render={({ field }) => (
-            <Select
+            <Combobox
               id="prestador-id"
               label="Prestador de destino"
               required
               placeholder="Selecione o prestador"
               options={prestadorOptions}
               value={field.value}
-              onValueChange={field.onChange}
+              onChange={field.onChange}
               disabled={isPending || (especialidadeObrigatoria && !especialidadeId)}
               error={errors.prestadorId?.message}
             />
@@ -736,38 +721,6 @@ export function SolicitacaoForm({
           {...register('observacoesAbertura')}
           error={errors.observacoesAbertura?.message}
         />
-      </Card>
-
-      <Card
-        header={<CardHeader>Acompanhante</CardHeader>}
-        bodyClassName={formFieldsStackClassName()}
-      >
-          <Controller
-            name="acompanhanteNecessario"
-            control={control}
-            render={({ field }) => (
-              <label className="flex cursor-pointer items-center gap-[var(--space-2)]">
-                <input
-                  type="checkbox"
-                  className="size-4 accent-[var(--color-primary)]"
-                  checked={field.value}
-                  onChange={(event) => field.onChange(event.target.checked)}
-                  disabled={isPending}
-                />
-                <span className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  Paciente necessita de acompanhante (justificado no laudo)
-                </span>
-              </label>
-            )}
-          />
-
-          {acompanhanteNecessario ? (
-            <SolicitacaoAcompanhanteFields
-              register={register}
-              errors={errors}
-              disabled={isPending}
-            />
-          ) : null}
       </Card>
 
       <div className="flex flex-col gap-3 border-t border-[var(--color-border)] pt-6 sm:flex-row sm:justify-end">

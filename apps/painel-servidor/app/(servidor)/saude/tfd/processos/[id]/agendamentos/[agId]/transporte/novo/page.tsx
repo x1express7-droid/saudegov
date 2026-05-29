@@ -3,14 +3,10 @@ import {
   getTenantContext,
   requireTenantRole,
 } from '@saude/core-auth/server'
-import {
-  getAgendamentoDetalhe,
-  getPrestadoresTfd,
-  getSolicitacaoTfd,
-  getVeiculosAgendamentoTfd,
-} from '@saude/mod-saude-tfd'
-import { PageHeader } from '@saude/ui'
+import { getAgendamentoDetalhe, getPrestadoresTfd, getSolicitacaoTfd, getVeiculosAgendamentoTfd } from '@saude/mod-saude-tfd'
+import { Alert, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
 import { SegmentoTransporteForm } from './components/segmento-transporte-form'
@@ -87,6 +83,19 @@ export default async function NovoTransportePage({ params }: NovoTransportePageP
           { label: 'Novo segmento' },
         ]}
       />
+
+      <Alert variant="info" titulo="Gerenciamento de deslocamentos">
+        <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
+          O gerenciamento de transporte agora é feito através das Viagens TFD. Recomendamos criar
+          uma viagem para organizar os deslocamentos deste agendamento.{' '}
+          <Link
+            href={`/saude/tfd/viagens/nova?agendamentoId=${encodeURIComponent(agendamentoId)}`}
+            className="font-medium text-[var(--color-primary)] hover:underline"
+          >
+            Criar viagem →
+          </Link>
+        </p>
+      </Alert>
 
       <SegmentoTransporteForm
         session={session}

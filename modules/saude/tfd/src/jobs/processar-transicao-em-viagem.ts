@@ -73,7 +73,7 @@ export async function processarTransicaoEmViagemTfd(): Promise<ProcessarTransica
   const agora = new Date()
   const dataLimitePrefiltro = addDays(agora, 1)
 
-  const candidatas = await db.tfdViagem.findMany({
+  const candidatas = await db.tfdViagemLegado.findMany({
     where: {
       status: 'AGENDADA',
       em_viagem_transicionado_at: null,
@@ -120,7 +120,7 @@ export async function processarTransicaoEmViagemTfd(): Promise<ProcessarTransica
 
     try {
       const resultado = await db.$transaction(async (tx) => {
-        const viagemLocked = await tx.tfdViagem.findFirst({
+        const viagemLocked = await tx.tfdViagemLegado.findFirst({
           where: {
             id: viagem.id,
             tenant_id: viagem.tenant_id,
@@ -156,7 +156,7 @@ export async function processarTransicaoEmViagemTfd(): Promise<ProcessarTransica
           }
         }
 
-        await tx.tfdViagem.update({
+        await tx.tfdViagemLegado.update({
           where: { id: viagemLocked.id },
           data: { em_viagem_transicionado_at: transicionadoAt },
         })

@@ -168,6 +168,7 @@ export {
   registrarVisualizacaoComprovanteSchema,
   decidirPrestacaoContasSchema,
   decidirPrestacaoContasAgendamentoSchema,
+  decidirPrestacaoContasViagemNovaSchema,
   MIN_VALOR_COMPROVANTE,
 } from './validators/despesa.schema'
 
@@ -177,6 +178,7 @@ export type {
   RegistrarVisualizacaoComprovanteInput,
   DecidirPrestacaoContasInput,
   DecidirPrestacaoContasAgendamentoInput,
+  DecidirPrestacaoContasViagemNovaInput,
 } from './validators/despesa.schema'
 
 export type {
@@ -201,16 +203,26 @@ export {
   criarAgendamentoNovoSchema,
   registrarRetornoAgendamentoSchema,
   cancelarAgendamentoSchema,
+  adicionarLocalAgendamentoSchema,
+  removerLocalAgendamentoSchema,
+  adicionarAcompanhanteAgendamentoSchema,
+  removerAcompanhanteAgendamentoSchema,
 } from './validators/agendamento-novo.schema'
 
 export {
   registrarDespesaAgendamentoSchema,
   registrarDespesaTransporteSchema,
+  registrarDespesaViagemNovaSchema,
+  enviarPrestacaoContasViagemNovaSchema,
+  registrarVisualizacaoComprovanteViagemNovaSchema,
 } from './validators/despesa.schema'
 
 export type {
   RegistrarDespesaAgendamentoInput,
   RegistrarDespesaTransporteInput,
+  RegistrarDespesaViagemNovaInput,
+  EnviarPrestacaoContasViagemNovaInput,
+  RegistrarVisualizacaoComprovanteViagemNovaInput,
 } from './validators/despesa.schema'
 
 export {
@@ -239,6 +251,12 @@ export type {
   CriarAgendamentoNovoInput,
   RegistrarRetornoAgendamentoInput,
   CancelarAgendamentoInput,
+  AdicionarLocalAgendamentoInput,
+  RemoverLocalAgendamentoInput,
+  AdicionarAcompanhanteAgendamentoInput,
+  RemoverAcompanhanteAgendamentoInput,
+  TfdConvenio,
+  TfdTipoViagem,
 } from './validators/agendamento-novo.schema'
 
 export type {
@@ -287,7 +305,36 @@ export {
   criarAgendamentoNovo,
   registrarRetornoAgendamento,
   cancelarAgendamento,
+  adicionarLocalAgendamento,
+  removerLocalAgendamento,
+  adicionarAcompanhanteAgendamento,
+  removerAcompanhanteAgendamento,
 } from './actions/agendamento'
+export {
+  criarViagem,
+  vincularAgendamentoNaViagem,
+  desvincularPassageiro,
+  mudarStatusViagem,
+  registrarChegadaViagem,
+  cancelarViagem,
+} from './actions/viagem-nova'
+export type { CriarViagemOutput, RegistrarChegadaViagemOutput } from './actions/viagem-nova'
+export {
+  criarViagemSchema,
+  vincularAgendamentoSchema,
+  mudarStatusViagemSchema,
+  registrarChegadaSchema as registrarChegadaViagemSchema,
+  cancelarViagemSchema,
+  desvincularPassageiroSchema,
+} from './validators/viagem-nova.schema'
+export type {
+  CriarViagemInput,
+  VincularAgendamentoInput,
+  MudarStatusViagemInput,
+  RegistrarChegadaViagemInput,
+  CancelarViagemInput,
+  DesvincularPassageiroInput,
+} from './validators/viagem-nova.schema'
 export {
   criarSegmentoTransporte,
   confirmarTransporte,
@@ -326,6 +373,10 @@ export {
   registrarVisualizacaoComprovanteAgendamento,
   decidirPrestacaoContas,
   decidirPrestacaoContasAgendamento,
+  registrarDespesaViagemNova,
+  enviarPrestacaoContasViagemNova,
+  registrarVisualizacaoComprovanteViagemNova,
+  decidirPrestacaoContasViagemNova,
   estornarMovimentacaoSaldoTfd,
 } from './actions/financeiro'
 export {
@@ -387,6 +438,11 @@ export type {
   ProcessarTransicaoTransporteResult,
   ProcessarTransicaoTransporteErro,
 } from './jobs/processar-transicao-transporte'
+export { processarTransicaoViagemNova } from './jobs/processar-transicao-viagem-nova'
+export type {
+  ProcessarTransicaoViagemNovaResult,
+  ProcessarTransicaoViagemNovaErro,
+} from './jobs/processar-transicao-viagem-nova'
 
 export { getEspecialidadesTfd } from './queries/get-especialidades'
 export { getProcedimentosTfd } from './queries/get-procedimentos'
@@ -435,12 +491,18 @@ export {
   labelRelacaoAcompanhante,
 } from './queries/get-acompanhantes-solicitacao'
 export type { AcompanhanteSolicitacaoOption } from './queries/get-acompanhantes-solicitacao'
+export { getLocaisAgendamento } from './queries/get-locais-agendamento'
+export type { LocalAgendamentoItem } from './queries/get-locais-agendamento'
+export { getAcompanhantesAgendamento } from './queries/get-acompanhantes-agendamento'
+export type { AcompanhanteAgendamentoItem } from './queries/get-acompanhantes-agendamento'
 export { getTransportesPorAgendamento } from './queries/get-transportes-por-agendamento'
 export type { TransporteAgendamentoItem } from './queries/get-transportes-por-agendamento'
 export { getTransporteDetalhe } from './queries/get-transporte-detalhe'
 export type { TransporteDetalheOutput } from './queries/get-transporte-detalhe'
 export { getPrestacaoDetalheAgendamento } from './queries/get-prestacao-detalhe-agendamento'
 export type { PrestacaoDetalheAgendamentoOutput } from './queries/get-prestacao-detalhe-agendamento'
+export { getPrestacaoDetalheViagemNova } from './queries/get-prestacao-detalhe-viagem-nova'
+export type { PrestacaoDetalheViagemNovaOutput } from './queries/get-prestacao-detalhe-viagem-nova'
 export { getExtratoAgendamento } from './queries/get-extrato-agendamento'
 export type { ExtratoAgendamentoOutput } from './queries/get-extrato-agendamento'
 export type { GetPacientesFiltros } from './queries/get-pacientes'
@@ -460,6 +522,18 @@ export { getContextoDecisaoTfd } from './queries/get-contexto-decisao-tfd'
 export { getMotoristasAgendamentoTfd } from './queries/get-motoristas-agendamento'
 export { getVeiculosAgendamentoTfd } from './queries/get-veiculos-agendamento'
 export { getViagensSolicitacaoTfd } from './queries/get-viagens-solicitacao'
+export { getViagensTfd } from './queries/get-viagens-tfd'
+export type { GetViagensFiltros, ViagemTfdListItem } from './queries/get-viagens-tfd'
+export { getViagemDetalhe } from './queries/get-viagem-detalhe'
+export type { ViagemDetalheOutput } from './queries/get-viagem-detalhe'
+export { getVeiculoDetalhe } from './queries/get-veiculo-detalhe'
+export type { VeiculoDetalheOutput } from './queries/get-veiculo-detalhe'
+export { getMotoristaDetalhe } from './queries/get-motorista-detalhe'
+export type { MotoristaDetalheOutput } from './queries/get-motorista-detalhe'
+export { getAgendamentosDisponiveisParaViagem } from './queries/get-agendamentos-disponiveis-para-viagem'
+export type { AgendamentoDisponivelViagemItem } from './queries/get-agendamentos-disponiveis-para-viagem'
+export { getVagasViagem } from './queries/get-vagas-viagem'
+export type { VagasViagemOutput } from './queries/get-vagas-viagem'
 export { getAgendamentosTfd } from './queries/get-agendamentos'
 export type {
   GetAgendamentosFiltros,
@@ -497,6 +571,7 @@ export {
   PRAZO_PRESTACAO_DIAS,
 } from './utils/prazos'
 export { verificaCapacidadeVeiculo, calcProximaSequenciaViagem } from './utils/viagem'
+export { gerarProtocoloViagemNova } from './utils/gerar-protocolo-tfd'
 export { calcSaldoDisponivel } from './utils/saldo'
 export type { CalcSaldoDisponivelInput, CalcSaldoDisponivelResult } from './utils/saldo'
 export {

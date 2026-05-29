@@ -220,7 +220,7 @@ export async function criarAgendamentoTfd(
         throw new AgendamentoBusinessError(MSG_STATUS_INVALIDO)
       }
 
-      const viagensExistentes = await tx.tfdViagem.count({
+      const viagensExistentes = await tx.tfdViagemLegado.count({
         where: {
           tenant_id: tenantId,
           solicitacao_id: solicitacaoLocked.id,
@@ -230,7 +230,7 @@ export async function criarAgendamentoTfd(
       const sequencia = calcProximaSequenciaViagem(viagensExistentes)
       const protocolo = await gerarProtocoloTfd(tenantId, 'VIAGEM', tx)
 
-      const viagem = await tx.tfdViagem.create({
+      const viagem = await tx.tfdViagemLegado.create({
         data: {
           tenant_id: tenantId,
           solicitacao_id: solicitacaoLocked.id,
@@ -376,7 +376,7 @@ export async function registrarRetornoTfd(
     const tenantId = session.user.tenantId!
     const db = await getPrismaForTenant(tenantId)
 
-    const viagem = await db.tfdViagem.findFirst({
+    const viagem = await db.tfdViagemLegado.findFirst({
       where: {
         id: data.viagemId,
         tenant_id: tenantId,
@@ -433,7 +433,7 @@ export async function registrarRetornoTfd(
     const retornoRegistradoAt = new Date()
 
     const resultado = await db.$transaction(async (tx) => {
-      const viagemLocked = await tx.tfdViagem.findFirst({
+      const viagemLocked = await tx.tfdViagemLegado.findFirst({
         where: {
           id: data.viagemId,
           tenant_id: tenantId,
@@ -473,7 +473,7 @@ export async function registrarRetornoTfd(
         throw new RetornoBusinessError(MSG_SOLICITACAO_STATUS_INVALIDO)
       }
 
-      await tx.tfdViagem.update({
+      await tx.tfdViagemLegado.update({
         where: { id: viagemLocked.id },
         data: {
           status: 'REALIZADA',
@@ -492,7 +492,7 @@ export async function registrarRetornoTfd(
         select: { id: true },
       })
 
-      const viagensAgendadasRestantes = await tx.tfdViagem.count({
+      const viagensAgendadasRestantes = await tx.tfdViagemLegado.count({
         where: {
           tenant_id: tenantId,
           solicitacao_id: viagemLocked.solicitacao_id,

@@ -116,6 +116,8 @@ Definidas em `modules/saude/tfd/src/permissions.ts`.
 | `saude.tfd.registrar_dados_clinicos` | SERVIDOR | Registrar ou atualizar dados clínicos SOAP do processo |
 | `saude.tfd.mover_fila` | GESTOR | Alterar posição na fila de regulação com justificativa auditada |
 | `saude.tfd.ver_perfil_paciente` | SERVIDOR | Acessar perfil do paciente com histórico de processos e agendamentos |
+| `saude.tfd.gerenciar_viagem` | SERVIDOR | Criar e editar viagens TFD |
+| `saude.tfd.monitorar_viagem` | SERVIDOR | Visualizar detalhes e acompanhar viagens |
 
 ### 3.2 Regras de gestão de permissões
 

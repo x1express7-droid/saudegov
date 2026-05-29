@@ -12,6 +12,7 @@ import {
   type ColumnDef,
 } from '@saude/ui'
 import { Pencil, Plus, Power } from 'lucide-react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState } from 'react'
 import { VeiculoForm } from './veiculo-form'
@@ -58,16 +59,24 @@ export function VeiculoTable({ items, pagination, ativoFilter }: VeiculoTablePro
         id: 'placa',
         header: 'Placa',
         cell: ({ row }) => (
-          <span className="font-mono font-medium uppercase text-[var(--color-text)]">
+          <Link
+            href={`${BASE_PATH}/${row.original.id}`}
+            className="font-mono font-medium uppercase text-[var(--color-primary)] hover:underline"
+          >
             {row.original.placa}
-          </span>
+          </Link>
         ),
       },
       {
         id: 'modelo',
         header: 'Modelo',
         cell: ({ row }) => (
-          <span className="text-[var(--color-text)]">{row.original.modelo}</span>
+          <Link
+            href={`${BASE_PATH}/${row.original.id}`}
+            className="text-[var(--color-text)] hover:text-[var(--color-primary)] hover:underline"
+          >
+            {row.original.modelo}
+          </Link>
         ),
       },
       {

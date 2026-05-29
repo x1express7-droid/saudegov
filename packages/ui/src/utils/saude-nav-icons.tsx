@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  Bus,
   CalendarDays,
   ClipboardList,
   FileText,
@@ -17,6 +18,7 @@ import {
 
 const SAUDE_NAV_ICONS: Record<string, LucideIcon> = {
   BarChart3,
+  Bus,
   CalendarDays,
   ClipboardList,
   FileText,

@@ -54,6 +54,49 @@ const modeloField = z
   .min(2, 'Modelo deve ter pelo menos 2 caracteres.')
   .max(100, 'Modelo deve ter no máximo 100 caracteres.')
 
+const fabricanteField = z
+  .string()
+  .trim()
+  .max(100, 'Fabricante deve ter no máximo 100 caracteres.')
+  .optional()
+  .or(z.literal(''))
+
+const anoField = z
+  .number()
+  .int('Ano deve ser um número inteiro.')
+  .min(1900, 'Ano inválido.')
+  .max(2100, 'Ano inválido.')
+  .optional()
+  .nullable()
+
+const corField = z
+  .string()
+  .trim()
+  .max(50, 'Cor deve ter no máximo 50 caracteres.')
+  .optional()
+  .or(z.literal(''))
+
+const renavamField = z
+  .string()
+  .trim()
+  .max(20, 'RENAVAM deve ter no máximo 20 caracteres.')
+  .optional()
+  .or(z.literal(''))
+
+const chassiField = z
+  .string()
+  .trim()
+  .max(30, 'Chassi deve ter no máximo 30 caracteres.')
+  .optional()
+  .or(z.literal(''))
+
+const cnsMotoristaField = z
+  .string()
+  .trim()
+  .max(20, 'CNS deve ter no máximo 20 caracteres.')
+  .optional()
+  .or(z.literal(''))
+
 const cnhField = z
   .string()
   .trim()
@@ -197,6 +240,11 @@ export const desativarPrestadorSchema = z.object({
 export const criarVeiculoSchema = z.object({
   placa: placaField,
   modelo: modeloField,
+  fabricante: fabricanteField,
+  ano: anoField,
+  cor: corField,
+  renavam: renavamField,
+  chassi: chassiField,
   capacidadePassageiros: z
     .number()
     .int('Capacidade deve ser um número inteiro.')
@@ -210,6 +258,11 @@ export const atualizarVeiculoSchema = z.object({
   id: idField,
   placa: placaField.optional(),
   modelo: modeloField.optional(),
+  fabricante: fabricanteField.nullable().optional(),
+  ano: anoField,
+  cor: corField.nullable().optional(),
+  renavam: renavamField.nullable().optional(),
+  chassi: chassiField.nullable().optional(),
   capacidadePassageiros: z
     .number()
     .int('Capacidade deve ser um número inteiro.')
@@ -227,6 +280,7 @@ export const desativarVeiculoSchema = z.object({
 
 export const criarMotoristaSchema = z.object({
   userId: z.string().uuid('Usuário inválido.'),
+  cns: cnsMotoristaField,
   cnh: cnhField,
   cnhCategoria: cnhCategoriaField,
   cnhValidade: cnhValidadeField,
@@ -234,6 +288,7 @@ export const criarMotoristaSchema = z.object({
 
 export const atualizarMotoristaSchema = z.object({
   id: idField,
+  cns: cnsMotoristaField.nullable().optional(),
   cnh: cnhField.optional(),
   cnhCategoria: cnhCategoriaField.optional(),
   cnhValidade: cnhValidadeField.optional(),

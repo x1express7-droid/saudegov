@@ -13,8 +13,8 @@ export const TFD_STATUS_CONFIG = {
   EM_VIAGEM: { label: 'Em Viagem', color: 'cyan' },
   AGUARDANDO_PC: { label: 'Aguardando PC', color: 'orange' },
   PC_EM_ANALISE: { label: 'PC em Análise', color: 'purple' },
-  CONCLUIDO: { label: 'Concluído', color: 'green' },
-  CANCELADO: { label: 'Cancelado', color: 'red' },
+  CONCLUIDO: { label: 'Concluído', color: 'emerald' },
+  CANCELADO: { label: 'Cancelado', color: 'slate' },
 } as const
 
 export type TfdStatus = keyof typeof TFD_STATUS_CONFIG

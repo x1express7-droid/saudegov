@@ -46,7 +46,7 @@ const MSG_PROCESSO_PACIENTE_DIVERGENTE =
 const MSG_PROCESSO_ENCERRADO = 'Não é possível abrir solicitação em processo encerrado.'
 const PROCESSO_STATUS_ENCERRADOS = new Set(['CONCLUIDO', 'CANCELADO', 'ARQUIVADO'])
 
-const reclassificarUrgenciaValues = ['BAIXA', 'INTERMEDIARIA', 'GRAVE'] as const
+const reclassificarUrgenciaValues = ['NAO_AGUDA', 'BAIXA', 'INTERMEDIARIA', 'GRAVE'] as const
 
 const reclassificarSolicitacaoSchema = z
   .object({
@@ -75,6 +75,7 @@ const reclassificarSolicitacaoSchema = z
   })
 
 const URGENCIA_RECLASSIFICACAO_LABEL: Record<string, string> = {
+  NAO_AGUDA: 'Não aguda',
   BAIXA: 'Baixa',
   INTERMEDIARIA: 'Intermediária',
   GRAVE: 'Alta',

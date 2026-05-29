@@ -68,7 +68,7 @@ async function main(): Promise<void> {
   })
   console.log('✓ TfdSolicitacao — campos de vedação acessíveis')
 
-  await db.tfdViagem.findFirst({
+  await db.tfdViagemLegado.findFirst({
     select: { em_viagem_transicionado_at: true },
   })
   console.log('✓ TfdViagem.em_viagem_transicionado_at — coluna acessível')

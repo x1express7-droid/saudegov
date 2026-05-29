@@ -38,7 +38,7 @@ export async function getRelatorioMotoristaTfd(
   const tenantId = session.user.tenantId!
   const db = await getPrismaForTenant(tenantId)
 
-  const viagens = await db.tfdViagem.findMany({
+  const viagens = await db.tfdViagemLegado.findMany({
     where: {
       tenant_id: tenantId,
       motorista_id: { not: null },

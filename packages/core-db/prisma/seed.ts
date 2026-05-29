@@ -17,6 +17,9 @@ import { seedSprint34TfdPlatformFeatures } from './seeds/sprint-3-4-platform-fea
 import { seedSprint35TfdPlatformFeatures } from './seeds/sprint-3-5-platform-features'
 import { seedSprint36TfdPlatformFeatures } from './seeds/sprint-3-6-platform-features'
 import { seedSprint36AjustesTfdPlatformFeatures } from './seeds/sprint-3-6-ajustes-platform-features'
+import { seedSprint42TfdPlatformFeatures } from './seeds/sprint-4-2-platform-features'
+import { seedSprint43TfdPlatformFeatures } from './seeds/sprint-4-3-platform-features'
+import { seedSprint46TfdPlatformFeatures } from './seeds/sprint-4-6-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 import { seedTfdCatalogoExemplo } from './seeds/tfd-catalogo-exemplo'
 
@@ -745,6 +748,21 @@ async function main() {
   const sprint36AjustesTfdFeaturesCount = await seedSprint36AjustesTfdPlatformFeatures()
   console.log(
     `\n📌 platform_features (Sprint 3.6 ajustes TFD): ${sprint36AjustesTfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint42TfdFeaturesCount = await seedSprint42TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 4.2 TFD): ${sprint42TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint43TfdFeaturesCount = await seedSprint43TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Sprint 4.3 TFD): ${sprint43TfdFeaturesCount} entradas inseridas/atualizadas (upsert idempotente).`
+  )
+
+  const sprint46TfdFeaturesCount = await seedSprint46TfdPlatformFeatures()
+  console.log(
+    `\n📌 platform_features (Fase 4 / Sprint 4.6 TFD): ${sprint46TfdFeaturesCount} novas entradas (duplicatas ignoradas).`
   )
 
   await seedTfdSaldoExemplo(prisma, campograndems.id, gestorCampograndems.id)

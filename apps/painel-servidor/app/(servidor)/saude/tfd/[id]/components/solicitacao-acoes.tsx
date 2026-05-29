@@ -3,8 +3,6 @@
 import {
   TFD_PERMISSIONS,
   type AgendamentoProcessoListItem,
-  type ContextoDecisaoTfd,
-  type SaldoListItem,
   type TfdSolicitacaoDetalhe,
   type TfdVeiculoAgendamentoItem,
   type TfdViagemSolicitacaoItem,
@@ -12,6 +10,8 @@ import {
 import { enviarComplementoTfd, iniciarAnaliseTfd, solicitarComplementoTfd } from '@saude/mod-saude-tfd/actions/regulacao'
 import { isStatusCancelavelTfd } from '@saude/mod-saude-tfd/utils/cancelamento'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
+
+import type { ViagemNovaPorAgendamentoItem } from '@/lib/queries/get-viagem-nova-por-agendamento'
 
 import {
   Button,
@@ -39,12 +39,10 @@ const MIN_TEXTO = 20
 export interface SolicitacaoAcoesProps {
   session: SaudeMunicSession
   solicitacao: TfdSolicitacaoDetalhe
-  saldosAtivos: SaldoListItem[]
-  canLoadSaldos: boolean
-  contextoDecisao: ContextoDecisaoTfd | null
   veiculosAgendamento: TfdVeiculoAgendamentoItem[]
   viagens: TfdViagemSolicitacaoItem[]
   agendamentos?: AgendamentoProcessoListItem[]
+  viagensNovaPorAgendamento?: ViagemNovaPorAgendamentoItem[]
   /** Abre o dialog de cancelamento ao carregar (ex.: `?cancelar=prazo`). */
   abrirCancelamentoInicial?: boolean
 }
@@ -88,6 +86,13 @@ function agendamentoMaisRecente(
   )
 }
 
+function viagemNovaDoAgendamento(
+  agendamentoId: string,
+  mappings: ViagemNovaPorAgendamentoItem[]
+): ViagemNovaPorAgendamentoItem | null {
+  return mappings.find((item) => item.agendamentoId === agendamentoId) ?? null
+}
+
 function ServerError({ message }: { message: string }) {
   return (
     <p className="text-[length:var(--text-sm)] text-[var(--color-danger)]" role="alert">
@@ -99,12 +104,10 @@ function ServerError({ message }: { message: string }) {
 export function SolicitacaoAcoes({
   session,
   solicitacao,
-  saldosAtivos,
-  canLoadSaldos,
-  contextoDecisao,
   veiculosAgendamento,
   viagens,
   agendamentos = [],
+  viagensNovaPorAgendamento = [],
   abrirCancelamentoInicial = false,
 }: SolicitacaoAcoesProps) {
   const router = useRouter()
@@ -190,14 +193,31 @@ export function SolicitacaoAcoes({
     )
   const agendamentoRealizado = agendamentoRealizadoMaisRecente(agendamentos, solicitacao.id)
   const agendamentoFluxoNovo = agendamentoMaisRecente(agendamentos, solicitacao.id)
+  const fluxoViagemNova = viagens.length === 0
+  const viagemNovaAguardandoPc =
+    agendamentoRealizado !== null
+      ? viagemNovaDoAgendamento(agendamentoRealizado.id, viagensNovaPorAgendamento)
+      : null
+  const viagemNovaEmAnalise =
+    agendamentoFluxoNovo !== null
+      ? viagemNovaDoAgendamento(agendamentoFluxoNovo.id, viagensNovaPorAgendamento)
+      : null
   const showPrestacaoAgendamentoAguardandoPc =
     solicitacao.status === 'AGUARDANDO_PC' &&
-    viagens.length === 0 &&
+    !fluxoViagemNova &&
     agendamentoRealizado !== null
+  const showPrestacaoViagemNovaAguardandoPc =
+    solicitacao.status === 'AGUARDANDO_PC' &&
+    fluxoViagemNova &&
+    viagemNovaAguardandoPc !== null
   const showPrestacaoAgendamentoEmAnalise =
     solicitacao.status === 'PC_EM_ANALISE' &&
-    viagens.length === 0 &&
+    !fluxoViagemNova &&
     agendamentoFluxoNovo !== null
+  const showPrestacaoViagemNovaEmAnalise =
+    solicitacao.status === 'PC_EM_ANALISE' &&
+    fluxoViagemNova &&
+    viagemNovaEmAnalise !== null
   const showAnalisePrestacaoLegacy =
     solicitacao.status === 'PC_EM_ANALISE' && viagens.length > 0
   const modoCancelamentoPrazo =
@@ -213,7 +233,9 @@ export function SolicitacaoAcoes({
     showRetorno ||
     showDespesaLegacy ||
     showPrestacaoAgendamentoAguardandoPc ||
+    showPrestacaoViagemNovaAguardandoPc ||
     showPrestacaoAgendamentoEmAnalise ||
+    showPrestacaoViagemNovaEmAnalise ||
     showAnalisePrestacaoLegacy ||
     showCancelar
 
@@ -314,9 +336,6 @@ export function SolicitacaoAcoes({
                 ) : (
                   <DecisaoForm
                     solicitacaoId={solicitacao.id}
-                    saldosAtivos={saldosAtivos}
-                    canLoadSaldos={canLoadSaldos}
-                    contextoVedacoes={contextoDecisao}
                     onSuccess={() => {
                       setServerError(null)
                       setShowDecidir(false)
@@ -418,6 +437,18 @@ export function SolicitacaoAcoes({
           />
         ) : null}
 
+        {showPrestacaoViagemNovaAguardandoPc && viagemNovaAguardandoPc ? (
+          <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
+            <Button type="button" variant="primary" asChild>
+              <Link
+                href={`/saude/tfd/viagens/${viagemNovaAguardandoPc.viagemId}?tab=prestacao`}
+              >
+                Ver prestação de contas → {viagemNovaAguardandoPc.viagemProtocolo}
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+
         {showPrestacaoAgendamentoAguardandoPc && agendamentoRealizado ? (
           <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
             <Button type="button" variant="primary" asChild>
@@ -425,6 +456,18 @@ export function SolicitacaoAcoes({
                 href={`/saude/tfd/processos/${solicitacao.processoId}/agendamentos/${agendamentoRealizado.id}/prestacao`}
               >
                 Ir para Prestação de Contas
+              </Link>
+            </Button>
+          </div>
+        ) : null}
+
+        {showPrestacaoViagemNovaEmAnalise && viagemNovaEmAnalise ? (
+          <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
+            <Button type="button" variant="primary" asChild>
+              <Link
+                href={`/saude/tfd/viagens/${viagemNovaEmAnalise.viagemId}?tab=prestacao`}
+              >
+                Ver prestação de contas → {viagemNovaEmAnalise.viagemProtocolo}
               </Link>
             </Button>
           </div>

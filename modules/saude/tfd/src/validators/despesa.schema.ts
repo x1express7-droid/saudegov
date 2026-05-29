@@ -123,6 +123,7 @@ export type DecidirPrestacaoContasAgendamentoInput = z.infer<
 
 const agendamentoIdField = z.string().uuid('ID do agendamento inválido.')
 const transporteIdField = z.string().uuid('ID do transporte inválido.')
+const viagemNovaIdField = z.string().uuid('ID da viagem inválido.')
 
 const despesaCamposComuns = {
   tipo: tipoDespesaField,
@@ -166,3 +167,56 @@ export const registrarDespesaTransporteSchema = z
   })
 
 export type RegistrarDespesaTransporteInput = z.infer<typeof registrarDespesaTransporteSchema>
+
+export const registrarDespesaViagemNovaSchema = z
+  .object({
+    viagemNovaId: viagemNovaIdField,
+    ...despesaCamposComuns,
+  })
+  .refine(comprovanteObrigatorioRefine.refine, {
+    message: comprovanteObrigatorioRefine.message,
+    path: ['comprovanteAnexoId'],
+  })
+
+export type RegistrarDespesaViagemNovaInput = z.infer<typeof registrarDespesaViagemNovaSchema>
+
+export const enviarPrestacaoContasViagemNovaSchema = z.object({
+  viagemNovaId: viagemNovaIdField,
+})
+
+export type EnviarPrestacaoContasViagemNovaInput = z.infer<
+  typeof enviarPrestacaoContasViagemNovaSchema
+>
+
+export const decidirPrestacaoContasViagemNovaSchema = z
+  .object({
+    viagemNovaId: viagemNovaIdField,
+    decisao: decisaoPrestacaoAgendamentoField,
+    observacoesGestor: observacoesGestorField,
+  })
+  .superRefine((data, ctx) => {
+    if (data.decisao === 'APROVADA') {
+      return
+    }
+
+    if (!data.observacoesGestor || data.observacoesGestor.length < 20) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'A observação do gestor deve ter pelo menos 20 caracteres.',
+        path: ['observacoesGestor'],
+      })
+    }
+  })
+
+export type DecidirPrestacaoContasViagemNovaInput = z.infer<
+  typeof decidirPrestacaoContasViagemNovaSchema
+>
+
+export const registrarVisualizacaoComprovanteViagemNovaSchema = z.object({
+  viagemNovaId: viagemNovaIdField,
+  comprovanteAnexoId: comprovanteAnexoIdObrigatorioField,
+})
+
+export type RegistrarVisualizacaoComprovanteViagemNovaInput = z.infer<
+  typeof registrarVisualizacaoComprovanteViagemNovaSchema
+>

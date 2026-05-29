@@ -28,6 +28,21 @@
   --color-info: #0284c7;
   --color-info-light: #e0f2fe;
 
+  /* Paleta estendida de status — cores distintas p/ evitar colisão (UX) */
+  --color-indigo: #4338ca;
+  --color-indigo-light: #e0e7ff;
+  --color-teal: #0f766e;
+  --color-teal-light: #ccfbf1;
+  --color-cyan: #0e7490;
+  --color-cyan-light: #cffafe;
+  --color-orange: #c2410c;
+  --color-orange-light: #ffedd5;
+  --color-purple: #7e22ce;
+  --color-purple-light: #f3e8ff;
+  /* Estados terminais (badges preenchidos) */
+  --color-emerald-solid: #166534;
+  --color-slate-solid: #334155;
+
   /* §4 — Tipografia */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;

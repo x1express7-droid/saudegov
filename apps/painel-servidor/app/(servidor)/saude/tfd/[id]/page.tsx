@@ -6,20 +6,21 @@ import {
 } from '@saude/core-auth/server'
 import {
   getAgendamentosPorProcesso,
-  getContextoDecisaoTfd,
   getDadosClinicosProcesso,
-  getSaldosTfd,
   getSolicitacaoTfd,
   getVeiculosAgendamentoTfd,
   getViagensSolicitacaoTfd,
   TFD_PERMISSIONS,
   type AgendamentoProcessoListItem,
-  type ContextoDecisaoTfd,
-  type SaldoListItem,
   type TfdProcessoDadosClinicosOutput,
   type TfdVeiculoAgendamentoItem,
   type TfdViagemSolicitacaoItem,
 } from '@saude/mod-saude-tfd'
+
+import {
+  getViagensNovaPorAgendamentos,
+  type ViagemNovaPorAgendamentoItem,
+} from '@/lib/queries/get-viagem-nova-por-agendamento'
 import {
   PageHeader,
   ProtocoloBadge,
@@ -78,21 +79,6 @@ function isTfdUrgencia(value: string): value is TfdUrgencia {
     }
 }
 
-async function loadSaldosParaDecisao(
-  status: string,
-  canLoadSaldos: boolean
-): Promise<SaldoListItem[]> {
-  if (status !== 'EM_ANALISE' || !canLoadSaldos) {
-    return []
-  }
-
-  try {
-    return await getSaldosTfd()
-  } catch {
-    return []
-  }
-}
-
 export default async function TfdDetalhePage({ params, searchParams }: TfdDetalhePageProps) {
   const tenant = await getTenantContext()
   if (!tenant.modules?.saude?.tfd) {
@@ -111,25 +97,6 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
     notFound()
   }
 
-  const canLoadSaldos =
-    hasPermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO) ||
-    session.user.role === 'ADMIN' ||
-    session.user.role === 'SUPERADMIN'
-
-  const saldosAtivos = await loadSaldosParaDecisao(solicitacao.status, canLoadSaldos)
-
-  let contextoDecisao: ContextoDecisaoTfd | null = null
-  if (
-    solicitacao.status === 'EM_ANALISE' &&
-    hasPermission(session, TFD_PERMISSIONS.DECIDIR_SOLICITACAO)
-  ) {
-    try {
-      contextoDecisao = await getContextoDecisaoTfd(id)
-    } catch {
-      contextoDecisao = null
-    }
-  }
-
   const statusAgendavel =
     solicitacao.status === 'APROVADO' || solicitacao.status === 'AGENDADO'
 
@@ -143,6 +110,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
   let viagens: TfdViagemSolicitacaoItem[] = []
   let veiculosAgendamento: TfdVeiculoAgendamentoItem[] = []
   let agendamentos: AgendamentoProcessoListItem[] = []
+  let viagensNovaPorAgendamento: ViagemNovaPorAgendamentoItem[] = []
 
   if (statusComViagens) {
     const acompanhanteNecessario = solicitacao.acompanhante !== null
@@ -160,6 +128,17 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
       veiculosPromise,
       agendamentosPromise,
     ])
+
+    if (
+      viagens.length === 0 &&
+      agendamentos.length > 0 &&
+      (solicitacao.status === 'AGUARDANDO_PC' || solicitacao.status === 'PC_EM_ANALISE')
+    ) {
+      const agendamentoIds = agendamentos
+        .filter((item) => item.solicitacaoId === id)
+        .map((item) => item.id)
+      viagensNovaPorAgendamento = await getViagensNovaPorAgendamentos(agendamentoIds)
+    }
   }
 
   const podeVerDadosClinicos =
@@ -228,12 +207,10 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
           <SolicitacaoAcoes
             session={session}
             solicitacao={solicitacao}
-            saldosAtivos={saldosAtivos}
-            canLoadSaldos={canLoadSaldos}
-            contextoDecisao={contextoDecisao}
             veiculosAgendamento={veiculosAgendamento}
             viagens={viagens}
             agendamentos={agendamentos}
+            viagensNovaPorAgendamento={viagensNovaPorAgendamento}
             abrirCancelamentoInicial={abrirCancelamentoInicial}
           />
         </aside>

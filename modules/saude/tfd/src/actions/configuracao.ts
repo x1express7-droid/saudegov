@@ -124,6 +124,13 @@ function normalizeCodigoSigtap(value?: string | null): string | null {
   return value.trim()
 }
 
+function normalizeOptionalText(value?: string | null): string | null {
+  if (!value || value.trim() === '') {
+    return null
+  }
+  return value.trim()
+}
+
 async function assertEspecialidadeDoTenant(
   db: PrismaClient,
   tenantId: string,
@@ -963,6 +970,11 @@ export async function criarVeiculoTfd(
         tenant_id: tenantId,
         placa,
         modelo: data.modelo.trim(),
+        fabricante: normalizeOptionalText(data.fabricante),
+        ano: data.ano ?? null,
+        cor: normalizeOptionalText(data.cor),
+        renavam: normalizeOptionalText(data.renavam),
+        chassi: normalizeOptionalText(data.chassi),
         capacidade_passageiros: data.capacidadePassageiros,
         ativo: true,
       },
@@ -970,6 +982,11 @@ export async function criarVeiculoTfd(
         id: true,
         placa: true,
         modelo: true,
+        fabricante: true,
+        ano: true,
+        cor: true,
+        renavam: true,
+        chassi: true,
         capacidade_passageiros: true,
         ativo: true,
       },
@@ -984,6 +1001,11 @@ export async function criarVeiculoTfd(
       payloadDepois: {
         placa: created.placa,
         modelo: created.modelo,
+        fabricante: created.fabricante,
+        ano: created.ano,
+        cor: created.cor,
+        renavam: created.renavam,
+        chassi: created.chassi,
         capacidadePassageiros: created.capacidade_passageiros,
         ativo: created.ativo,
       },
@@ -1017,12 +1039,18 @@ export async function atualizarVeiculoTfd(
     }
   }
 
-  const { id, placa, modelo, capacidadePassageiros, ativo } = parsed.data
+  const { id, placa, modelo, fabricante, ano, cor, renavam, chassi, capacidadePassageiros, ativo } =
+    parsed.data
   const tenantId = session.user.tenantId!
 
   if (
     placa === undefined &&
     modelo === undefined &&
+    fabricante === undefined &&
+    ano === undefined &&
+    cor === undefined &&
+    renavam === undefined &&
+    chassi === undefined &&
     capacidadePassageiros === undefined &&
     ativo === undefined
   ) {
@@ -1038,6 +1066,11 @@ export async function atualizarVeiculoTfd(
         id: true,
         placa: true,
         modelo: true,
+        fabricante: true,
+        ano: true,
+        cor: true,
+        renavam: true,
+        chassi: true,
         capacidade_passageiros: true,
         ativo: true,
       },
@@ -1064,6 +1097,11 @@ export async function atualizarVeiculoTfd(
       data: {
         ...(placaNormalizada !== undefined ? { placa: placaNormalizada } : {}),
         ...(modelo !== undefined ? { modelo: modelo.trim() } : {}),
+        ...(fabricante !== undefined ? { fabricante: normalizeOptionalText(fabricante) } : {}),
+        ...(ano !== undefined ? { ano } : {}),
+        ...(cor !== undefined ? { cor: normalizeOptionalText(cor) } : {}),
+        ...(renavam !== undefined ? { renavam: normalizeOptionalText(renavam) } : {}),
+        ...(chassi !== undefined ? { chassi: normalizeOptionalText(chassi) } : {}),
         ...(capacidadePassageiros !== undefined
           ? { capacidade_passageiros: capacidadePassageiros }
           : {}),
@@ -1073,6 +1111,11 @@ export async function atualizarVeiculoTfd(
         id: true,
         placa: true,
         modelo: true,
+        fabricante: true,
+        ano: true,
+        cor: true,
+        renavam: true,
+        chassi: true,
         capacidade_passageiros: true,
         ativo: true,
       },
@@ -1087,12 +1130,22 @@ export async function atualizarVeiculoTfd(
       payloadAntes: {
         placa: existing.placa,
         modelo: existing.modelo,
+        fabricante: existing.fabricante,
+        ano: existing.ano,
+        cor: existing.cor,
+        renavam: existing.renavam,
+        chassi: existing.chassi,
         capacidadePassageiros: existing.capacidade_passageiros,
         ativo: existing.ativo,
       },
       payloadDepois: {
         placa: updated.placa,
         modelo: updated.modelo,
+        fabricante: updated.fabricante,
+        ano: updated.ano,
+        cor: updated.cor,
+        renavam: updated.renavam,
+        chassi: updated.chassi,
         capacidadePassageiros: updated.capacidade_passageiros,
         ativo: updated.ativo,
       },
@@ -1255,6 +1308,7 @@ export async function criarMotoristaTfd(
       data: {
         tenant_id: tenantId,
         user_id: data.userId,
+        cns: normalizeOptionalText(data.cns),
         cnh: data.cnh.trim(),
         cnh_categoria: data.cnhCategoria,
         cnh_validade: parseCnhValidade(data.cnhValidade),
@@ -1263,6 +1317,7 @@ export async function criarMotoristaTfd(
       select: {
         id: true,
         user_id: true,
+        cns: true,
         cnh: true,
         cnh_categoria: true,
         cnh_validade: true,
@@ -1278,6 +1333,7 @@ export async function criarMotoristaTfd(
       entidadeId: created.id,
       payloadDepois: {
         userId: created.user_id,
+        cns: created.cns,
         cnh: created.cnh,
         cnhCategoria: created.cnh_categoria,
         cnhValidade: created.cnh_validade.toISOString().slice(0, 10),
@@ -1313,10 +1369,16 @@ export async function atualizarMotoristaTfd(
     }
   }
 
-  const { id, cnh, cnhCategoria, cnhValidade, ativo } = parsed.data
+  const { id, cns, cnh, cnhCategoria, cnhValidade, ativo } = parsed.data
   const tenantId = session.user.tenantId!
 
-  if (cnh === undefined && cnhCategoria === undefined && cnhValidade === undefined && ativo === undefined) {
+  if (
+    cns === undefined &&
+    cnh === undefined &&
+    cnhCategoria === undefined &&
+    cnhValidade === undefined &&
+    ativo === undefined
+  ) {
     return { success: false, error: 'Informe ao menos um campo para atualizar.' }
   }
 
@@ -1328,6 +1390,7 @@ export async function atualizarMotoristaTfd(
       select: {
         id: true,
         user_id: true,
+        cns: true,
         cnh: true,
         cnh_categoria: true,
         cnh_validade: true,
@@ -1342,6 +1405,7 @@ export async function atualizarMotoristaTfd(
     const updated = await db.tfdMotorista.update({
       where: { id, tenant_id: tenantId },
       data: {
+        ...(cns !== undefined ? { cns: normalizeOptionalText(cns) } : {}),
         ...(cnh !== undefined ? { cnh: cnh.trim() } : {}),
         ...(cnhCategoria !== undefined ? { cnh_categoria: cnhCategoria } : {}),
         ...(cnhValidade !== undefined ? { cnh_validade: parseCnhValidade(cnhValidade) } : {}),
@@ -1350,6 +1414,7 @@ export async function atualizarMotoristaTfd(
       select: {
         id: true,
         user_id: true,
+        cns: true,
         cnh: true,
         cnh_categoria: true,
         cnh_validade: true,
@@ -1365,6 +1430,7 @@ export async function atualizarMotoristaTfd(
       entidadeId: updated.id,
       payloadAntes: {
         userId: existing.user_id,
+        cns: existing.cns,
         cnh: existing.cnh,
         cnhCategoria: existing.cnh_categoria,
         cnhValidade: existing.cnh_validade.toISOString().slice(0, 10),
@@ -1372,6 +1438,7 @@ export async function atualizarMotoristaTfd(
       },
       payloadDepois: {
         userId: updated.user_id,
+        cns: updated.cns,
         cnh: updated.cnh,
         cnhCategoria: updated.cnh_categoria,
         cnhValidade: updated.cnh_validade.toISOString().slice(0, 10),

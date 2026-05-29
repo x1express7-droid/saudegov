@@ -48,6 +48,9 @@ export type { PageHeaderProps } from './components/page-header'
 export { ProtocoloBadge } from './components/protocolo-badge'
 export type { ProtocoloBadgeProps } from './components/protocolo-badge'
 
+export { Combobox } from './components/combobox'
+export type { ComboboxOption, ComboboxProps } from './components/combobox'
+
 export { Select } from './components/select'
 export type { SelectOption, SelectProps } from './components/select'
 

@@ -79,6 +79,13 @@ export type {
   PerfilServidorOutput,
 } from './types/tfd.types'
 
+export type { ViagemTfdListItem } from './queries/get-viagens-tfd'
+export type { ViagemDetalheOutput, ViagemPassageiroDetalhe } from './queries/get-viagem-detalhe'
+export type { VeiculoDetalheOutput } from './queries/get-veiculo-detalhe'
+export type { MotoristaDetalheOutput } from './queries/get-motorista-detalhe'
+export type { AgendamentoDisponivelViagemItem } from './queries/get-agendamentos-disponiveis-para-viagem'
+export type { VagasViagemOutput } from './queries/get-vagas-viagem'
+
 export type { AcompanhanteSolicitacaoOption } from './utils/acompanhante-labels'
 export { labelRelacaoAcompanhante } from './utils/acompanhante-labels'
 

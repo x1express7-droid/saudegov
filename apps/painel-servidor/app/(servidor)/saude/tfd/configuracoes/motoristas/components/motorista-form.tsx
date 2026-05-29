@@ -28,6 +28,7 @@ import { CnhCategoriaCheckboxGroup } from './cnh-categoria-checkbox-group'
 
 const motoristaFormSchema = z.object({
   userId: z.string().uuid('Usuário inválido.'),
+  cns: z.string().trim().max(20, 'CNS deve ter no máximo 20 caracteres.').optional(),
   cnh: z
     .string()
     .trim()
@@ -75,6 +76,7 @@ export function MotoristaForm({
     resolver: zodResolver(motoristaFormSchema),
     defaultValues: {
       userId: '',
+      cns: '',
       cnh: '',
       cnhCategorias: defaultCnhCategorias,
       cnhValidade: '',
@@ -92,6 +94,7 @@ export function MotoristaForm({
       const categorias = parseCnhCategorias(motorista.cnhCategoria)
       reset({
         userId: motorista.userId,
+        cns: motorista.cns ?? '',
         cnh: motorista.cnh,
         cnhCategorias: categorias.length > 0 ? categorias : defaultCnhCategorias,
         cnhValidade: motorista.cnhValidade,
@@ -101,6 +104,7 @@ export function MotoristaForm({
 
     reset({
       userId: servidorOptions[0]?.value ?? '',
+      cns: '',
       cnh: '',
       cnhCategorias: defaultCnhCategorias,
       cnhValidade: '',
@@ -120,6 +124,7 @@ export function MotoristaForm({
       if (mode === 'create') {
         const response = await criarMotoristaTfd({
           userId: values.userId,
+          cns: values.cns?.trim() || undefined,
           cnh: values.cnh,
           cnhCategoria,
           cnhValidade: values.cnhValidade,
@@ -143,6 +148,7 @@ export function MotoristaForm({
 
       const response = await atualizarMotoristaTfd({
         id: motorista.id,
+        cns: values.cns?.trim() || null,
         cnh: values.cnh,
         cnhCategoria,
         cnhValidade: values.cnhValidade,
@@ -215,6 +221,14 @@ export function MotoristaForm({
               </p>
             </div>
           ) : null}
+
+          <Input
+            label="CNS"
+            maxLength={20}
+            error={errors.cns?.message ?? fieldErrors.cns?.[0]}
+            disabled={isPending || semServidores}
+            {...register('cns')}
+          />
 
           <Input
             label="Número da CNH"

@@ -515,6 +515,45 @@ nome do saldo e percentual disponível apenas; in-app apenas (sem e-mail). Detal
 
 ---
 
+### 1.15 Regras da Viagem TFD (Fase 4)
+
+Entidade `saude_tfd.viagens` (nova) — deslocamento coletivo vinculado ao **processo**, distinto da tabela legada `viagens_legado`.
+
+**Criação**
+- O processo TFD deve existir e estar acessível ao tenant.
+- Protocolo gerado automaticamente no formato `VGM-AAAA-XXXXXX` (reutiliza sequência TFD-VGM do município).
+- Veículo e motorista são opcionais na criação; podem ser definidos antes da confirmação.
+
+**Controle de vagas**
+- Cada passageiro vinculado (`viagem_passageiros`) ocupa `1 + acompanhantes_count` vagas.
+- A soma das vagas ocupadas não pode exceder `capacidade_passageiros` do veículo alocado.
+- Desvincular passageiro só é permitido enquanto a viagem estiver `PLANEJADA` ou `CONFIRMADA`.
+
+**Transições de status (lineares — não pular etapas)**
+```
+PLANEJADA → CONFIRMADA → EM_ANDAMENTO → CONCLUIDA
+```
+- `PLANEJADA → CONFIRMADA`: manual (servidor com `gerenciar_viagem`).
+- `CONFIRMADA → EM_ANDAMENTO`: automático via job `tfd-transicao-viagem-nova` na `data_saida` + `hora_saida`.
+- `EM_ANDAMENTO → CONCLUIDA`: manual via `registrarChegadaViagem` (km, data/hora chegada, custo real).
+
+**Cancelamento**
+- Permitido apenas em `PLANEJADA` ou `CONFIRMADA`.
+- Motivo obrigatório com mínimo de 20 caracteres.
+- Papel mínimo: **GESTOR** (via permissão `gerenciar_viagem`).
+
+**Prestação de contas**
+- Criada automaticamente ao registrar chegada (`registrarChegadaViagem`) com status `PENDENTE`.
+- Vinculada via `prestacoes_conta.viagem_nova_id` (não ao agendamento).
+- Prazo de envio: `data_chegada + 10 dias corridos` (timezone do município).
+- Fluxo de despesas, envio e aprovação opera na tela da viagem (`/saude/tfd/viagens/[id]`).
+
+**Job automático EM_ANDAMENTO**
+- Cron `tfd-transicao-viagem-nova` processa viagens `CONFIRMADA` cuja `data_saida` + `hora_saida` já passou.
+- Registra tramitação `VIAGEM_STATUS_ALTERADO` e audit log.
+
+---
+
 ## 2. Regras Globais da Plataforma
 
 ### 2.1 Geração de Protocolo

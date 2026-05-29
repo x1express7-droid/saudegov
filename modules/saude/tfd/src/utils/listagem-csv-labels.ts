@@ -19,6 +19,7 @@ const PRESTACAO_STATUS_LABEL: Record<string, string> = {
 }
 
 const URGENCIA_LABEL: Record<string, string> = {
+  NAO_AGUDA: 'Não aguda',
   BAIXA: 'Baixa',
   INTERMEDIARIA: 'Intermediária',
   GRAVE: 'Grave',

@@ -26,6 +26,8 @@ export const TFD_PERMISSIONS = {
   MOVER_FILA: 'saude.tfd.mover_fila',
   VER_PERFIL_PACIENTE: 'saude.tfd.ver_perfil_paciente',
   GERENCIAR_PROCESSO: 'saude.tfd.gerenciar_processo',
+  GERENCIAR_VIAGEM: 'saude.tfd.gerenciar_viagem',
+  MONITORAR_VIAGEM: 'saude.tfd.monitorar_viagem',
 } as const
 
 export type TfdPermissionKey = (typeof TFD_PERMISSIONS)[keyof typeof TFD_PERMISSIONS]
@@ -183,6 +185,18 @@ export const TFD_PERMISSION_DEFINITIONS: readonly TfdPermissionDefinition[] = [
     key: TFD_PERMISSIONS.GERENCIAR_PROCESSO,
     label: 'Gerenciar processos TFD',
     descricao: 'Criar e editar processos TFD.',
+    minRole: 'SERVIDOR',
+  },
+  {
+    key: TFD_PERMISSIONS.GERENCIAR_VIAGEM,
+    label: 'Gerenciar viagens',
+    descricao: 'Criar e editar viagens TFD.',
+    minRole: 'SERVIDOR',
+  },
+  {
+    key: TFD_PERMISSIONS.MONITORAR_VIAGEM,
+    label: 'Monitorar viagens',
+    descricao: 'Visualizar detalhes e acompanhar viagens.',
     minRole: 'SERVIDOR',
   },
 ] as const

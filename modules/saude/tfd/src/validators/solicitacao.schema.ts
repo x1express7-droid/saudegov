@@ -8,7 +8,7 @@ import {
 
 const tipoAtendimentoValues = ['CONSULTA', 'RETORNO', 'EXAME', 'CIRURGIA'] as const
 
-const urgenciaValues = ['BAIXA', 'INTERMEDIARIA', 'GRAVE', 'MUITO_URGENTE'] as const
+const urgenciaValues = ['NAO_AGUDA', 'BAIXA', 'INTERMEDIARIA', 'GRAVE', 'MUITO_URGENTE'] as const
 
 const relacaoAcompanhanteValues = [
   'CONJUGE',

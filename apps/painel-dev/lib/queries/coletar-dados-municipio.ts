@@ -181,7 +181,7 @@ export async function coletarDadosMunicipioExport(input: {
         pacienteCount,
       ] = await Promise.all([
         db.tfdSolicitacao.count({ where: solicitacaoWhere }),
-        db.tfdViagem.count({ where: viagemWhere }),
+        db.tfdViagemLegado.count({ where: viagemWhere }),
         db.tfdPrestacaoConta.count({ where: prestacaoWhere }),
         db.tfdSaldo.count({ where: { tenant_id: tenantId } }),
         db.paciente.count({ where: pacienteWhere }),
@@ -209,7 +209,7 @@ export async function coletarDadosMunicipioExport(input: {
             },
             orderBy: { created_at: 'desc' },
           }),
-          db.tfdViagem.findMany({
+          db.tfdViagemLegado.findMany({
             where: viagemWhere,
             select: {
               sequencia: true,

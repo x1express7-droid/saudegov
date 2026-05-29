@@ -19,6 +19,8 @@ const STATUS_BAR_FILL: Record<
   teal: 'bg-[var(--color-success)]',
   cyan: 'bg-[var(--color-info)]',
   indigo: 'bg-[var(--color-primary)]',
+  emerald: 'bg-[#10b981]',
+  slate: 'bg-[#64748b]',
 }
 
 const STATUS_ORDER: TfdStatus[] = [

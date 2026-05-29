@@ -22,7 +22,7 @@ const tfdStatusSolicitacaoValues = [
   'CANCELADO',
 ] as const
 
-const tfdUrgenciaValues = ['BAIXA', 'INTERMEDIARIA', 'GRAVE', 'MUITO_URGENTE'] as const
+const tfdUrgenciaValues = ['NAO_AGUDA', 'BAIXA', 'INTERMEDIARIA', 'GRAVE', 'MUITO_URGENTE'] as const
 
 const tfdPrestacaoStatusValues = ['PENDENTE', 'ENVIADA', 'APROVADA', 'REJEITADA'] as const
 

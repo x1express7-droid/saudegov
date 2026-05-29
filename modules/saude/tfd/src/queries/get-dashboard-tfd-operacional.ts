@@ -21,7 +21,7 @@ const STATUS_PENDENTES: TfdStatusSolicitacao[] = ['ENVIADO']
 const STATUS_EM_ANALISE: TfdStatusSolicitacao[] = ['EM_ANALISE', 'PENDENTE']
 const STATUS_AGUARDANDO_DECISAO: TfdStatusSolicitacao[] = ['ENVIADO', 'EM_ANALISE', 'PENDENTE']
 const URGENCIAS_PRIORITARIAS: TfdUrgencia[] = ['GRAVE', 'MUITO_URGENTE']
-const URGENCIAS_ELETIVAS: TfdUrgencia[] = ['BAIXA', 'INTERMEDIARIA']
+const URGENCIAS_ELETIVAS: TfdUrgencia[] = ['NAO_AGUDA', 'BAIXA', 'INTERMEDIARIA']
 
 const STATUS_APROVADOS_MES: TfdStatusSolicitacao[] = [
   'APROVADO',
@@ -153,7 +153,7 @@ export async function getDashboardTfdOperacional(): Promise<TfdDashboardOperacio
       },
       orderBy: { created_at: 'asc' },
     }),
-    db.tfdViagem.findMany({
+    db.tfdViagemLegado.findMany({
       where: {
         tenant_id: tenantId,
         status: 'AGENDADA',

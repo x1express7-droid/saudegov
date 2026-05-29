@@ -1,7 +1,6 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { Prisma } from '@prisma/client'
 import {
   assertModuleActive,
   requirePermission,
@@ -13,86 +12,14 @@ import { dispararNotificacao, NOTIFICATION_EVENTS } from '@saude/core-notificati
 import type { ActionResponse } from '@saude/validators'
 
 import { TFD_PERMISSIONS } from '../permissions'
-import {
-  resolveSaldoEstadoAlerta,
-  tryNotificarSaldoBaixoAposMutacao,
-} from '../utils/saldo-baixo-notificacao'
-import { sumValorConsumidoLiquido } from '../utils/saldo-movimentacao'
-import { calcSaldoDisponivel } from '../utils/saldo'
-import { avaliarVedacoesTfd } from '../utils/vedacoes-tfd'
-import {
-  loadVedacoesDecisaoContext,
-  resolveDistanciaKmParaDecisao,
-} from '../utils/vedacoes-decisao-context'
 import { registrarSaidaFila } from '../utils/fila'
 import { decidirSolicitacaoSchema } from '../validators/decisao.schema'
 
 const MODULO_TFD = 'saude.tfd'
 
-const MSG_SALDO_INSUFICIENTE = 'Saldo insuficiente para aprovação.'
-
-type SaldoLockedRow = {
-  id: string
-  valor_total: Prisma.Decimal
-}
-
-class DecisaoBusinessError extends Error {
-  constructor(message: string) {
-    super(message)
-    this.name = 'DecisaoBusinessError'
-  }
-}
-
 function revalidateSolicitacaoPaths(solicitacaoId: string): void {
   revalidatePath('/saude/tfd')
   revalidatePath(`/saude/tfd/${solicitacaoId}`)
-}
-
-async function lockSaldoForUpdate(
-  tx: Prisma.TransactionClient,
-  tenantId: string,
-  saldoId: string
-): Promise<SaldoLockedRow | null> {
-  const rows = await tx.$queryRaw<SaldoLockedRow[]>(
-    Prisma.sql`
-      SELECT id, valor_total
-      FROM saude_tfd.saldos
-      WHERE id = ${saldoId}::uuid
-        AND tenant_id = ${tenantId}::uuid
-        AND ativo = true
-      FOR UPDATE
-    `
-  )
-
-  return rows[0] ?? null
-}
-
-async function calcularSaldoDisponivelLocked(
-  tx: Prisma.TransactionClient,
-  tenantId: string,
-  saldoId: string,
-  valorTotal: number
-): Promise<number> {
-  const [reservasAgg, valorConsumidoLiquido] = await Promise.all([
-    tx.tfdReservaSaldo.aggregate({
-      where: {
-        tenant_id: tenantId,
-        saldo_id: saldoId,
-        status: 'ATIVA',
-      },
-      _sum: { valor_estimado: true },
-    }),
-    sumValorConsumidoLiquido(tx, tenantId, saldoId),
-  ])
-
-  const valorReservado = Number(reservasAgg._sum.valor_estimado ?? 0)
-  const valorConsumido = valorConsumidoLiquido
-
-  return calcSaldoDisponivel({
-    valorTotal,
-    valorReservado,
-    valorConsumido,
-  }).valorDisponivel
 }
 
 export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionResponse<void>> {
@@ -155,198 +82,24 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
     const especialidadeNome = solicitacao.especialidade?.nome ?? 'Não informada'
     const decididoAt = new Date()
 
-    if (data.decisao === 'NEGADO') {
-      const resultado = await db.$transaction(async (tx) => {
-        await tx.tfdSolicitacao.update({
-          where: { id: solicitacao.id },
-          data: {
-            status: 'NEGADO',
-            fundamentacao_decisao: data.fundamentacao,
-            decidido_por_id: session.user.id,
-            decidido_at: decididoAt,
-          },
-        })
-
-        await tx.processo.update({
-          where: { id: solicitacao.processo_id },
-          data: { status: 'CONCLUIDO' },
-        })
-
-        await registrarTramitacao(
-          {
-            tenantId,
-            processoId: solicitacao.processo_id,
-            tipo: 'DECISAO',
-            descricao: `Solicitação negada. ${data.fundamentacao}`,
-            usuarioId: session.user.id,
-            metadata: { decisao: 'NEGADO' },
-          },
-          tx
-        )
-
-        await registrarSaidaFila(tx, {
-          tenantId,
-          solicitacaoId: solicitacao.id,
-          usuarioId: session.user.id,
-          justificativa: 'Saída da fila — solicitação negada na regulação.',
-        })
-
-        return {
-          solicitacaoId: solicitacao.id,
-          processoId: solicitacao.processo_id,
-          statusAnterior: 'EM_ANALISE' as const,
-          solicitanteId: solicitacao.solicitante_id,
-        }
-      })
-
-      await createAuditLog({
-        tenantId,
-        userId: session.user.id,
-        acao: 'UPDATE',
-        entidade: 'saude_tfd_solicitacao',
-        entidadeId: resultado.solicitacaoId,
-        payloadAntes: { status: resultado.statusAnterior },
-        payloadDepois: {
-          status: 'NEGADO',
-          decisao: 'NEGADO',
-          processoStatus: 'CONCLUIDO',
-          protocolo,
-          modulo: MODULO_TFD,
-          processoId: resultado.processoId,
-        },
-      })
-
-      await dispararNotificacao({
-        tenantId,
-        evento: NOTIFICATION_EVENTS.SOLICITACAO_TFD_NEGADA,
-        modulo: MODULO_TFD,
-        processoId: resultado.processoId,
-        context: {
-          protocolo,
-          especialidade: especialidadeNome,
-          urgencia: solicitacao.urgencia,
-        },
-        recipientUserIds: [resultado.solicitanteId],
-      })
-
-      revalidateSolicitacaoPaths(resultado.solicitacaoId)
-
-      return { success: true, data: undefined }
-    }
-
-    const saldoId = data.saldoId!
-    const valorEstimado = data.valorEstimado!
-
-    const contextoVedacoes = await loadVedacoesDecisaoContext(db, tenantId, solicitacao.id)
-    if (!contextoVedacoes) {
-      return {
-        success: false,
-        error: 'Não foi possível avaliar as vedações: prestador ou dados da solicitação incompletos.',
-      }
-    }
-
-    const distanciaKm = resolveDistanciaKmParaDecisao(
-      contextoVedacoes.distanciaKmCalculada,
-      data.distanciaKm
-    )
-
-    const vedacoes = avaliarVedacoesTfd({
-      possuiProcedimentoPab: contextoVedacoes.possuiProcedimentoPab,
-      distanciaKm,
-      tratamentoExperimental: data.tratamentoExperimental,
-      regiaoMetropolitana: data.regiaoMetropolitana,
-      pacienteHospitalizadoDestino: data.pacienteHospitalizadoDestino,
-      confirmacaoVedacoes: data.confirmacaoVedacoes,
-    })
-
-    if (vedacoes.possuiBloqueio) {
-      const mensagens = vedacoes.itens
-        .filter((item) => item.severidade === 'BLOQUEIO')
-        .map((item) => item.mensagem)
-        .join(' ')
-      return { success: false, error: mensagens }
-    }
-
-    if (!vedacoes.podeAprovar) {
-      const alertas = vedacoes.itens
-        .filter((item) => item.severidade === 'ALERTA')
-        .map((item) => item.mensagem)
-        .join(' ')
-      return {
-        success: false,
-        error:
-          alertas.length > 0
-            ? `Confirme as vedações antes de aprovar: ${alertas}`
-            : 'Confirme que analisou as vedações indicadas antes de aprovar a solicitação.',
-      }
-    }
-
-    const vedacoesConfirmadas = vedacoes.exigeConfirmacao && data.confirmacaoVedacoes
-
-    const estadoSaldoAntes = await resolveSaldoEstadoAlerta(db, tenantId, saldoId)
-    const jaEstavaEmAlertaBaixo = estadoSaldoAntes?.alertaBaixo ?? false
+    const aprovado = data.decisao === 'APROVADO'
+    const novoStatusSolicitacao = aprovado ? 'APROVADO' : 'NEGADO'
+    const novoStatusProcesso = aprovado ? 'EM_ANDAMENTO' : 'CONCLUIDO'
 
     const resultado = await db.$transaction(async (tx) => {
-      const saldoLocked = await lockSaldoForUpdate(tx, tenantId, saldoId)
-
-      if (!saldoLocked) {
-        throw new DecisaoBusinessError('Saldo financeiro não encontrado ou inativo.')
-      }
-
-      const valorTotal = Number(saldoLocked.valor_total)
-      const saldoDisponivel = await calcularSaldoDisponivelLocked(
-        tx,
-        tenantId,
-        saldoId,
-        valorTotal
-      )
-
-      if (valorEstimado > saldoDisponivel) {
-        throw new DecisaoBusinessError(MSG_SALDO_INSUFICIENTE)
-      }
-
       await tx.tfdSolicitacao.update({
         where: { id: solicitacao.id },
         data: {
-          status: 'APROVADO',
+          status: novoStatusSolicitacao,
           fundamentacao_decisao: data.fundamentacao,
           decidido_por_id: session.user.id,
           decidido_at: decididoAt,
-          saldo_id: saldoId,
-          distancia_km: distanciaKm,
-          tratamento_experimental: data.tratamentoExperimental,
-          regiao_metropolitana: data.regiaoMetropolitana,
-          paciente_hospitalizado_destino: data.pacienteHospitalizadoDestino,
-          vedacoes_confirmadas_por_id: vedacoesConfirmadas ? session.user.id : null,
-          vedacoes_confirmadas_at: vedacoesConfirmadas ? decididoAt : null,
         },
       })
 
       await tx.processo.update({
         where: { id: solicitacao.processo_id },
-        data: { status: 'EM_ANDAMENTO' },
-      })
-
-      await tx.tfdReservaSaldo.create({
-        data: {
-          tenant_id: tenantId,
-          saldo_id: saldoId,
-          solicitacao_id: solicitacao.id,
-          valor_estimado: valorEstimado,
-          status: 'ATIVA',
-        },
-      })
-
-      await tx.tfdMovimentacaoSaldo.create({
-        data: {
-          tenant_id: tenantId,
-          saldo_id: saldoId,
-          tipo: 'RESERVA',
-          valor: valorEstimado,
-          solicitacao_id: solicitacao.id,
-          descricao: 'Reserva automática — aprovação TFD',
-          usuario_id: session.user.id,
-        },
+        data: { status: novoStatusProcesso },
       })
 
       await registrarTramitacao(
@@ -354,9 +107,9 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
           tenantId,
           processoId: solicitacao.processo_id,
           tipo: 'DECISAO',
-          descricao: `Solicitação aprovada. ${data.fundamentacao}`,
+          descricao: `${aprovado ? 'Solicitação aprovada.' : 'Solicitação negada.'} ${data.fundamentacao}`,
           usuarioId: session.user.id,
-          metadata: { decisao: 'APROVADO', saldoId, valorEstimado },
+          metadata: { decisao: data.decisao },
         },
         tx
       )
@@ -365,7 +118,9 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
         tenantId,
         solicitacaoId: solicitacao.id,
         usuarioId: session.user.id,
-        justificativa: 'Saída da fila — solicitação aprovada na regulação.',
+        justificativa: aprovado
+          ? 'Saída da fila — solicitação aprovada na regulação.'
+          : 'Saída da fila — solicitação negada na regulação.',
       })
 
       return {
@@ -384,16 +139,9 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
       entidadeId: resultado.solicitacaoId,
       payloadAntes: { status: resultado.statusAnterior },
       payloadDepois: {
-        status: 'APROVADO',
-        decisao: 'APROVADO',
-        saldoId,
-        valorEstimado,
-        distanciaKm,
-        tratamentoExperimental: data.tratamentoExperimental,
-        regiaoMetropolitana: data.regiaoMetropolitana,
-        pacienteHospitalizadoDestino: data.pacienteHospitalizadoDestino,
-        vedacoesConfirmadas,
-        processoStatus: 'EM_ANDAMENTO',
+        status: novoStatusSolicitacao,
+        decisao: data.decisao,
+        processoStatus: novoStatusProcesso,
         protocolo,
         modulo: MODULO_TFD,
         processoId: resultado.processoId,
@@ -402,7 +150,9 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
 
     await dispararNotificacao({
       tenantId,
-      evento: NOTIFICATION_EVENTS.SOLICITACAO_TFD_APROVADA,
+      evento: aprovado
+        ? NOTIFICATION_EVENTS.SOLICITACAO_TFD_APROVADA
+        : NOTIFICATION_EVENTS.SOLICITACAO_TFD_NEGADA,
       modulo: MODULO_TFD,
       processoId: resultado.processoId,
       context: {
@@ -413,21 +163,10 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
       recipientUserIds: [resultado.solicitanteId],
     })
 
-    await tryNotificarSaldoBaixoAposMutacao({
-      tenantId,
-      saldoId,
-      jaEstavaEmAlertaBaixo,
-      excludeUserIds: [session.user.id],
-    })
-
     revalidateSolicitacaoPaths(resultado.solicitacaoId)
 
     return { success: true, data: undefined }
   } catch (error) {
-    if (error instanceof DecisaoBusinessError) {
-      return { success: false, error: error.message }
-    }
-
     console.error('[decidirSolicitacaoTfd] Erro:', {
       tenantId: session.user.tenantId,
       error: error instanceof Error ? error.message : 'Erro desconhecido',

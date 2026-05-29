@@ -27,6 +27,7 @@ export async function getMotoristasTfd(
       select: {
         id: true,
         user_id: true,
+        cns: true,
         cnh: true,
         cnh_categoria: true,
         cnh_validade: true,
@@ -51,6 +52,7 @@ export async function getMotoristasTfd(
         userId: row.user_id,
         userNome: row.user.name,
         userEmail: row.user.email,
+        cns: row.cns,
         cnh: row.cnh,
         cnhCategoria: row.cnh_categoria,
         cnhValidade: row.cnh_validade.toISOString().slice(0, 10),

@@ -66,7 +66,7 @@ export async function getViagensSolicitacaoTfd(
     return []
   }
 
-  const rows = await db.tfdViagem.findMany({
+  const rows = await db.tfdViagemLegado.findMany({
     where: {
       tenant_id: tenantId,
       solicitacao_id: solicitacaoId,

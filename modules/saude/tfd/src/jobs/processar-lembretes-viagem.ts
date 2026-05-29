@@ -88,7 +88,7 @@ export async function processarLembretesViagem(): Promise<ProcessarLembretesViag
   const agora = new Date()
   const dataLimitePrefiltro = addHours(agora, 48)
 
-  const candidatas = await db.tfdViagem.findMany({
+  const candidatas = await db.tfdViagemLegado.findMany({
     where: {
       status: 'AGENDADA',
       lembrete_48h_enviado_at: null,
@@ -156,7 +156,7 @@ export async function processarLembretesViagem(): Promise<ProcessarLembretesViag
     const agoraGravacao = new Date()
 
     if (resultadoNotificacao.ok) {
-      await db.tfdViagem.update({
+      await db.tfdViagemLegado.update({
         where: { id: viagem.id },
         data: {
           lembrete_48h_enviado_at: agoraGravacao,
@@ -175,7 +175,7 @@ export async function processarLembretesViagem(): Promise<ProcessarLembretesViag
       })
       resumo.enviadas += 1
     } else {
-      await db.tfdViagem.update({
+      await db.tfdViagemLegado.update({
         where: { id: viagem.id },
         data: {
           lembrete_48h_falhou_at: agoraGravacao,
