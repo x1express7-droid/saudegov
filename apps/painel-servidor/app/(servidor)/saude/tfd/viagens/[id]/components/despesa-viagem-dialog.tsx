@@ -1,5 +1,6 @@
 'use client'
 
+import type { SegmentoViagemItem } from '@saude/mod-saude-tfd/client'
 import { MIN_VALOR_COMPROVANTE, TFD_PERMISSIONS } from '@saude/mod-saude-tfd/client'
 import { registrarDespesaViagemNova } from '@saude/mod-saude-tfd/actions/financeiro'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
@@ -20,7 +21,24 @@ import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 
-import { currencyFormatter } from '@/app/(servidor)/saude/tfd/processos/[id]/agendamentos/[agId]/components/transporte-constants'
+import { currencyFormatter, labelTipoSegmento } from '@/app/(servidor)/saude/tfd/processos/[id]/agendamentos/[agId]/components/transporte-constants'
+
+const SEGMENTO_NENHUM = ''
+
+function tipoDespesaSugeridoPorSegmento(tipoSegmento: string): string | null {
+  if (
+    tipoSegmento === 'TERRESTRE_PROPRIO' ||
+    tipoSegmento === 'TERRESTRE_TERCEIRO' ||
+    tipoSegmento === 'AEREO'
+  ) {
+    return 'TRANSPORTE'
+  }
+  return null
+}
+
+function labelSegmentoOption(segmento: SegmentoViagemItem): string {
+  return `${labelTipoSegmento(segmento.tipoSegmento)} — ${segmento.origemDescricao} → ${segmento.destinoDescricao}`
+}
 
 const TIPO_DESPESA_OPTIONS = [
   { value: 'TRANSPORTE', label: 'Transporte' },
@@ -48,6 +66,7 @@ export interface DespesaViagemDialogProps {
   session: SaudeMunicSession
   processoId: string
   viagemNovaId: string
+  segmentos: SegmentoViagemItem[]
   tipoInicial?: string
 }
 
@@ -57,6 +76,7 @@ export function DespesaViagemDialog({
   session,
   processoId,
   viagemNovaId,
+  segmentos,
   tipoInicial = 'TRANSPORTE',
 }: DespesaViagemDialogProps) {
   const router = useRouter()
@@ -64,6 +84,7 @@ export function DespesaViagemDialog({
   const [serverError, setServerError] = useState<string | null>(null)
 
   const [tipo, setTipo] = useState(tipoInicial)
+  const [segmentoId, setSegmentoId] = useState(SEGMENTO_NENHUM)
   const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState('')
   const [responsavelPagamento, setResponsavelPagamento] = useState('MUNICIPIO')
@@ -77,11 +98,36 @@ export function DespesaViagemDialog({
   useEffect(() => {
     if (open) {
       setTipo(tipoInicial)
+      setSegmentoId(SEGMENTO_NENHUM)
     }
   }, [open, tipoInicial])
 
+  const segmentoOptions = [
+    { value: SEGMENTO_NENHUM, label: 'Nenhum (despesa avulsa)' },
+    ...segmentos.map((segmento) => ({
+      value: segmento.id,
+      label: labelSegmentoOption(segmento),
+    })),
+  ]
+
+  function handleSegmentoChange(value: string) {
+    setSegmentoId(value)
+    if (!value) {
+      return
+    }
+    const segmento = segmentos.find((item) => item.id === value)
+    if (!segmento) {
+      return
+    }
+    const tipoSugerido = tipoDespesaSugeridoPorSegmento(segmento.tipoSegmento)
+    if (tipoSugerido) {
+      setTipo(tipoSugerido)
+    }
+  }
+
   function resetFormulario() {
     setTipo(tipoInicial)
+    setSegmentoId(SEGMENTO_NENHUM)
     setDescricao('')
     setValor('')
     setResponsavelPagamento('MUNICIPIO')
@@ -116,6 +162,7 @@ export function DespesaViagemDialog({
     startTransition(async () => {
       const result = await registrarDespesaViagemNova({
         viagemNovaId,
+        segmentoId: segmentoId || undefined,
         tipo: tipo as 'TRANSPORTE' | 'ALIMENTACAO' | 'HOSPEDAGEM' | 'OUTRO',
         descricao: descricao.trim() || undefined,
         valor: valorNumerico,
@@ -141,6 +188,16 @@ export function DespesaViagemDialog({
       <DialogContent titulo={`Lançar despesa — ${tipoLabel}`}>
         <PermissionGate session={session} permission={TFD_PERMISSIONS.REGISTRAR_DESPESA}>
           <form onSubmit={handleSubmit} className="flex flex-col gap-[var(--space-4)]">
+            {segmentos.length > 0 ? (
+              <Select
+                label="Segmento relacionado (opcional)"
+                value={segmentoId}
+                onValueChange={handleSegmentoChange}
+                options={segmentoOptions}
+                disabled={isPending}
+              />
+            ) : null}
+
             <Select
               label="Tipo de despesa"
               value={tipo}

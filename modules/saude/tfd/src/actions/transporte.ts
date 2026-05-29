@@ -28,8 +28,11 @@ import {
 const MODULO_TFD = 'saude.tfd'
 
 const MSG_AGENDAMENTO_NAO_ENCONTRADO = 'Agendamento não encontrado.'
+const MSG_VIAGEM_NAO_ENCONTRADA = 'Viagem não encontrada.'
 const MSG_STATUS_AGENDAMENTO_INVALIDO =
   'O agendamento precisa estar com status Agendado ou Em viagem para incluir transporte.'
+const MSG_STATUS_VIAGEM_INVALIDO =
+  'A viagem precisa estar Planejada, Confirmada ou Em andamento para incluir segmentos.'
 const MSG_VEICULO_NAO_ENCONTRADO = 'Veículo não encontrado ou inativo.'
 const MSG_MOTORISTA_NAO_ENCONTRADO = 'Motorista não encontrado ou inativo.'
 const MSG_CAPACIDADE_INSUFICIENTE =
@@ -54,6 +57,23 @@ class TransporteBusinessError extends Error {
 function revalidateAgendamentoPaths(processoId: string, agendamentoId: string): void {
   revalidatePath('/saude/tfd/agendamentos')
   revalidatePath(`/saude/tfd/processos/${processoId}/agendamentos/${agendamentoId}`)
+}
+
+function revalidateViagemPaths(viagemId: string): void {
+  revalidatePath('/saude/tfd/viagens')
+  revalidatePath(`/saude/tfd/viagens/${viagemId}`)
+}
+
+function revalidateTransporteContext(transporte: {
+  agendamento: { id: string; processo_id: string } | null
+  viagem: { id: string } | null
+}): void {
+  if (transporte.agendamento) {
+    revalidateAgendamentoPaths(transporte.agendamento.processo_id, transporte.agendamento.id)
+  }
+  if (transporte.viagem) {
+    revalidateViagemPaths(transporte.viagem.id)
+  }
 }
 
 export interface CriarSegmentoTransporteOutput {
@@ -83,27 +103,78 @@ export async function criarSegmentoTransporte(
     const tenantId = session.user.tenantId!
     const db = await getPrismaForTenant(tenantId)
 
-    const agendamento = await db.tfdAgendamento.findFirst({
-      where: {
-        id: data.agendamentoId,
-        tenant_id: tenantId,
-      },
-      select: {
-        id: true,
-        processo_id: true,
-        status: true,
-        solicitacao: {
-          select: { acompanhante_necessario: true },
+    let agendamentoId: string | null = null
+    let viagemId: string | null = null
+    let processoIdRevalidate: string | null = null
+    let capacidadeOcupacao = 1
+    let acompanhanteNecessario = false
+
+    if (data.agendamentoId) {
+      const agendamento = await db.tfdAgendamento.findFirst({
+        where: {
+          id: data.agendamentoId,
+          tenant_id: tenantId,
         },
-      },
-    })
+        select: {
+          id: true,
+          processo_id: true,
+          status: true,
+          solicitacao: {
+            select: { acompanhante_necessario: true },
+          },
+        },
+      })
 
-    if (!agendamento) {
-      return { success: false, error: MSG_AGENDAMENTO_NAO_ENCONTRADO }
-    }
+      if (!agendamento) {
+        return { success: false, error: MSG_AGENDAMENTO_NAO_ENCONTRADO }
+      }
 
-    if (agendamento.status !== 'AGENDADO' && agendamento.status !== 'EM_VIAGEM') {
-      return { success: false, error: MSG_STATUS_AGENDAMENTO_INVALIDO }
+      if (agendamento.status !== 'AGENDADO' && agendamento.status !== 'EM_VIAGEM') {
+        return { success: false, error: MSG_STATUS_AGENDAMENTO_INVALIDO }
+      }
+
+      agendamentoId = agendamento.id
+      processoIdRevalidate = agendamento.processo_id
+      acompanhanteNecessario = agendamento.solicitacao.acompanhante_necessario
+      capacidadeOcupacao = 1 + (acompanhanteNecessario ? 1 : 0)
+    } else if (data.viagemId) {
+      const viagem = await db.tfdViagem.findFirst({
+        where: {
+          id: data.viagemId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          status: true,
+          passageiros: {
+            select: { acompanhantes_count: true },
+          },
+        },
+      })
+
+      if (!viagem) {
+        return { success: false, error: MSG_VIAGEM_NAO_ENCONTRADA }
+      }
+
+      if (
+        viagem.status !== 'PLANEJADA' &&
+        viagem.status !== 'CONFIRMADA' &&
+        viagem.status !== 'EM_ANDAMENTO'
+      ) {
+        return { success: false, error: MSG_STATUS_VIAGEM_INVALIDO }
+      }
+
+      viagemId = viagem.id
+      capacidadeOcupacao = viagem.passageiros.reduce(
+        (total, passageiro) => total + 1 + passageiro.acompanhantes_count,
+        0
+      )
+      if (capacidadeOcupacao === 0) {
+        capacidadeOcupacao = 1
+      }
+      acompanhanteNecessario = viagem.passageiros.some(
+        (passageiro) => passageiro.acompanhantes_count > 0
+      )
     }
 
     let veiculoId: string | null = null
@@ -126,12 +197,11 @@ export async function criarSegmentoTransporte(
         return { success: false, error: MSG_VEICULO_NAO_ENCONTRADO }
       }
 
-      if (
-        !verificaCapacidadeVeiculo(
-          veiculo.capacidade_passageiros,
-          agendamento.solicitacao.acompanhante_necessario
-        )
-      ) {
+      const capacidadeOk = viagemId
+        ? veiculo.capacidade_passageiros >= capacidadeOcupacao
+        : verificaCapacidadeVeiculo(veiculo.capacidade_passageiros, acompanhanteNecessario)
+
+      if (!capacidadeOk) {
         return { success: false, error: MSG_CAPACIDADE_INSUFICIENTE }
       }
 
@@ -169,7 +239,7 @@ export async function criarSegmentoTransporte(
       const maxSequencia = await tx.tfdTransporte.aggregate({
         where: {
           tenant_id: tenantId,
-          agendamento_id: data.agendamentoId,
+          ...(agendamentoId ? { agendamento_id: agendamentoId } : { viagem_id: viagemId! }),
         },
         _max: { sequencia: true },
       })
@@ -178,7 +248,8 @@ export async function criarSegmentoTransporte(
       const transporte = await tx.tfdTransporte.create({
         data: {
           tenant_id: tenantId,
-          agendamento_id: data.agendamentoId,
+          agendamento_id: agendamentoId,
+          viagem_id: viagemId,
           sequencia,
           tipo_segmento: data.tipoSegmento,
           veiculo_id: veiculoId,
@@ -210,14 +281,20 @@ export async function criarSegmentoTransporte(
       entidade: 'saude_tfd_transporte',
       entidadeId: resultado.id,
       payloadDepois: {
-        agendamentoId: data.agendamentoId,
+        agendamentoId,
+        viagemId,
         sequencia: resultado.sequencia,
         tipoSegmento: data.tipoSegmento,
         modulo: MODULO_TFD,
       },
     })
 
-    revalidateAgendamentoPaths(agendamento.processo_id, agendamento.id)
+    if (processoIdRevalidate && agendamentoId) {
+      revalidateAgendamentoPaths(processoIdRevalidate, agendamentoId)
+    }
+    if (viagemId) {
+      revalidateViagemPaths(viagemId)
+    }
 
     return {
       success: true,
@@ -269,6 +346,11 @@ export async function confirmarTransporte(
             processo_id: true,
           },
         },
+        viagem: {
+          select: {
+            id: true,
+          },
+        },
       },
     })
 
@@ -295,10 +377,7 @@ export async function confirmarTransporte(
       payloadDepois: { status: 'CONFIRMADO', modulo: MODULO_TFD },
     })
 
-    revalidateAgendamentoPaths(
-      transporte.agendamento.processo_id,
-      transporte.agendamento.id
-    )
+    revalidateTransporteContext(transporte)
 
     return { success: true, data: undefined }
   } catch (error) {
@@ -348,6 +427,11 @@ export async function registrarChegadaTransporte(
             processo_id: true,
           },
         },
+        viagem: {
+          select: {
+            id: true,
+          },
+        },
       },
     })
 
@@ -390,10 +474,7 @@ export async function registrarChegadaTransporte(
       },
     })
 
-    revalidateAgendamentoPaths(
-      transporte.agendamento.processo_id,
-      transporte.agendamento.id
-    )
+    revalidateTransporteContext(transporte)
 
     return { success: true, data: undefined }
   } catch (error) {
@@ -441,6 +522,11 @@ export async function cancelarTransporte(
             processo_id: true,
           },
         },
+        viagem: {
+          select: {
+            id: true,
+          },
+        },
       },
     })
 
@@ -478,10 +564,7 @@ export async function cancelarTransporte(
       },
     })
 
-    revalidateAgendamentoPaths(
-      transporte.agendamento.processo_id,
-      transporte.agendamento.id
-    )
+    revalidateTransporteContext(transporte)
 
     return { success: true, data: undefined }
   } catch (error) {
@@ -538,6 +621,11 @@ export async function adicionarAnexoTransporte(
             processo_id: true,
           },
         },
+        viagem: {
+          select: {
+            id: true,
+          },
+        },
       },
     })
 
@@ -588,10 +676,7 @@ export async function adicionarAnexoTransporte(
       },
     })
 
-    revalidateAgendamentoPaths(
-      transporte.agendamento.processo_id,
-      transporte.agendamento.id
-    )
+    revalidateTransporteContext(transporte)
 
     return { success: true, data: { id: registro.id } }
   } catch (error) {

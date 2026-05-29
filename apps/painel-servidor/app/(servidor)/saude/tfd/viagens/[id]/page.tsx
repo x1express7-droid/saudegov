@@ -60,7 +60,8 @@ export default async function ViagemDetalhePage({ params, searchParams }: Viagem
       ? await getPrestacaoDetalheViagemNova(id)
       : null
 
-  const initialTab = tab === 'prestacao' ? 'prestacao' : undefined
+  const initialTab =
+    tab === 'prestacao' ? 'prestacao' : tab === 'segmentos' ? 'segmentos' : undefined
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">

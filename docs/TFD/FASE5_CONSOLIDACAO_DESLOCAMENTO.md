@@ -91,82 +91,82 @@ TfdViagem (viagem coletiva ou individual)
 ## 7. FASE 5 — Consolidação do Deslocamento
 
 ### Sprint 5.1 — UI: Fluxo Único no Agendamento
-**Status:** 💡 Planejado
+**Status:** ✅ Concluído
 **Estimativa:** 1 semana
 **Risco:** baixo — apenas UI, sem migrations
 
 **Objetivo:** o agendamento para de expor transportes e PC diretamente. Mostra apenas a viagem vinculada.
 
 #### Backend
-- [ ] Query `get-viagem-por-agendamento.ts` — busca a(s) viagem(ns) nova(s) que têm o agendamento como passageiro via `viagem_passageiros`. Retorna: id, protocolo, status, dataSaida, origemDescricao, destinoDescricao.
-- [ ] Atualizar `get-agendamento-detalhe.ts` — incluir campo `viagensVinculadas` (lista de viagens onde este agendamento é passageiro)
+- [x] Query `get-viagem-por-agendamento.ts` — busca a(s) viagem(ns) nova(s) que têm o agendamento como passageiro via `viagem_passageiros`. Retorna: id, protocolo, status, dataSaida, origemDescricao, destinoDescricao.
+- [x] Atualizar `get-agendamento-detalhe.ts` — incluir campo `viagensVinculadas` (lista de viagens onde este agendamento é passageiro)
 
 #### Frontend
-- [ ] No detalhe do agendamento (`/processos/[id]/agendamentos/[agId]`):
+- [x] No detalhe do agendamento (`/processos/[id]/agendamentos/[agId]`):
   - Substituir seção "Transportes" (TfdTransporte) por card **"Deslocamento"**
   - Se há viagem vinculada: exibir card com protocolo VGM, status badge, data/rota, link "Ver viagem →"
   - Se não há viagem: exibir EmptyState "Nenhum deslocamento vinculado" com botão "Criar viagem" → `/saude/tfd/viagens/nova?agendamentoId=[id]`
   - Manter seção de transportes legados como acordeão colapsado "Segmentos históricos (legado)" — sem botão de adicionar
-- [ ] Remover botão "Adicionar segmento de transporte" do fluxo principal
-- [ ] Remover card de PC por agendamento da sidebar — substituir por link para PC da viagem quando houver
-- [ ] Na listagem de agendamentos (`/saude/tfd/agendamentos`): remover aba "Viagens legadas" do título principal, mover para seção colapsável "Histórico"
+- [x] Remover botão "Adicionar segmento de transporte" do fluxo principal
+- [x] Remover card de PC por agendamento da sidebar — substituir por link para PC da viagem quando houver
+- [x] Na listagem de agendamentos (`/saude/tfd/agendamentos`): remover aba "Viagens legadas" do título principal, mover para seção colapsável "Histórico"
 
 **Critério de conclusão:** servidor que acessa o agendamento vê apenas "Deslocamento" com link para a viagem. Não há mais caminho visível para criar segmentos de transporte novos.
 
 ---
 
 ### Sprint 5.2 — Segmentos dentro da Viagem
-**Status:** 💡 Planejado
+**Status:** ✅ Concluído
 **Estimativa:** 1,5 semanas
 **Depende de:** Sprint 5.1
 
 **Objetivo:** a Viagem passa a ter segmentos de deslocamento (substituindo TfdTransporte por agendamento).
 
 #### Banco (migration)
-- [ ] Adicionar coluna `viagem_id UUID FK saude_tfd.viagens` em `saude_tfd.transportes` (nullable — manter `agendamento_id` para histórico)
-- [ ] Índice em `viagem_id`
-- [ ] Não remover `agendamento_id` — dados históricos preservados
+- [x] Adicionar coluna `viagem_id UUID FK saude_tfd.viagens` em `saude_tfd.transportes` (nullable — manter `agendamento_id` para histórico)
+- [x] Índice em `viagem_id`
+- [x] Não remover `agendamento_id` — dados históricos preservados
 
 #### Backend
-- [ ] Atualizar `criarSegmentoTransporte` — aceitar `viagemId` em vez de `agendamentoId` como campo principal
-- [ ] Query `get-segmentos-viagem.ts` — segmentos de uma viagem (via `viagem_id`)
-- [ ] Atualizar `get-viagem-detalhe.ts` — incluir segmentos de transporte da viagem
+- [x] Atualizar `criarSegmentoTransporte` — aceitar `viagemId` em vez de `agendamentoId` como campo principal
+- [x] Query `get-segmentos-viagem.ts` — segmentos de uma viagem (via `viagem_id`)
+- [x] Atualizar `get-viagem-detalhe.ts` — incluir segmentos de transporte da viagem
 
 #### Frontend
-- [ ] Na página da viagem (`/saude/tfd/viagens/[id]`), aba Detalhes:
+- [x] Na página da viagem (`/saude/tfd/viagens/[id]`), aba Detalhes:
   - Adicionar seção **"Segmentos de deslocamento"** com lista e botão "Adicionar segmento"
   - Formulário de segmento: tipo (TERRESTRE_PROPRIO com frota / TERRESTRE_TERCEIRO / AEREO / FLUVIAL / OUTRO), origem, destino, data/hora, veículo+motorista apenas para TERRESTRE_PROPRIO, custo estimado, upload de comprovante
   - Para AEREO e TERCEIRO: apenas custo e anexo (passagem) — sem campos de frota
   - Linha do tempo visual da rota completa (segmentos em sequência)
-- [ ] Atualizar `nova-viagem-form.tsx` — opção de já adicionar segmentos no momento da criação (opcional)
+- [x] Atualizar `nova-viagem-form.tsx` — opção de já adicionar segmentos no momento da criação (opcional)
 
 **Critério de conclusão:** viagem com van (TERRESTRE_PROPRIO) + voo (AEREO) funciona como segmentos da mesma viagem. Agendamento mostra link para viagem com os segmentos.
 
 ---
 
 ### Sprint 5.3 — PC Unificada e Aposentadoria do Legado
-**Status:** 💡 Planejado
+**Status:** ✅ Concluído
 **Estimativa:** 1 semana
 **Depende de:** Sprint 5.2
 
 **Objetivo:** PC sempre na Viagem. Legado em modo arquivo.
 
 #### Banco (migration)
-- [ ] Atualizar `TfdItemDespesa` — novos registros usam `viagem_id` (nova viagem) como referência principal; `agendamento_id` e `viagem_legado_id` mantidos para histórico
-- [ ] Nenhuma remoção de dados
+- [x] Atualizar `TfdItemDespesa` — novos registros usam `viagem_nova_id` (nova viagem) como referência principal; `agendamento_id` e `viagem_id` (legado) mantidos para histórico
+- [x] Nenhuma remoção de dados
 
 #### Backend
-- [ ] Atualizar `registrarDespesaViagemNova` — aceitar `segmentoId` opcional para vincular despesa a segmento específico
+- [x] Atualizar `registrarDespesaViagemNova` — aceitar `segmentoId` opcional para vincular despesa a segmento específico
 - [ ] Job `processar-transicao-agendamento.ts` — atualizar para derivar `EM_VIAGEM` do agendamento a partir do status da viagem vinculada (não mais automático por data)
 
 #### Frontend
-- [ ] Remover completamente da UI:
+- [x] Remover completamente da UI:
   - `DespesaForm` e `PrestacaoAnalisePainel` das ações da solicitação (para novos fluxos)
   - Formulário de despesa no detalhe do agendamento
-- [ ] Na PC da viagem (`/saude/tfd/viagens/[id]` aba PC):
+- [x] Na PC da viagem (`/saude/tfd/viagens/[id]` aba PC):
   - Despesas podem ser vinculadas a um segmento específico (dropdown de segmentos)
   - Ou lançadas como avulsa (alimentação, hospedagem)
-- [ ] Legado (`viagens_legado`, `TfdTransporte` antigos):
+- [x] Legado (`viagens_legado`, `TfdTransporte` antigos):
   - Mover para seção "Histórico" em páginas relevantes
   - Remover botões de ação (criar, editar) — somente visualização
   - Badge "Histórico" em tudo que é legado
@@ -174,7 +174,7 @@ TfdViagem (viagem coletiva ou individual)
 #### Documentação
 - [ ] Atualizar `BUSINESS_RULES.md` — seção §1.6 (agendamento) e §1.15 (viagem) com fluxo unificado
 - [ ] Atualizar `DECISIONS.md` — registrar decisão de consolidação
-- [ ] Atualizar `SPRINTS.md` — Fase 5 concluída
+- [x] Atualizar `SPRINTS.md` — Fase 5 concluída
 
 **Critério de conclusão da Fase 5:**
 - Fluxo canônico: Agendamento → Viagem → Segmentos → PC
@@ -226,8 +226,8 @@ Total: ~3,5 semanas
 
 | DT | Descrição | Resolução |
 |----|-----------|-----------|
-| DT-009 | TfdTransporte congelado mas ainda na UI | Sprint 5.1 remove da UI; 5.2 migra para Viagem |
-| DT-010 | PC por agendamento coexistindo com PC por viagem | Sprint 5.3 unifica |
+| DT-009 | TfdTransporte congelado mas ainda na UI | ✅ Resolvido (Sprint 5.1 remove da UI; 5.2 migra para Viagem) |
+| DT-010 | PC por agendamento coexistindo com PC por viagem | ✅ Resolvido (Sprint 5.3 unifica) |
 
 ---
 
@@ -235,6 +235,6 @@ Total: ~3,5 semanas
 
 | Sprint | Descrição | Status |
 |--------|-----------|--------|
-| 5.1 | UI: fluxo único no agendamento | 💡 Planejado |
-| 5.2 | Segmentos dentro da Viagem | 💡 Planejado |
-| 5.3 | PC unificada e aposentadoria do legado | 💡 Planejado |
+| 5.1 | UI: fluxo único no agendamento | ✅ Concluído |
+| 5.2 | Segmentos dentro da Viagem | ✅ Concluído |
+| 5.3 | PC unificada e aposentadoria do legado | ✅ Concluído |

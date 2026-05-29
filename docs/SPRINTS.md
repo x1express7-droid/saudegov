@@ -611,6 +611,9 @@ npm run db:verify:sprint-2-3
 | 4.4 | Detalhe veículos e motoristas — Fase 4 TFD | ✅ Concluído |
 | 4.5 | Prestação de Contas na Viagem — Fase 4 TFD | ✅ Concluído |
 | 4.6 | Polimento UX e consolidação — Fase 4 TFD | ✅ Concluído |
+| 5.1 | Fluxo único no agendamento — Fase 5 TFD | ✅ Concluído |
+| 5.2 | Segmentos dentro da Viagem — Fase 5 TFD | ✅ Concluído |
+| 5.3 | PC unificada e aposentadoria do legado — Fase 5 TFD | ✅ Concluído |
 
 ---
 

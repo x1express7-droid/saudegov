@@ -5,7 +5,8 @@ import type { TfdVeiculoAgendamentoItem } from '../types/tfd.types'
 import { verificaCapacidadeVeiculo } from '../utils/viagem'
 
 export async function getVeiculosAgendamentoTfd(
-  acompanhanteNecessario: boolean
+  acompanhanteNecessario: boolean,
+  minCapacidadePassageiros?: number
 ): Promise<TfdVeiculoAgendamentoItem[]> {
   await assertModuleActive('saude', 'tfd')
   const session = await requireTenantRole('SERVIDOR')
@@ -28,9 +29,12 @@ export async function getVeiculosAgendamentoTfd(
   })
 
   return rows
-    .filter((row) =>
-      verificaCapacidadeVeiculo(row.capacidade_passageiros, acompanhanteNecessario)
-    )
+    .filter((row) => {
+      if (minCapacidadePassageiros !== undefined) {
+        return row.capacidade_passageiros >= minCapacidadePassageiros
+      }
+      return verificaCapacidadeVeiculo(row.capacidade_passageiros, acompanhanteNecessario)
+    })
     .map((row) => ({
       id: row.id,
       placa: row.placa,

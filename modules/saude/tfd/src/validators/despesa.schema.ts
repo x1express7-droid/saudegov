@@ -124,6 +124,7 @@ export type DecidirPrestacaoContasAgendamentoInput = z.infer<
 const agendamentoIdField = z.string().uuid('ID do agendamento inválido.')
 const transporteIdField = z.string().uuid('ID do transporte inválido.')
 const viagemNovaIdField = z.string().uuid('ID da viagem inválido.')
+const segmentoIdField = z.string().uuid('ID do segmento inválido.').optional()
 
 const despesaCamposComuns = {
   tipo: tipoDespesaField,
@@ -171,6 +172,7 @@ export type RegistrarDespesaTransporteInput = z.infer<typeof registrarDespesaTra
 export const registrarDespesaViagemNovaSchema = z
   .object({
     viagemNovaId: viagemNovaIdField,
+    segmentoId: segmentoIdField,
     ...despesaCamposComuns,
   })
   .refine(comprovanteObrigatorioRefine.refine, {

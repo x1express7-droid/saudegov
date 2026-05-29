@@ -49,6 +49,8 @@ const SALDOS_PATH = '/saude/tfd/configuracoes/saldos'
 const DASHBOARD_TFD_PATH = '/saude/tfd/dashboard'
 
 const MSG_VIAGEM_NAO_ENCONTRADA = 'Viagem não encontrada.'
+const MSG_SEGMENTO_NAO_ENCONTRADO =
+  'Segmento de deslocamento não encontrado ou não pertence a esta viagem.'
 const MSG_VIAGEM_NAO_REALIZADA =
   'Registre o retorno da viagem antes de lançar despesas.'
 const MSG_PRESTACAO_NAO_ENCONTRADA =
@@ -1811,6 +1813,10 @@ export async function registrarDespesaTransporte(
 
     const agendamento = transporte.agendamento
 
+    if (!agendamento) {
+      return { success: false, error: MSG_TRANSPORTE_NAO_ENCONTRADO }
+    }
+
     if (agendamento.status !== 'REALIZADO') {
       return { success: false, error: MSG_AGENDAMENTO_NAO_REALIZADO }
     }
@@ -1859,6 +1865,10 @@ export async function registrarDespesaTransporte(
       }
 
       const agendamentoLocked = transporteLocked.agendamento
+
+      if (!agendamentoLocked) {
+        throw new FinanceiroBusinessError(MSG_TRANSPORTE_NAO_ENCONTRADO)
+      }
 
       if (agendamentoLocked.status !== 'REALIZADO') {
         throw new FinanceiroBusinessError(MSG_AGENDAMENTO_NAO_REALIZADO)
@@ -3045,13 +3055,32 @@ export async function registrarDespesaViagemNova(
         await validarComprovanteAnexo(tx, tenantId, data.comprovanteAnexoId)
       }
 
+      let transporteIdLocked: string | null = null
+
+      if (data.segmentoId) {
+        const segmento = await tx.tfdTransporte.findFirst({
+          where: {
+            id: data.segmentoId,
+            tenant_id: tenantId,
+            viagem_id: data.viagemNovaId,
+          },
+          select: { id: true },
+        })
+
+        if (!segmento) {
+          throw new FinanceiroBusinessError(MSG_SEGMENTO_NAO_ENCONTRADO)
+        }
+
+        transporteIdLocked = segmento.id
+      }
+
       const item = await tx.tfdItemDespesa.create({
         data: {
           tenant_id: tenantId,
           viagem_nova_id: viagemLocked.id,
           viagem_id: null,
           agendamento_id: null,
-          transporte_id: null,
+          transporte_id: transporteIdLocked,
           tipo: data.tipo,
           descricao: data.descricao?.trim() || null,
           valor: data.valor,
@@ -3067,6 +3096,7 @@ export async function registrarDespesaViagemNova(
         prestacaoId: viagemLocked.prestacao_conta.id,
         processoId: viagemLocked.processo_id,
         protocolo: viagemLocked.protocolo,
+        transporteId: transporteIdLocked,
         tipo: data.tipo,
         valor: data.valor,
         possuiComprovante: Boolean(data.comprovanteAnexoId),
@@ -3082,6 +3112,8 @@ export async function registrarDespesaViagemNova(
       payloadDepois: {
         viagemNovaId: resultado.viagemNovaId,
         prestacaoId: resultado.prestacaoId,
+        transporteId: resultado.transporteId,
+        segmentoId: data.segmentoId ?? null,
         tipo: resultado.tipo,
         valor: resultado.valor,
         possuiComprovante: resultado.possuiComprovante,

@@ -217,6 +217,12 @@ export function SolicitacaoAcoes({
     viagemNovaEmAnalise !== null
   const showAnalisePrestacaoLegacy =
     solicitacao.status === 'PC_EM_ANALISE' && viagens.length > 0
+  const showPcViagemInfoCard =
+    fluxoViagemNova &&
+    (solicitacao.status === 'AGUARDANDO_PC' ||
+      solicitacao.status === 'PC_EM_ANALISE' ||
+      solicitacao.status === 'EM_VIAGEM' ||
+      solicitacao.status === 'AGENDADO')
   const modoCancelamentoPrazo =
     solicitacao.status === 'PENDENTE' && solicitacao.elegivelCancelamentoPrazoEsgotado
   const showCancelar =
@@ -234,6 +240,7 @@ export function SolicitacaoAcoes({
     showPrestacaoAgendamentoEmAnalise ||
     showPrestacaoViagemNovaEmAnalise ||
     showAnalisePrestacaoLegacy ||
+    showPcViagemInfoCard ||
     showCancelar
 
   return (
@@ -424,6 +431,20 @@ export function SolicitacaoAcoes({
             solicitacaoStatus={solicitacao.status}
             viagens={viagens}
           />
+        ) : null}
+
+        {showPcViagemInfoCard ? (
+          <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-[var(--space-4)]">
+            <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
+              A prestação de contas é gerenciada pela Viagem TFD vinculada ao agendamento.
+            </p>
+            <Link
+              href={`/saude/tfd/viagens?processoId=${encodeURIComponent(solicitacao.processoId)}`}
+              className="mt-[var(--space-3)] inline-block text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
+            >
+              Ver viagens do processo →
+            </Link>
+          </div>
         ) : null}
 
         {showDespesaLegacy ? (

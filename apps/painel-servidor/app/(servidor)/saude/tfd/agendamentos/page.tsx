@@ -121,7 +121,7 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
 
   const subtitulo =
     fonte === 'viagens'
-      ? 'Registros do sistema anterior — somente visualização. Viagens legadas com motorista e veículo.'
+      ? 'Registros do sistema anterior. Novos deslocamentos são gerenciados em Viagens TFD.'
       : 'Consultas agendadas na nova entidade de agendamentos TFD.'
 
   return (
@@ -141,8 +141,7 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
 
       {fonte === 'viagens' ? (
         <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-          Registros do sistema anterior — somente visualização. Não é possível criar novos registros
-          nesta aba.
+          Registros do sistema anterior. Novos deslocamentos são gerenciados em Viagens TFD.
         </p>
       ) : null}
 

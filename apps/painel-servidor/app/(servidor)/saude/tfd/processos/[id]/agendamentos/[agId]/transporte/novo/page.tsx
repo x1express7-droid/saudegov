@@ -100,7 +100,7 @@ export default async function NovoTransportePage({ params }: NovoTransportePageP
 
       <div className="flex flex-col gap-[var(--space-3)]">
         <h2 className="text-[length:var(--text-base)] font-semibold text-[var(--color-text)]">
-          Adicionar segmento avulso (uso específico)
+          Adicionar segmento avulso (legado)
         </h2>
         <SegmentoTransporteForm
           session={session}
@@ -108,6 +108,7 @@ export default async function NovoTransportePage({ params }: NovoTransportePageP
           agendamentoId={agendamentoId}
           prestadores={prestadoresResult.items}
           veiculos={veiculos}
+          successRedirectPath={`/saude/tfd/processos/${processoId}/agendamentos/${agendamentoId}`}
         />
       </div>
     </div>

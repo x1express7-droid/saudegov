@@ -3,6 +3,9 @@ import { getPrismaForTenant } from '@saude/core-db'
 import type { TfdTipoViagem, TfdViagemStatusV2 } from '@prisma/client'
 
 import { TFD_PERMISSIONS } from '../permissions'
+import { fetchSegmentosViagemForTenant, type SegmentoViagemItem } from './get-segmentos-viagem'
+
+export type { SegmentoViagemItem } from './get-segmentos-viagem'
 
 export interface ViagemPassageiroDetalhe {
   id: string
@@ -55,6 +58,7 @@ export interface ViagemDetalheOutput {
     ativo: boolean
   } | null
   passageiros: ViagemPassageiroDetalhe[]
+  segmentos: SegmentoViagemItem[]
   tramitacoes: Array<{
     id: string
     tipo: string
@@ -176,6 +180,8 @@ export async function getViagemDetalhe(viagemId: string): Promise<ViagemDetalheO
     take: 10,
   })
 
+  const segmentos = await fetchSegmentosViagemForTenant(db, tenantId, viagem.id)
+
   return {
     id: viagem.id,
     protocolo: viagem.protocolo,
@@ -229,6 +235,7 @@ export async function getViagemDetalhe(viagemId: string): Promise<ViagemDetalheO
         paciente: { nome: passageiro.agendamento.solicitacao.paciente.nome },
       },
     })),
+    segmentos,
     tramitacoes: tramitacoes.map((row) => ({
       id: row.id,
       tipo: row.tipo,

@@ -46,18 +46,21 @@ function isCnhVencendoEmBreve(validadeIso: string): boolean {
 
 export interface SegmentoTransporteFormProps {
   session: SaudeMunicSession
-  processoId: string
-  agendamentoId: string
   prestadores: TfdPrestadorListItem[]
   veiculos: TfdVeiculoAgendamentoItem[]
+  agendamentoId?: string
+  viagemId?: string
+  processoId?: string
+  successRedirectPath: string
 }
 
 export function SegmentoTransporteForm({
   session,
-  processoId,
   agendamentoId,
+  viagemId,
   prestadores,
   veiculos,
+  successRedirectPath,
 }: SegmentoTransporteFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -181,7 +184,8 @@ export function SegmentoTransporteForm({
 
     startTransition(async () => {
       const result = await criarSegmentoTransporte({
-        agendamentoId,
+        ...(agendamentoId ? { agendamentoId } : {}),
+        ...(viagemId ? { viagemId } : {}),
         tipoSegmento: tipoSegmento as
           | 'TERRESTRE_PROPRIO'
           | 'TERRESTRE_TERCEIRO'
@@ -206,7 +210,7 @@ export function SegmentoTransporteForm({
         return
       }
 
-      router.push(`/saude/tfd/processos/${processoId}/agendamentos/${agendamentoId}`)
+      router.push(successRedirectPath)
       router.refresh()
     })
   }

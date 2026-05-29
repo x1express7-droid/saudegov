@@ -1127,7 +1127,8 @@ enum TfdTransporteStatus {
 model TfdTransporte {
   id                    String                      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenant_id             String                      @db.Uuid
-  agendamento_id        String                      @db.Uuid
+  agendamento_id        String?                     @db.Uuid
+  viagem_id             String?                     @db.Uuid
   sequencia             Int                         @default(1)
   tipo_segmento         TfdTipoSegmentoTransporte
   veiculo_id            String?                     @db.Uuid
@@ -1148,7 +1149,8 @@ model TfdTransporte {
   created_at            DateTime                    @default(now()) @db.Timestamptz
   updated_at            DateTime                    @updatedAt @db.Timestamptz
   tenant                Tenant                      @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  agendamento           TfdAgendamento              @relation(fields: [agendamento_id], references: [id], onDelete: Cascade)
+  agendamento           TfdAgendamento?             @relation(fields: [agendamento_id], references: [id], onDelete: Cascade)
+  viagem                TfdViagem?                  @relation(fields: [viagem_id], references: [id], onDelete: Cascade)
   veiculo               TfdVeiculo?                 @relation(fields: [veiculo_id], references: [id], onDelete: SetNull)
   motorista             TfdMotorista?               @relation(fields: [motorista_id], references: [id], onDelete: SetNull)
   anexos                TfdTransporteAnexo[]
@@ -1156,6 +1158,7 @@ model TfdTransporte {
 
   @@index([tenant_id], map: "idx_tfd_transportes_tenant")
   @@index([agendamento_id], map: "idx_tfd_transportes_agendamento")
+  @@index([viagem_id], map: "idx_tfd_transportes_viagem")
   @@index([tenant_id, status], map: "idx_tfd_transportes_status")
   @@index([tenant_id, data_saida], map: "idx_tfd_transportes_data_saida")
   @@index([motorista_id], map: "idx_tfd_transportes_motorista")
@@ -1287,6 +1290,7 @@ model TfdViagem {
   passageiros        TfdViagemPassageiro[]
   prestacao_conta    TfdPrestacaoConta?
   itens_despesa      TfdItemDespesa[]    @relation("DespesaViagemNova")
+  transportes        TfdTransporte[]
 
   @@index([tenant_id], map: "idx_tfd_viagens_nova_tenant")
   @@index([processo_id], map: "idx_tfd_viagens_nova_processo")

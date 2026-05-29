@@ -1,6 +1,6 @@
 'use client'
 
-import type { PrestacaoDetalheViagemNovaOutput } from '@saude/mod-saude-tfd'
+import type { PrestacaoDetalheViagemNovaOutput, SegmentoViagemItem } from '@saude/mod-saude-tfd'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/client'
 import {
   decidirPrestacaoContasViagemNova,
@@ -81,6 +81,7 @@ export interface PrestacaoViagemViewProps {
   processoId: string
   viagemStatus: string
   custoEstimado: string | null
+  segmentos: SegmentoViagemItem[]
   prestacao: PrestacaoDetalheViagemNovaOutput | null
 }
 
@@ -90,6 +91,7 @@ export function PrestacaoViagemView({
   processoId,
   viagemStatus,
   custoEstimado,
+  segmentos,
   prestacao,
 }: PrestacaoViagemViewProps) {
   const router = useRouter()
@@ -632,6 +634,7 @@ export function PrestacaoViagemView({
         session={session}
         processoId={processoId}
         viagemNovaId={viagemNovaId}
+        segmentos={segmentos}
         tipoInicial={despesaDialogTipo ?? 'TRANSPORTE'}
       />
     </>

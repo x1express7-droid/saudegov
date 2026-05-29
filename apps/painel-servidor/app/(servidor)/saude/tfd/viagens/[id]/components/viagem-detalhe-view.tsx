@@ -34,9 +34,11 @@ import { ViagemOcupacaoPanel } from '../../components/viagem-ocupacao-panel'
 import { buscarAgendamentosDisponiveisViagemDetalheAction } from '../actions'
 import { PrestacaoViagemView } from './prestacao-viagem-view'
 import { ViagemAcoesSidebar } from './viagem-acoes-sidebar'
+import { SegmentosViagemSection } from './segmentos-viagem-section'
 
 const TABS = [
   { id: 'detalhes', label: 'Detalhes' },
+  { id: 'segmentos', label: 'Segmentos' },
   { id: 'passageiros', label: 'Passageiros' },
   { id: 'historico', label: 'Histórico' },
   { id: 'prestacao', label: 'Prestação de Contas' },
@@ -368,7 +370,25 @@ export function ViagemDetalheView({
                 ) : null}
               </dl>
             </Card>
+
+            <SegmentosViagemSection
+              session={session}
+              viagemId={viagem.id}
+              viagemProtocolo={viagem.protocolo}
+              viagemStatus={viagem.status}
+              segmentos={viagem.segmentos}
+            />
           </div>
+        ) : null}
+
+        {tab === 'segmentos' ? (
+          <SegmentosViagemSection
+            session={session}
+            viagemId={viagem.id}
+            viagemProtocolo={viagem.protocolo}
+            viagemStatus={viagem.status}
+            segmentos={viagem.segmentos}
+          />
         ) : null}
 
         {tab === 'passageiros' ? (
@@ -445,6 +465,7 @@ export function ViagemDetalheView({
             processoId={viagem.processoId}
             viagemStatus={viagem.status}
             custoEstimado={viagem.custoEstimado}
+            segmentos={viagem.segmentos}
             prestacao={prestacao}
           />
         ) : null}

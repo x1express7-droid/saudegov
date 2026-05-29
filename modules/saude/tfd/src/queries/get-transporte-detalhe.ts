@@ -6,7 +6,8 @@ import { formatHoraConsulta } from '../utils/agendamento-novo'
 
 export interface TransporteDetalheOutput {
   id: string
-  agendamentoId: string
+  agendamentoId: string | null
+  viagemId: string | null
   sequencia: number
   tipoSegmento: string
   status: string
@@ -70,6 +71,7 @@ export async function getTransporteDetalhe(
     select: {
       id: true,
       agendamento_id: true,
+      viagem_id: true,
       sequencia: true,
       tipo_segmento: true,
       status: true,
@@ -127,6 +129,7 @@ export async function getTransporteDetalhe(
   return {
     id: row.id,
     agendamentoId: row.agendamento_id,
+    viagemId: row.viagem_id,
     sequencia: row.sequencia,
     tipoSegmento: row.tipo_segmento,
     status: row.status,

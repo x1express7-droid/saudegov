@@ -22,7 +22,8 @@ const horaCampo = z
   .optional()
 
 const criarSegmentoTransporteBaseSchema = z.object({
-  agendamentoId: z.string().uuid('ID do agendamento inválido.'),
+  agendamentoId: z.string().uuid('ID do agendamento inválido.').optional(),
+  viagemId: z.string().uuid('ID da viagem inválido.').optional(),
   tipoSegmento: z.enum(TIPO_SEGMENTO_VALUES, {
     errorMap: () => ({ message: 'Tipo de segmento inválido.' }),
   }),
@@ -62,6 +63,17 @@ const criarSegmentoTransporteBaseSchema = z.object({
 
 export const criarSegmentoTransporteSchema = criarSegmentoTransporteBaseSchema.superRefine(
   (data, ctx) => {
+    const hasAgendamento = Boolean(data.agendamentoId)
+    const hasViagem = Boolean(data.viagemId)
+
+    if (hasAgendamento === hasViagem) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Informe agendamentoId ou viagemId (exatamente um).',
+        path: ['agendamentoId'],
+      })
+    }
+
     if (data.tipoSegmento === 'TERRESTRE_PROPRIO') {
       if (!data.veiculoId) {
         ctx.addIssue({

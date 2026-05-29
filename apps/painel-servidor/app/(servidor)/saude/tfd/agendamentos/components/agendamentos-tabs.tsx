@@ -28,7 +28,7 @@ export function AgendamentosTabs() {
     {
       id: 'viagens',
       label: 'Histórico (legado)',
-      title: 'Registros do sistema anterior — somente visualização',
+      title: 'Registros do sistema anterior. Novos deslocamentos são gerenciados em Viagens TFD.',
     },
   ]
 

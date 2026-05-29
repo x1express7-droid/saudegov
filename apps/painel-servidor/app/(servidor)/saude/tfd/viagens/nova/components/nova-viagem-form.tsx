@@ -305,9 +305,12 @@ export function NovaViagemForm({
 
         if (!statusResult.success) {
           setServerError(statusResult.error ?? 'Viagem criada, mas não foi possível confirmá-la.')
-          router.push(`/saude/tfd/viagens/${viagemId}`)
+          router.push(`/saude/tfd/viagens/${viagemId}?tab=segmentos`)
           return
         }
+
+        router.push(`/saude/tfd/viagens/${viagemId}?tab=segmentos`)
+        return
       }
 
       router.push(`/saude/tfd/viagens/${viagemId}`)

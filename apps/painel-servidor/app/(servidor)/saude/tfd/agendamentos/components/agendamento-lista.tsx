@@ -6,6 +6,7 @@ import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   DataTable,
   EmptyState,
+  Badge,
   ProtocoloBadge,
   type ColumnDef,
 } from '@saude/ui'
@@ -158,12 +159,16 @@ export function AgendamentoLista({ items, total, session }: AgendamentoListaProp
         header: 'Protocolo',
         cell: ({ row }) => (
           <div
+            className="flex flex-wrap items-center gap-[var(--space-2)]"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
             <Link href={`${TFD_DETAIL_BASE}/${row.original.solicitacao.id}`}>
               <ProtocoloBadge protocolo={row.original.protocolo} />
             </Link>
+            <Badge variant="slate" size="sm">
+              Histórico
+            </Badge>
           </div>
         ),
       },
