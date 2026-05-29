@@ -40,12 +40,12 @@ export async function buscarProcessoPorIdAction(
 
 export async function buscarAgendamentosDisponiveisViagemAction(
   processoId: string,
-  dataSaida: string
+  dataSaida?: string
 ): Promise<AgendamentoDisponivelViagemItem[]> {
-  if (!processoId || !dataSaida) {
+  if (!processoId) {
     return []
   }
-  return getAgendamentosDisponiveisParaViagem(processoId, dataSaida)
+  return getAgendamentosDisponiveisParaViagem(processoId, { dataSaida })
 }
 
 export async function buscarMotoristasViagemAction(

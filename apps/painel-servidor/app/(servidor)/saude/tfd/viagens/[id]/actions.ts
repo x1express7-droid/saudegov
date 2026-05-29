@@ -5,7 +5,7 @@ import type { AgendamentoDisponivelViagemItem } from '@saude/mod-saude-tfd/clien
 
 export async function buscarAgendamentosDisponiveisViagemDetalheAction(
   processoId: string,
-  dataSaida: string
+  viagemId: string
 ): Promise<AgendamentoDisponivelViagemItem[]> {
-  return getAgendamentosDisponiveisParaViagem(processoId, dataSaida)
+  return getAgendamentosDisponiveisParaViagem(processoId, { viagemId })
 }

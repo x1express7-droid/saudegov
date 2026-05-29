@@ -1,4 +1,3 @@
-import { addDays } from 'date-fns'
 import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import type { TfdAgendamentoStatus, TfdTipoViagem } from '@prisma/client'
@@ -14,9 +13,11 @@ export interface AgendamentoDisponivelViagemItem {
   acompanhantesCount: number
 }
 
-function parseDataUtc(data: string): Date {
-  const [year, month, day] = data.split('-').map(Number) as [number, number, number]
-  return new Date(Date.UTC(year, month - 1, day))
+export interface GetAgendamentosDisponiveisParaViagemOptions {
+  /** Exclui agendamentos já vinculados a esta viagem. */
+  viagemId?: string
+  /** Reservado para compatibilidade; não restringe mais por data. */
+  dataSaida?: string
 }
 
 function trechoJaVinculado(
@@ -53,7 +54,7 @@ const STATUS_AGENDAMENTO_ELEGIVEIS: TfdAgendamentoStatus[] = ['AGENDADO']
 
 export async function getAgendamentosDisponiveisParaViagem(
   processoId: string,
-  dataSaida: string
+  options: GetAgendamentosDisponiveisParaViagemOptions = {}
 ): Promise<AgendamentoDisponivelViagemItem[]> {
   await assertModuleActive('saude', 'tfd')
   const session = await requireTenantRole('SERVIDOR')
@@ -62,22 +63,21 @@ export async function getAgendamentosDisponiveisParaViagem(
   const tenantId = session.user.tenantId!
   const db = await getPrismaForTenant(tenantId)
 
-  const dataReferencia = parseDataUtc(dataSaida)
-  const dataMin = addDays(dataReferencia, -7)
-  const dataMax = addDays(dataReferencia, 7)
-
   const rows = await db.tfdAgendamento.findMany({
     where: {
       tenant_id: tenantId,
       processo_id: processoId,
       status: { in: STATUS_AGENDAMENTO_ELEGIVEIS },
-      data_consulta: {
-        gte: dataMin,
-        lte: dataMax,
-      },
       solicitacao: {
         status: { in: ['APROVADO', 'AGENDADO'] },
       },
+      ...(options.viagemId
+        ? {
+            viagem_passageiros: {
+              none: { viagem_id: options.viagemId },
+            },
+          }
+        : {}),
     },
     select: {
       id: true,

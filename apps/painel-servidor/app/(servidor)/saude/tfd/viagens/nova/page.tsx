@@ -8,7 +8,7 @@ import {
   getListaProcessosTfd,
   getVeiculosAgendamentoTfd,
 } from '@saude/mod-saude-tfd'
-import { PageHeader } from '@saude/ui'
+import { Alert, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
@@ -66,6 +66,11 @@ export default async function NovaViagemPage({ searchParams }: NovaViagemPagePro
           { label: 'Nova viagem' },
         ]}
       />
+
+      <Alert variant="info">
+        Para vincular um agendamento específico, acesse o agendamento e clique em &quot;Criar
+        viagem&quot; — o processo e o agendamento serão pré-selecionados automaticamente.
+      </Alert>
 
       <NovaViagemForm
         session={session}

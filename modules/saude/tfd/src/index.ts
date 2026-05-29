@@ -537,7 +537,10 @@ export type { VeiculoDetalheOutput } from './queries/get-veiculo-detalhe'
 export { getMotoristaDetalhe } from './queries/get-motorista-detalhe'
 export type { MotoristaDetalheOutput } from './queries/get-motorista-detalhe'
 export { getAgendamentosDisponiveisParaViagem } from './queries/get-agendamentos-disponiveis-para-viagem'
-export type { AgendamentoDisponivelViagemItem } from './queries/get-agendamentos-disponiveis-para-viagem'
+export type {
+  AgendamentoDisponivelViagemItem,
+  GetAgendamentosDisponiveisParaViagemOptions,
+} from './queries/get-agendamentos-disponiveis-para-viagem'
 export { getVagasViagem } from './queries/get-vagas-viagem'
 export type { VagasViagemOutput } from './queries/get-vagas-viagem'
 export { getAgendamentosTfd } from './queries/get-agendamentos'

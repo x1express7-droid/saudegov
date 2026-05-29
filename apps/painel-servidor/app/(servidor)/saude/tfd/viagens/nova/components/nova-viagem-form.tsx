@@ -168,7 +168,7 @@ export function NovaViagemForm({
   )
 
   useEffect(() => {
-    if (!processoId || !dataSaida) {
+    if (!processoId) {
       setAgendamentos([])
       setPassageirosSelecionados({})
       return
@@ -178,7 +178,8 @@ export function NovaViagemForm({
     setLoadingAgendamentos(true)
     setAgendamentosError(null)
 
-    void buscarAgendamentosDisponiveisViagemAction(processoId, dataSaida).then((items) => {
+    void buscarAgendamentosDisponiveisViagemAction(processoId, dataSaida || undefined).then(
+      (items) => {
       if (cancelled) {
         return
       }
@@ -197,7 +198,8 @@ export function NovaViagemForm({
           })
         }
       }
-    })
+    }
+    )
 
     return () => {
       cancelled = true

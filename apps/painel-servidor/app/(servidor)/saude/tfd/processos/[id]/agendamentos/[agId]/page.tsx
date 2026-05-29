@@ -125,6 +125,10 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
         }
       />
 
+      <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+        Após criar ou vincular uma viagem, o deslocamento ficará visível nesta página.
+      </p>
+
       <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
           <Card header={<CardHeader>Dados do agendamento</CardHeader>}>
@@ -183,6 +187,7 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
 
           <DeslocamentoSection
             session={session}
+            processoId={processoId}
             agendamentoId={agId}
             viagensVinculadas={agendamento.viagensVinculadas}
             transportesLegado={transportesLegado}

@@ -178,7 +178,7 @@ export function ViagemDetalheView({
 
     const items = await buscarAgendamentosDisponiveisViagemDetalheAction(
       viagem.processoId,
-      viagem.dataSaida
+      viagem.id
     )
     setAgendamentosDisponiveis(items)
     setLoadingDisponiveis(false)
@@ -404,7 +404,7 @@ export function ViagemDetalheView({
             {viagem.passageiros.length === 0 ? (
               <EmptyState
                 titulo="Nenhum passageiro vinculado"
-                descricao="Vincule agendamentos para compor a viagem."
+                descricao="Para adicionar passageiros, vá ao agendamento do processo e clique em 'Vincular à viagem existente', ou use o botão abaixo para buscar agendamentos disponíveis."
               />
             ) : (
               <ul className="flex flex-col gap-[var(--space-3)]">

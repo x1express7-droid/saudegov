@@ -17,6 +17,7 @@ import { TFD_PERMISSIONS } from '../permissions'
 import { resolveTenantTimezone } from '../utils/agendamento-novo'
 import { calcPrazoEnvioPrestacao } from '../utils/prazos'
 import { gerarProtocoloViagemNova } from '../utils/gerar-protocolo-tfd'
+import { transicionarAgendamentosParaRealizadoNaViagem } from '../utils/sync-agendamentos-viagem-nova'
 import {
   cancelarViagemSchema,
   criarViagemSchema,
@@ -635,6 +636,14 @@ export async function registrarChegadaViagem(
         },
       })
 
+      const agendamentosAtualizados = await transicionarAgendamentosParaRealizadoNaViagem(tx, {
+        tenantId,
+        viagemId: viagem.id,
+        viagemProtocolo: viagem.protocolo,
+        usuarioId: session.user.id,
+        origem: 'registrar_chegada_viagem',
+      })
+
       const prestacao = await tx.tfdPrestacaoConta.create({
         data: {
           tenant_id: tenantId,
@@ -683,6 +692,7 @@ export async function registrarChegadaViagem(
         protocolo: viagem.protocolo,
         processoId: viagem.processo_id,
         prestacaoId: prestacao.id,
+        agendamentosAtualizados,
       }
     })
 
@@ -698,6 +708,24 @@ export async function registrarChegadaViagem(
         modulo: MODULO_TFD,
       },
     })
+
+    for (const agendamento of resultado.agendamentosAtualizados) {
+      await createAuditLog({
+        tenantId,
+        userId: session.user.id,
+        acao: 'UPDATE',
+        entidade: 'saude_tfd_agendamento',
+        entidadeId: agendamento.id,
+        payloadAntes: { status: 'EM_VIAGEM' },
+        payloadDepois: {
+          status: 'REALIZADO',
+          sequencia: agendamento.sequencia,
+          viagemId: resultado.viagemId,
+          modulo: MODULO_TFD,
+          origem: 'registrar_chegada_viagem',
+        },
+      })
+    }
 
     await createAuditLog({
       tenantId,

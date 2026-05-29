@@ -2,6 +2,7 @@ import { addDays } from 'date-fns'
 import { formatInTimeZone } from 'date-fns-tz'
 import { getPrismaAdmin } from '@saude/core-db'
 import { createAuditLog } from '@saude/core-documents'
+import { transicionarAgendamentosParaEmViagemNaViagem } from '../utils/sync-agendamentos-viagem-nova'
 
 const MODULO_TFD = 'saude.tfd'
 const DEFAULT_TIMEZONE = 'America/Sao_Paulo'
@@ -138,7 +139,16 @@ export async function processarTransicaoViagemNova(): Promise<ProcessarTransicao
           data: { status: 'EM_ANDAMENTO' },
         })
 
-        return { tipo: 'transicionada' as const, protocolo: viagemLocked.protocolo }
+        const agendamentosAtualizados = await transicionarAgendamentosParaEmViagemNaViagem(tx, {
+          tenantId: viagem.tenant_id,
+          viagemId: viagemLocked.id,
+        })
+
+        return {
+          tipo: 'transicionada' as const,
+          protocolo: viagemLocked.protocolo,
+          agendamentosAtualizados,
+        }
       })
 
       if (resultado.tipo === 'ignorada') {
@@ -159,6 +169,24 @@ export async function processarTransicaoViagemNova(): Promise<ProcessarTransicao
           origem: 'job_transicao_viagem_nova',
         },
       })
+
+      for (const agendamento of resultado.agendamentosAtualizados) {
+        await createAuditLog({
+          tenantId: viagem.tenant_id,
+          userId: null,
+          acao: 'UPDATE',
+          entidade: 'saude_tfd_agendamento',
+          entidadeId: agendamento.id,
+          payloadAntes: { status: 'AGENDADO' },
+          payloadDepois: {
+            status: 'EM_VIAGEM',
+            sequencia: agendamento.sequencia,
+            viagemId: viagem.id,
+            modulo: MODULO_TFD,
+            origem: 'job_transicao_viagem_nova',
+          },
+        })
+      }
 
       resumo.transicionadas += 1
     } catch (error) {
