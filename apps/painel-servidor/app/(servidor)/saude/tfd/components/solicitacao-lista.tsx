@@ -144,7 +144,7 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
     () => [
       {
         id: 'protocolo',
-        header: 'Protocolo',
+        header: 'Solicitação',
         cell: ({ row }) => (
           <div
             onClick={(event) => event.stopPropagation()}

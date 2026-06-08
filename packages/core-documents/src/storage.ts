@@ -383,7 +383,7 @@ export async function confirmarUpload(
 }
 
 /**
- * Gera URL pré-assinada de download para anexo já confirmado no storage.
+ * Gera URL pré-assinada de download para anexo no storage.
  * Não altera o registro do anexo.
  */
 export async function gerarUrlDownloadAnexo(
@@ -398,17 +398,11 @@ export async function gerarUrlDownloadAnexo(
       id: input.anexoId,
       tenant_id: input.tenantId,
     },
-    select: { id: true, confirmado: true },
+    select: { id: true },
   })
 
   if (!anexo) {
     throw new StorageNotFoundError('Anexo não encontrado.')
-  }
-
-  if (!anexo.confirmado) {
-    throw new StorageValidationError(
-      'Arquivo ainda não confirmado no storage. Conclua o upload antes de visualizar.'
-    )
   }
 
   const { url, expiresAt } = buildSignedUrl(

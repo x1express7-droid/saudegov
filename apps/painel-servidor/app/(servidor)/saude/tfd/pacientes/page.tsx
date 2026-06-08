@@ -39,6 +39,7 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
   await assertModuleActive('saude', 'tfd')
   const session = await requireTenantRole('SERVIDOR')
   const podeVerPerfilPaciente = hasPermission(session, TFD_PERMISSIONS.VER_PERFIL_PACIENTE)
+  const podeCadastrarPaciente = hasPermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
 
   const params = await searchParams
   const page = parsePositiveInt(params.page, 1)
@@ -57,6 +58,7 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
   return (
     <PacienteBuscaForm
       cadsusEnabled={cadsusEnabled}
+      podeCadastrarPaciente={podeCadastrarPaciente}
       vinculadosSection={
         <>
           <section
@@ -89,6 +91,7 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
               items={items}
               total={total}
               podeVerPerfilPaciente={podeVerPerfilPaciente}
+              podeEditarPaciente={podeCadastrarPaciente}
             />
           </section>
         </>

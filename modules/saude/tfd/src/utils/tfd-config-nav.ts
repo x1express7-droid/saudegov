@@ -11,6 +11,11 @@ export const TFD_CONFIGURACOES_NAV_ITEMS = [
     permission: TFD_PERMISSIONS.CONFIGURAR_ESPECIALIDADES,
   },
   {
+    label: 'CIDs',
+    href: '/saude/tfd/configuracoes/cids',
+    permission: TFD_PERMISSIONS.CONFIGURAR_CIDS,
+  },
+  {
     label: 'Prestadores',
     href: '/saude/tfd/configuracoes/prestadores',
     permission: TFD_PERMISSIONS.CONFIGURAR_PRESTADORES,

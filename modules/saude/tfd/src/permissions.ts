@@ -20,6 +20,7 @@ export const TFD_PERMISSIONS = {
   EXPORTAR_RELATORIO: 'saude.tfd.exportar_relatorio',
   CONFIGURAR: 'saude.tfd.configurar',
   CONFIGURAR_ESPECIALIDADES: 'saude.tfd.configurar_especialidades',
+  CONFIGURAR_CIDS: 'saude.tfd.configurar_cids',
   CONFIGURAR_PROCEDIMENTOS: 'saude.tfd.configurar_procedimentos',
   CONFIGURAR_PRESTADORES: 'saude.tfd.configurar_prestadores',
   REGISTRAR_DADOS_CLINICOS: 'saude.tfd.registrar_dados_clinicos',
@@ -149,6 +150,12 @@ export const TFD_PERMISSION_DEFINITIONS: readonly TfdPermissionDefinition[] = [
     key: TFD_PERMISSIONS.CONFIGURAR_ESPECIALIDADES,
     label: 'Configurar especialidades',
     descricao: 'CRUD de especialidades médicas.',
+    minRole: 'GESTOR',
+  },
+  {
+    key: TFD_PERMISSIONS.CONFIGURAR_CIDS,
+    label: 'Configurar CIDs',
+    descricao: 'CRUD do catálogo de CIDs para solicitações TFD.',
     minRole: 'GESTOR',
   },
   {

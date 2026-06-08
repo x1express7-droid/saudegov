@@ -22,8 +22,8 @@ const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
   minute: '2-digit',
 })
 
-function sortChronologically(items: TramitacaoItem[]): TramitacaoItem[] {
-  return [...items].sort((a, b) => a.criadoAt.getTime() - b.criadoAt.getTime())
+function sortReverseChronologically(items: TramitacaoItem[]): TramitacaoItem[] {
+  return [...items].sort((a, b) => b.criadoAt.getTime() - a.criadoAt.getTime())
 }
 
 export function TramitacaoTimeline({
@@ -31,7 +31,7 @@ export function TramitacaoTimeline({
   className,
   titulo = 'Histórico de tramitações',
 }: TramitacaoTimelineProps) {
-  const ordered = sortChronologically(tramitacoes)
+  const ordered = sortReverseChronologically(tramitacoes)
 
   if (ordered.length === 0) {
     return (
@@ -56,8 +56,9 @@ export function TramitacaoTimeline({
       </h2>
       <ol className="relative space-y-0">
         {ordered.map((item, index) => {
-          const isLatest = index === ordered.length - 1
+          const isLatest = index === 0
           const isFirst = index === 0
+          const isLast = index === ordered.length - 1
 
           return (
             <li key={item.id} className="relative flex gap-[var(--space-4)] pb-[var(--space-6)]">
@@ -83,7 +84,7 @@ export function TramitacaoTimeline({
                   )}
                 />
               </span>
-              {!isLatest ? (
+              {!isLast ? (
                 <span
                   className="absolute bottom-0 left-[11px] top-[calc(var(--space-1)+1.5rem)] w-0.5 bg-[var(--color-border)]"
                   aria-hidden="true"

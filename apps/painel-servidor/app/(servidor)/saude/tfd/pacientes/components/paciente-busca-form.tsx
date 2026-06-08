@@ -4,6 +4,7 @@ import { buscarPacientePorCns, vincularPaciente } from '@saude/mod-saude-tfd/act
 import { Alert, Badge, Button, Card, Input, PageHeader } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
+import { Plus } from 'lucide-react'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { useState, useTransition } from 'react'
@@ -55,10 +56,15 @@ function formatSexo(value: DadosCadsus['sexo']): string {
 
 export interface PacienteBuscaFormProps {
   cadsusEnabled: boolean
+  podeCadastrarPaciente?: boolean
   vinculadosSection?: ReactNode
 }
 
-export function PacienteBuscaForm({ cadsusEnabled, vinculadosSection }: PacienteBuscaFormProps) {
+export function PacienteBuscaForm({
+  cadsusEnabled,
+  podeCadastrarPaciente = false,
+  vinculadosSection,
+}: PacienteBuscaFormProps) {
   const [etapa, setEtapa] = useState<Etapa>('busca')
   const [cns, setCns] = useState('')
   const [cpf, setCpf] = useState('')
@@ -155,6 +161,16 @@ export function PacienteBuscaForm({ cadsusEnabled, vinculadosSection }: Paciente
           { label: 'TFD', href: '/saude/tfd' },
           { label: 'Pacientes' },
         ]}
+        acoes={
+          podeCadastrarPaciente ? (
+            <Button asChild variant="primary">
+              <Link href="/saude/tfd/pacientes/novo">
+                <Plus className="size-4" aria-hidden="true" />
+                Cadastrar ou editar
+              </Link>
+            </Button>
+          ) : undefined
+        }
       />
 
       {erro ? (
@@ -163,20 +179,20 @@ export function PacienteBuscaForm({ cadsusEnabled, vinculadosSection }: Paciente
         </p>
       ) : null}
 
-      {etapa === 'busca' ? (
+      {etapa === 'busca' && podeCadastrarPaciente ? (
         <Card
           header={
             <h2 className="text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]">
-              Cadastrar paciente
+              Cadastrar ou editar paciente
             </h2>
           }
         >
           <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            Informe os dados do paciente diretamente na base do município. Nome é obrigatório; CPF,
-            CNS e demais campos são opcionais.
+            Abra o formulário para buscar um paciente existente e atualizar os dados, ou registrar um
+            novo na base do município.
           </p>
           <Button asChild variant="primary">
-            <Link href="/saude/tfd/nova">Novo cadastro / atendimento TFD</Link>
+            <Link href="/saude/tfd/pacientes/novo">Abrir formulário</Link>
           </Button>
         </Card>
       ) : null}

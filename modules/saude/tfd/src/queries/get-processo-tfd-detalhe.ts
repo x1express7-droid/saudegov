@@ -123,7 +123,6 @@ export async function getProcessoTfdDetalhe(
         },
       },
       anexos: {
-        where: { confirmado: true },
         orderBy: { created_at: 'desc' },
         select: {
           id: true,

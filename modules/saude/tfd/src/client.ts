@@ -41,6 +41,8 @@ export type {
   TfdPacienteVinculadoItem,
   TfdSolicitacaoListItem,
   TfdSolicitacaoDetalhe,
+  TfdCustoPlanejadoItem,
+  TfdProjecaoFinanceiraOutput,
   AlertaLembreteViagemFalhou,
   AlertaPrestacaoPrazo,
   AlertaPrestacaoMotivo,
@@ -63,6 +65,11 @@ export type {
   TfdAlertaUrgenciaSemResposta,
   TfdAlertaAgendamentoSemTransporte,
   TfdAtividadeRecenteItem,
+  GestaoTfdInboxPrioridade,
+  GestaoTfdInboxCategoria,
+  GestaoTfdInboxItem,
+  GestaoTfdCentralAlertasGestor,
+  GestaoTfdCentralOutput,
   TfdAlertaUrgente,
   TfdSolicitacaoOrigemRetornoItem,
   AbrirSolicitacaoOutput,
@@ -92,6 +99,12 @@ export type { VagasViagemOutput } from './queries/get-vagas-viagem'
 
 export type { AcompanhanteSolicitacaoOption } from './utils/acompanhante-labels'
 export { labelRelacaoAcompanhante } from './utils/acompanhante-labels'
+
+export {
+  TFD_TIPO_TRANSPORTE_RECOMENDADO_OPTIONS,
+  labelTipoTransporteRecomendado,
+} from './utils/transporte-recomendado-labels'
+export type { TfdCidListItem } from './queries/get-cids'
 
 export { MIN_JUSTIFICATIVA_FILA_CHARS } from './validators/fila-movimentacao.schema'
 
@@ -140,6 +153,9 @@ export {
   criarEspecialidadeSchema,
   atualizarEspecialidadeSchema,
   desativarEspecialidadeSchema,
+  criarCidSchema,
+  atualizarCidSchema,
+  desativarCidSchema,
   criarProcedimentoSchema,
   atualizarProcedimentoSchema,
   desativarProcedimentoSchema,

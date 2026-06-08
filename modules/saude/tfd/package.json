@@ -14,6 +14,7 @@
     "./actions/solicitacao": "./src/actions/solicitacao.ts",
     "./actions/regulacao": "./src/actions/regulacao.ts",
     "./actions/decisao": "./src/actions/decisao.ts",
+    "./actions/projecao-financeira": "./src/actions/projecao-financeira.ts",
     "./actions/financeiro": "./src/actions/financeiro.ts",
     "./utils/saldo-movimentacao": "./src/utils/saldo-movimentacao.ts",
     "./actions/viagem": "./src/actions/viagem.ts",

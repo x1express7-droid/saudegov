@@ -79,6 +79,16 @@ export const SPRINT_11_TFD_PLATFORM_FEATURES = [
   {
     sistema: 'saude',
     modulo: 'tfd',
+    funcionalidade: 'configurar_cids',
+    descricao: 'CRUD do catálogo de CIDs TFD',
+    painel_dev: false,
+    painel_servidor: true,
+    permissao_chave: 'saude.tfd.configurar_cids',
+    sprint: '1.1',
+  },
+  {
+    sistema: 'saude',
+    modulo: 'tfd',
     funcionalidade: 'configurar_procedimentos',
     descricao: 'CRUD de procedimentos TFD',
     painel_dev: false,

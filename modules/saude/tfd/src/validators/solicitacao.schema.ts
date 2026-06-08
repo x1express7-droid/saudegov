@@ -19,12 +19,18 @@ const relacaoAcompanhanteValues = [
   'OUTRO',
 ] as const
 
+const tipoTransporteRecomendadoValues = [
+  'TERRESTRE_ONIBUS_LINHA',
+  'TERRESTRE_CARRO_OFICIAL',
+  'AMBULANCIA',
+  'AEREO',
+] as const
+
 const acompanhanteSchema = z.object({
-  nome: z
-    .string()
-    .trim()
-    .min(3, 'Nome do acompanhante deve ter pelo menos 3 caracteres.')
-    .max(200, 'Nome do acompanhante deve ter no máximo 200 caracteres.'),
+  pacienteId: z.string().uuid('Selecione um paciente cadastrado como acompanhante.'),
+  relacao: z.enum(relacaoAcompanhanteValues, {
+    errorMap: () => ({ message: 'Informe o parentesco do acompanhante.' }),
+  }),
   cpf: z.preprocess(
     (value) => {
       if (value === undefined || value === null) {
@@ -37,12 +43,6 @@ const acompanhanteSchema = z.object({
     },
     cpfAcompanhanteField.optional()
   ),
-  relacao: z
-    .enum(relacaoAcompanhanteValues, {
-      errorMap: () => ({ message: 'Relação do acompanhante inválida.' }),
-    })
-    .optional()
-    .default('OUTRO'),
   telefone: z
     .string()
     .trim()
@@ -62,7 +62,6 @@ export const abrirSolicitacaoSchema = z
       .min(0)
       .optional()
       .default([]),
-    prestadorId: z.string().uuid('Prestador inválido.'),
     tipoAtendimento: z.enum(tipoAtendimentoValues, {
       errorMap: () => ({ message: 'Tipo de atendimento inválido.' }),
     }),
@@ -70,7 +69,31 @@ export const abrirSolicitacaoSchema = z
     urgencia: z.enum(urgenciaValues, {
       errorMap: () => ({ message: 'Urgência inválida.' }),
     }),
-    /** Opcional; cada item deve estar confirmado no storage ao enviar (`enviarSolicitacaoTfd`). */
+    cidPrincipal: z.preprocess(
+      (value) => {
+        if (value === undefined || value === null) {
+          return undefined
+        }
+        if (typeof value === 'string' && value.trim() === '') {
+          return undefined
+        }
+        return value
+      },
+      z
+        .string()
+        .trim()
+        .max(10, 'CID inválido.')
+        .optional()
+    ),
+    diagnostico: z
+      .string()
+      .trim()
+      .min(10, 'Informe o motivo/diagnóstico/justificativa com pelo menos 10 caracteres.')
+      .max(5000, 'Motivo/diagnóstico/justificativa deve ter no máximo 5000 caracteres.'),
+    tipoTransporteRecomendado: z.enum(tipoTransporteRecomendadoValues, {
+      errorMap: () => ({ message: 'Selecione o tipo de transporte recomendado.' }),
+    }),
+    /** Opcional; anexos vinculados ao processo para consulta e análise. */
     laudoAnexoIds: z.array(z.string().uuid('ID do laudo inválido.')).optional().default([]),
     observacoesAbertura: z
       .string()
@@ -127,8 +150,20 @@ export const abrirSolicitacaoSchema = z
       return true
     },
     {
-      message: 'Informe os dados do acompanhante.',
+      message: 'Selecione o paciente acompanhante e o parentesco.',
       path: ['acompanhante'],
+    }
+  )
+  .refine(
+    (data) => {
+      if (!data.acompanhanteNecessario || !data.acompanhante) {
+        return true
+      }
+      return data.acompanhante.pacienteId !== data.pacienteId
+    },
+    {
+      message: 'O acompanhante deve ser diferente do paciente da solicitação.',
+      path: ['acompanhante', 'pacienteId'],
     }
   )
   .refine(
@@ -163,6 +198,13 @@ export const abrirSolicitacaoSchema = z
 
 export const enviarSolicitacaoSchema = z.object({
   solicitacaoId: z.string().uuid('ID da solicitação inválido.'),
+})
+
+export const anexarDocumentosSolicitacaoSchema = z.object({
+  solicitacaoId: z.string().uuid('ID da solicitação inválido.'),
+  anexoIds: z
+    .array(z.string().uuid('ID do anexo inválido.'))
+    .min(1, 'Selecione ao menos um arquivo.'),
 })
 
 export const motivoCancelamentoPresetValues = ['PRAZO_ESGOTADO', 'OUTRO'] as const
@@ -220,8 +262,10 @@ export function resolveMotivoCancelamentoTexto(input: {
 
 export type AbrirSolicitacaoInput = z.infer<typeof abrirSolicitacaoSchema>
 export type EnviarSolicitacaoInput = z.infer<typeof enviarSolicitacaoSchema>
+export type AnexarDocumentosSolicitacaoInput = z.infer<typeof anexarDocumentosSolicitacaoSchema>
 export type CancelarSolicitacaoInput = z.infer<typeof cancelarSolicitacaoSchema>
 
 export type TfdTipoAtendimento = (typeof tipoAtendimentoValues)[number]
 export type TfdUrgencia = (typeof urgenciaValues)[number]
 export type TfdRelacaoAcompanhante = (typeof relacaoAcompanhanteValues)[number]
+export type TfdTipoTransporteRecomendadoInput = (typeof tipoTransporteRecomendadoValues)[number]

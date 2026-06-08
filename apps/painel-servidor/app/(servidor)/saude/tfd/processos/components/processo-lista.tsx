@@ -4,7 +4,6 @@ import type { ProcessoTfdListItem } from '@saude/mod-saude-tfd/client'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import {
-  Badge,
   Button,
   DataTable,
   ProtocoloBadge,
@@ -113,7 +112,7 @@ export function ProcessoLista({ items, total, session }: ProcessoListaProps) {
     () => [
       {
         id: 'protocolo',
-        header: 'Protocolo',
+        header: 'Processo',
         cell: ({ row }) => (
           <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
             <ProtocoloBadge protocolo={row.original.protocolo} />
@@ -154,11 +153,31 @@ export function ProcessoLista({ items, total, session }: ProcessoListaProps) {
       {
         id: 'solicitacoes',
         header: 'Solicitações',
-        cell: ({ row }) => (
-          <Badge variant="blue" size="sm">
-            {row.original.totalSolicitacoes}
-          </Badge>
-        ),
+        cell: ({ row }) => {
+          const solicitacoes = row.original.solicitacoes
+
+          if (solicitacoes.length === 0) {
+            return <span className="text-[var(--color-text-muted)]">—</span>
+          }
+
+          return (
+            <div
+              className="flex flex-wrap gap-[var(--space-2)]"
+              onClick={(event) => event.stopPropagation()}
+              onKeyDown={(event) => event.stopPropagation()}
+            >
+              {solicitacoes.map((solicitacao) => (
+                <Link
+                  key={solicitacao.id}
+                  href={`/saude/tfd/${solicitacao.id}`}
+                  className="hover:opacity-90"
+                >
+                  <ProtocoloBadge protocolo={solicitacao.protocolo} />
+                </Link>
+              ))}
+            </div>
+          )
+        },
       },
       {
         id: 'movimentacao',

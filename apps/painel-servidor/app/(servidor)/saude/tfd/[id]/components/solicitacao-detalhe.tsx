@@ -3,9 +3,8 @@
 import { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd/client'
 import type { ReactNode } from 'react'
 
-import { Button, Card, CardHeader, Spinner, TFD_URGENCIA_CONFIG } from '@saude/ui'
+import { Card, CardHeader, TFD_URGENCIA_CONFIG } from '@saude/ui'
 import Link from 'next/link'
-import { useState, useTransition } from 'react'
 
 const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
   CONSULTA: 'Consulta',
@@ -67,37 +66,7 @@ export interface SolicitacaoDetalheProps {
 }
 
 export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
-  const [laudoError, setLaudoError] = useState<string | null>(null)
-  const [isLaudoPending, startLaudoTransition] = useTransition()
-
   const temDadosClinicos = solicitacao.cidPrincipal !== undefined
-
-  function handleVisualizarLaudo() {
-    if (!solicitacao.laudoAnexoId) {
-      return
-    }
-
-    setLaudoError(null)
-    startLaudoTransition(async () => {
-      try {
-        const response = await fetch(`/api/storage/download/${solicitacao.laudoAnexoId}`, {
-          method: 'GET',
-          credentials: 'include',
-        })
-
-        const body = (await response.json()) as { url?: string; error?: string }
-
-        if (!response.ok || !body.url) {
-          setLaudoError(body.error ?? 'Não foi possível abrir o laudo.')
-          return
-        }
-
-        window.open(body.url, '_blank', 'noopener,noreferrer')
-      } catch {
-        setLaudoError('Não foi possível abrir o laudo.')
-      }
-    })
-  }
 
   return (
     <Card
@@ -172,30 +141,6 @@ export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
               </DetalheCampo>
             ) : null}
           </dl>
-          {solicitacao.laudoAnexoId ? (
-            <div className="mt-[var(--space-4)]">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={handleVisualizarLaudo}
-                disabled={isLaudoPending}
-              >
-                {isLaudoPending ? (
-                  <>
-                    <Spinner className="mr-[var(--space-2)] size-4" />
-                    Abrindo laudo…
-                  </>
-                ) : (
-                  'Visualizar laudo'
-                )}
-              </Button>
-              {laudoError ? (
-                <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-danger)]" role="alert">
-                  {laudoError}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
         </section>
       ) : null}
     </Card>

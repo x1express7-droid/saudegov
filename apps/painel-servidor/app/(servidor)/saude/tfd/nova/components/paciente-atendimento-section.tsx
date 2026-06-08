@@ -139,8 +139,15 @@ function detalheToFormState(detalhe: TfdPacienteAtendimentoDetalhe): PacienteAte
 export interface PacienteAtendimentoSectionProps {
   initialDetalhe?: TfdPacienteAtendimentoDetalhe | null
   cadsusEnabled?: boolean
-  onPacienteSalvo: (pacienteId: string, detalhe: PacienteAtendimentoFormState) => void
+  onPacienteSalvo: (
+    pacienteId: string,
+    detalhe: PacienteAtendimentoFormState,
+    atualizado?: boolean
+  ) => void
   disabled?: boolean
+  variant?: 'atendimento' | 'cadastro'
+  /** Em modo cadastro, notifica o pai apenas ao salvar — não ao selecionar paciente existente. */
+  notificarSalvoApenasAoSalvar?: boolean
 }
 
 export function PacienteAtendimentoSection({
@@ -148,6 +155,8 @@ export function PacienteAtendimentoSection({
   cadsusEnabled = false,
   onPacienteSalvo,
   disabled = false,
+  variant = 'atendimento',
+  notificarSalvoApenasAoSalvar = false,
 }: PacienteAtendimentoSectionProps) {
   const [form, setForm] = useState<PacienteAtendimentoFormState>(() =>
     initialDetalhe ? detalheToFormState(initialDetalhe) : { ...EMPTY_STATE }
@@ -210,7 +219,9 @@ export function PacienteAtendimentoSection({
       }
       setForm(next)
       setResultados([])
-      onPacienteSalvo(response.data.id, next)
+      if (!notificarSalvoApenasAoSalvar) {
+        onPacienteSalvo(response.data.id, next)
+      }
     })
   }
 
@@ -245,7 +256,9 @@ export function PacienteAtendimentoSection({
         if (load.success) {
           const next = detalheToFormState(load.data)
           setForm(next)
-          onPacienteSalvo(load.data.id, next)
+          if (!notificarSalvoApenasAoSalvar) {
+            onPacienteSalvo(load.data.id, next)
+          }
         }
       } else {
         setErro(
@@ -281,6 +294,7 @@ export function PacienteAtendimentoSection({
 
   function handleSalvarPaciente() {
     setErro(null)
+    const atualizado = Boolean(form.pacienteId)
     startTransition(async () => {
       const response = await salvarPacienteAtendimentoTfd({
         pacienteId: form.pacienteId,
@@ -320,22 +334,37 @@ export function PacienteAtendimentoSection({
         return
       }
       setForm(next)
-      onPacienteSalvo(response.data.pacienteId, next)
+      onPacienteSalvo(response.data.pacienteId, next, atualizado)
     })
   }
 
+  const tituloCard =
+    variant === 'cadastro' ? 'Dados do paciente' : 'Identificação do paciente'
+  const descricaoCard =
+    variant === 'cadastro'
+      ? `Busque um paciente já cadastrado para editar ou preencha os campos para um novo cadastro na base do município. CPF e CNS são opcionais.${
+          cadsusEnabled
+            ? ' Com a integração CADSUS ativa, você também pode importar dados pelo CNS.'
+            : ''
+        }`
+      : `Busque por nome, CPF ou CNS na base do município ou cadastre um novo paciente preenchendo os campos abaixo. CPF e CNS são opcionais.${
+          cadsusEnabled
+            ? ' Com a integração CADSUS ativa, você também pode importar dados pelo CNS.'
+            : ''
+        }`
+  const rotuloSalvar =
+    variant === 'cadastro'
+      ? form.pacienteId
+        ? 'Salvar alterações'
+        : 'Cadastrar paciente'
+      : 'Salvar dados do paciente'
+
   return (
     <Card
-      header={<CardHeader>Identificação do paciente</CardHeader>}
+      header={<CardHeader>{tituloCard}</CardHeader>}
       bodyClassName={formFieldsStackClassName()}
     >
-        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-          Busque por nome, CPF ou CNS na base do município ou cadastre um novo paciente preenchendo os
-          campos abaixo. CPF e CNS são opcionais.
-          {cadsusEnabled
-            ? ' Com a integração CADSUS ativa, você também pode importar dados pelo CNS.'
-            : null}
-        </p>
+        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">{descricaoCard}</p>
 
         <div className="grid gap-5 md:grid-cols-[140px_1fr_auto]">
           <Select
@@ -595,11 +624,17 @@ export function PacienteAtendimentoSection({
             disabled={disabled || isPending || !form.nome.trim()}
             loading={isPending}
           >
-            Salvar dados do paciente
+            {rotuloSalvar}
           </Button>
           {form.pacienteId ? (
             <span className="self-center text-[length:var(--text-xs)] text-[var(--color-success)]">
-              Paciente vinculado ao município
+              {variant === 'cadastro'
+                ? 'Paciente selecionado — salve para confirmar as alterações'
+                : 'Paciente vinculado ao município'}
+            </span>
+          ) : variant === 'cadastro' ? (
+            <span className="self-center text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
+              Preencha os dados e salve para cadastrar na base do município
             </span>
           ) : (
             <span className="self-center text-[length:var(--text-xs)] text-[var(--color-text-muted)]">

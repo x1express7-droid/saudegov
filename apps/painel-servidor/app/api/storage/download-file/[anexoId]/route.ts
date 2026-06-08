@@ -88,11 +88,10 @@ export async function GET(
       select: {
         storage_path: true,
         mime_type: true,
-        confirmado: true,
       },
     })
 
-    if (!anexo?.confirmado) {
+    if (!anexo) {
       return jsonNotFound()
     }
 

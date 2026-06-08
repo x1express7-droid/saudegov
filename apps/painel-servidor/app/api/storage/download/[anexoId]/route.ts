@@ -1,7 +1,4 @@
-import {
-  hasPermission,
-  requireTenantRole,
-} from '@saude/core-auth/server'
+import { requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import {
   createAuditLog,
@@ -9,8 +6,9 @@ import {
   StorageNotFoundError,
   StorageValidationError,
 } from '@saude/core-documents'
-import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
 import { NextResponse } from 'next/server'
+
+const MODULO_TFD = 'saude.tfd'
 
 const UUID_REGEX =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
@@ -26,10 +24,6 @@ export async function GET(
   context: { params: Promise<{ anexoId: string }> }
 ): Promise<NextResponse> {
   const session = await requireTenantRole('SERVIDOR')
-
-  if (!hasPermission(session, TFD_PERMISSIONS.ANALISAR_LAUDO)) {
-    return jsonError('Sem permissão para visualizar o laudo.', 403)
-  }
 
   const { anexoId } = await context.params
 
@@ -50,11 +44,32 @@ export async function GET(
         id: anexoId,
         tenant_id: tenantId,
       },
-      select: { id: true },
+      select: { id: true, processo_id: true },
     })
 
-    if (!anexo) {
+    if (!anexo?.processo_id) {
       return jsonError('Anexo não encontrado.', 404)
+    }
+
+    const processo = await db.processo.findFirst({
+      where: {
+        id: anexo.processo_id,
+        tenant_id: tenantId,
+        modulo: MODULO_TFD,
+      },
+      select: { setor_id: true },
+    })
+
+    if (!processo) {
+      return jsonError('Anexo não encontrado.', 404)
+    }
+
+    if (
+      session.user.role === 'SERVIDOR' &&
+      session.user.setorId &&
+      processo.setor_id !== session.user.setorId
+    ) {
+      return jsonError('Sem permissão para visualizar o arquivo.', 403)
     }
 
     const { url, expiresAt } = await gerarUrlDownloadAnexo(

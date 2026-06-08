@@ -1,17 +1,16 @@
 'use client'
 
 import { TFD_SOLICITACOES_PATH } from '@/lib/tfd/routes'
-import { resolverProcessoIdSolicitacaoTfd } from '@/lib/actions/resolver-processo-solicitacao-tfd'
 import {
   abrirSolicitacaoSchema,
   type AbrirSolicitacaoInput,
+  type TfdCidListItem,
   type TfdEspecialidadeListItem,
-  type TfdPrestadorListItem,
   type TfdProcedimentoListItem,
   type TfdSolicitacaoOrigemRetornoItem,
 } from '@saude/mod-saude-tfd/client'
+import { TFD_TIPO_TRANSPORTE_RECOMENDADO_OPTIONS } from '@saude/mod-saude-tfd/client'
 import { abrirSolicitacaoTfd, enviarSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/solicitacao'
-import { salvarDadosClinicosTfd } from '@saude/mod-saude-tfd/actions/processo'
 import {
   Alert,
   Button,
@@ -35,79 +34,11 @@ import {
   type Resolver,
 } from 'react-hook-form'
 
+import { SolicitacaoAcompanhanteSection } from './solicitacao-acompanhante-section'
 import { SolicitacaoLaudoUpload } from './solicitacao-laudo-upload'
 import { SolicitacaoRetornoPicker } from './solicitacao-retorno-picker'
 
 const TFD_LIST_PATH = TFD_SOLICITACOES_PATH
-
-const SOAP_MAX_LENGTH = 5000
-
-interface SoapLocalState {
-  subjetivo: string
-  objetivo: string
-  avaliacao: string
-  plano: string
-  motivoQuadro: string
-  observacao: string
-}
-
-const SOAP_INITIAL: SoapLocalState = {
-  subjetivo: '',
-  objetivo: '',
-  avaliacao: '',
-  plano: '',
-  motivoQuadro: '',
-  observacao: '',
-}
-
-function hasSoapContent(soap: SoapLocalState): boolean {
-  return Boolean(
-    soap.subjetivo.trim() ||
-      soap.objetivo.trim() ||
-      soap.avaliacao.trim() ||
-      soap.plano.trim() ||
-      soap.motivoQuadro.trim() ||
-      soap.observacao.trim()
-  )
-}
-
-async function persistirDadosClinicosPosAbertura(
-  solicitacaoId: string,
-  processoIdConhecido: string | undefined,
-  soap: SoapLocalState
-): Promise<void> {
-  if (!hasSoapContent(soap)) {
-    return
-  }
-
-  let processoId = processoIdConhecido
-  if (!processoId) {
-    processoId = (await resolverProcessoIdSolicitacaoTfd(solicitacaoId)) ?? undefined
-  }
-
-  if (!processoId) {
-    console.error('[SolicitacaoForm] processoId não encontrado para salvar dados clínicos.')
-    return
-  }
-
-  try {
-    const result = await salvarDadosClinicosTfd({
-      processoId,
-      subjetivo: soap.subjetivo.trim() || undefined,
-      objetivo: soap.objetivo.trim() || undefined,
-      avaliacao: soap.avaliacao.trim() || undefined,
-      plano: soap.plano.trim() || undefined,
-      motivoQuadro: soap.motivoQuadro.trim() || undefined,
-      observacao: soap.observacao.trim() || undefined,
-    })
-
-    if (!result.success) {
-      console.error('[SolicitacaoForm] Falha ao salvar dados clínicos:', result.error)
-    }
-  } catch (error) {
-    console.error('[SolicitacaoForm] Erro ao salvar dados clínicos:', error)
-  }
-}
 
 const TIPO_ATENDIMENTO_OPTIONS = [
   { value: 'CONSULTA', label: 'Consulta' },
@@ -175,88 +106,10 @@ export interface SolicitacaoFormProps {
   paciente: SolicitacaoFormPaciente
   especialidades: TfdEspecialidadeListItem[]
   procedimentos: TfdProcedimentoListItem[]
-  prestadores: TfdPrestadorListItem[]
+  cids: TfdCidListItem[]
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
   /** Quando informado, vincula a solicitação a um processo TFD existente. */
   processoId?: string
-}
-
-function SoapFieldsSection({
-  soap,
-  onChange,
-  disabled,
-}: {
-  soap: SoapLocalState
-  onChange: (field: keyof SoapLocalState, value: string) => void
-  disabled?: boolean
-}) {
-  return (
-    <Card
-      header={<CardHeader>Dados clínicos (SOAP)</CardHeader>}
-      bodyClassName={formFieldsStackClassName()}
-    >
-      <Textarea
-        id="soap-subjetivo"
-        label="Subjetivo"
-        rows={3}
-        maxLength={SOAP_MAX_LENGTH}
-        placeholder="Relato do paciente / queixa principal"
-        value={soap.subjetivo}
-        onChange={(event) => onChange('subjetivo', event.target.value)}
-        disabled={disabled}
-      />
-      <Textarea
-        id="soap-objetivo"
-        label="Objetivo"
-        rows={3}
-        maxLength={SOAP_MAX_LENGTH}
-        placeholder="Dados objetivos observados"
-        value={soap.objetivo}
-        onChange={(event) => onChange('objetivo', event.target.value)}
-        disabled={disabled}
-      />
-      <Textarea
-        id="soap-avaliacao"
-        label="Avaliação"
-        rows={3}
-        maxLength={SOAP_MAX_LENGTH}
-        placeholder="Avaliação clínica"
-        value={soap.avaliacao}
-        onChange={(event) => onChange('avaliacao', event.target.value)}
-        disabled={disabled}
-      />
-      <Textarea
-        id="soap-plano"
-        label="Plano"
-        rows={3}
-        maxLength={SOAP_MAX_LENGTH}
-        placeholder="Plano de tratamento"
-        value={soap.plano}
-        onChange={(event) => onChange('plano', event.target.value)}
-        disabled={disabled}
-      />
-      <Textarea
-        id="soap-motivo-quadro"
-        label="Motivo/Quadro"
-        rows={3}
-        maxLength={SOAP_MAX_LENGTH}
-        placeholder="Motivo do encaminhamento / quadro clínico"
-        value={soap.motivoQuadro}
-        onChange={(event) => onChange('motivoQuadro', event.target.value)}
-        disabled={disabled}
-      />
-      <Textarea
-        id="soap-observacao"
-        label="Observação"
-        rows={3}
-        maxLength={SOAP_MAX_LENGTH}
-        placeholder="Observações adicionais"
-        value={soap.observacao}
-        onChange={(event) => onChange('observacao', event.target.value)}
-        disabled={disabled}
-      />
-    </Card>
-  )
 }
 
 function ProcedimentosCheckboxGroup({
@@ -334,7 +187,7 @@ export function SolicitacaoForm({
   paciente,
   especialidades,
   procedimentos,
-  prestadores,
+  cids,
   solicitacoesOrigem,
   processoId,
 }: SolicitacaoFormProps) {
@@ -344,17 +197,13 @@ export function SolicitacaoForm({
   const [successToast, setSuccessToast] = useState<string | null>(null)
   const [laudoAnexoIds, setLaudoAnexoIds] = useState<string[]>([])
   const [laudoError, setLaudoError] = useState<string | null>(null)
-  const [soap, setSoap] = useState<SoapLocalState>(SOAP_INITIAL)
-
-  function handleSoapChange(field: keyof SoapLocalState, value: string) {
-    setSoap((prev) => ({ ...prev, [field]: value }))
-  }
 
   const {
     register,
     handleSubmit,
     control,
     watch,
+    getValues,
     setValue,
     setError,
     clearErrors,
@@ -366,9 +215,11 @@ export function SolicitacaoForm({
       pacienteId: paciente.id,
       especialidadeId: '',
       procedimentos: [],
-      prestadorId: '',
       tipoAtendimento: 'CONSULTA',
       urgencia: 'BAIXA',
+      cidPrincipal: '',
+      diagnostico: '',
+      tipoTransporteRecomendado: undefined,
       acompanhanteNecessario: false,
       solicitacaoOrigemId: undefined,
       laudoAnexoIds: [],
@@ -378,6 +229,16 @@ export function SolicitacaoForm({
 
   const especialidadeId = watch('especialidadeId')
   const tipoAtendimento = watch('tipoAtendimento')
+  const acompanhanteNecessario = watch('acompanhanteNecessario')
+
+  useEffect(() => {
+    if (acompanhanteNecessario && !getValues('acompanhante')) {
+      setValue('acompanhante', {
+        pacienteId: undefined as never,
+        relacao: undefined as never,
+      })
+    }
+  }, [acompanhanteNecessario, getValues, setValue])
 
   const especialidadeObrigatoria =
     tipoAtendimento === 'CONSULTA' || tipoAtendimento === 'RETORNO'
@@ -404,24 +265,19 @@ export function SolicitacaoForm({
     [procedimentos, especialidadeId]
   )
 
-  const prestadorOptions = useMemo(
+  const cidOptions = useMemo(
     () =>
-      prestadores
-        .filter(
-          (item) =>
-            item.ativo &&
-            (especialidadeId ? item.especialidadeIds.includes(especialidadeId) : true)
-        )
+      cids
+        .filter((item) => item.ativo)
         .map((item) => ({
-          value: item.id,
-          label: `${item.nome} — ${item.cidade}/${item.estado}`,
+          value: item.codigo,
+          label: `${item.codigo} — ${item.descricao}`,
         })),
-    [prestadores, especialidadeId]
+    [cids]
   )
 
   useEffect(() => {
     setValue('procedimentos', [])
-    setValue('prestadorId', '')
   }, [especialidadeId, setValue])
 
   useEffect(() => {
@@ -453,7 +309,7 @@ export function SolicitacaoForm({
       }
 
       if (key.startsWith('acompanhante.')) {
-        const subKey = key.split('.')[1] as 'nome' | 'cpf' | 'relacao' | 'telefone'
+        const subKey = key.split('.')[1] as 'pacienteId' | 'cpf' | 'relacao' | 'telefone'
         setError(`acompanhante.${subKey}` as const, { message })
         continue
       }
@@ -467,11 +323,14 @@ export function SolicitacaoForm({
       ? values.especialidadeId
       : undefined
 
+    const cidPrincipalValue = values.cidPrincipal?.trim() ? values.cidPrincipal.trim() : undefined
+
     return {
       ...values,
       processoId: processoId ?? values.processoId,
       pacienteId: paciente.id,
       pacienteCpf: undefined,
+      cidPrincipal: cidPrincipalValue,
       especialidadeId: especialidadeIdValue,
       procedimentos: values.procedimentos ?? [],
       laudoAnexoIds: laudoAnexoIds.length > 0 ? laudoAnexoIds : (values.laudoAnexoIds ?? []),
@@ -479,11 +338,7 @@ export function SolicitacaoForm({
         values.tipoAtendimento === 'RETORNO' ? values.solicitacaoOrigemId : undefined,
       acompanhante:
         values.acompanhanteNecessario && values.acompanhante
-          ? ({
-              nome: values.acompanhante.nome,
-              relacao: 'OUTRO' as const,
-              telefone: values.acompanhante.telefone,
-            } as AbrirSolicitacaoInput['acompanhante'])
+          ? values.acompanhante
           : undefined,
     }
   }
@@ -501,12 +356,6 @@ export function SolicitacaoForm({
         }
         return
       }
-
-      await persistirDadosClinicosPosAbertura(
-        response.data.solicitacaoId,
-        processoId,
-        soap
-      )
 
       router.push(
         `${TFD_LIST_PATH}?rascunho=${encodeURIComponent(response.data.protocolo)}`
@@ -528,12 +377,6 @@ export function SolicitacaoForm({
         }
         return
       }
-
-      await persistirDadosClinicosPosAbertura(
-        abrirResponse.data.solicitacaoId,
-        processoId,
-        soap
-      )
 
       const enviarResponse = await enviarSolicitacaoTfd({
         solicitacaoId: abrirResponse.data.solicitacaoId,
@@ -631,19 +474,47 @@ export function SolicitacaoForm({
         ) : null}
 
         <Controller
-          name="prestadorId"
+          name="cidPrincipal"
           control={control}
           render={({ field }) => (
             <Combobox
-              id="prestador-id"
-              label="Prestador de destino"
-              required
-              placeholder="Selecione o prestador"
-              options={prestadorOptions}
-              value={field.value}
+              id="cid-principal"
+              label="CID"
+              placeholder="Selecione o CID (opcional)"
+              options={cidOptions}
+              value={field.value ?? ''}
               onChange={field.onChange}
-              disabled={isPending || (especialidadeObrigatoria && !especialidadeId)}
-              error={errors.prestadorId?.message}
+              disabled={isPending}
+              error={errors.cidPrincipal?.message}
+            />
+          )}
+        />
+
+        <Textarea
+          id="diagnostico-solicitacao"
+          label="Motivo/Diagnóstico/Justificativa"
+          rows={4}
+          required
+          placeholder="Descreva o motivo do encaminhamento, diagnóstico e justificativa clínica."
+          disabled={isPending}
+          {...register('diagnostico')}
+          error={errors.diagnostico?.message}
+        />
+
+        <Controller
+          name="tipoTransporteRecomendado"
+          control={control}
+          render={({ field }) => (
+            <Select
+              id="tipo-transporte-recomendado"
+              label="Tipo de transporte recomendado"
+              required
+              placeholder="Selecione o tipo de transporte"
+              options={[...TFD_TIPO_TRANSPORTE_RECOMENDADO_OPTIONS]}
+              value={field.value ?? ''}
+              onValueChange={field.onChange}
+              disabled={isPending}
+              error={errors.tipoTransporteRecomendado?.message}
             />
           )}
         />
@@ -666,7 +537,28 @@ export function SolicitacaoForm({
         />
       </Card>
 
-      <SoapFieldsSection soap={soap} onChange={handleSoapChange} disabled={isPending} />
+      <Card header={<CardHeader>Necessita de acompanhante</CardHeader>} bodyClassName={formFieldsStackClassName()}>
+        <label className="flex cursor-pointer items-center gap-[var(--space-2)]">
+          <input
+            type="checkbox"
+            className="size-4 accent-[var(--color-primary)]"
+            disabled={isPending}
+            {...register('acompanhanteNecessario')}
+          />
+          <span className="text-[length:var(--text-sm)] text-[var(--color-text)]">
+            Paciente necessita de acompanhante
+          </span>
+        </label>
+
+        <SolicitacaoAcompanhanteSection
+          control={control}
+          errors={errors}
+          watch={watch}
+          setValue={setValue}
+          pacienteId={paciente.id}
+          disabled={isPending}
+        />
+      </Card>
 
       {tipoAtendimento === 'RETORNO' ? (
         <Card header={<CardHeader>Retorno</CardHeader>} bodyClassName={formFieldsStackClassName()}>

@@ -22,6 +22,8 @@ import { seedSprint43TfdPlatformFeatures } from './seeds/sprint-4-3-platform-fea
 import { seedSprint46TfdPlatformFeatures } from './seeds/sprint-4-6-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 import { seedTfdCatalogoExemplo } from './seeds/tfd-catalogo-exemplo'
+import { seedTfdCidExemplo } from './seeds/tfd-cid-exemplo'
+import { seedTfdPrestacaoContasDemo } from './seeds/tfd-prestacao-contas-demo'
 
 const prisma = new PrismaClient()
 
@@ -585,18 +587,26 @@ async function main() {
       'saude.tfd.gerenciar_saldo': true,
       'saude.tfd.gerenciar_frota': true,
       'saude.tfd.decidir_solicitacao': true,
+      'saude.tfd.aprovar_prestacao': true,
       'saude.tfd.configurar_especialidades': true,
+      'saude.tfd.configurar_cids': true,
       'saude.tfd.configurar_procedimentos': true,
       'saude.tfd.configurar_prestadores': true,
     },
   })
 
-  await upsertUser({
+  const servidorCampograndemsUser = await upsertUser({
     tenantId: campograndems.id,
     email: 'servidor@campograndems.saudemunic.com.br',
     role: 'SERVIDOR',
     name: 'Servidor Campo Grande',
     passwordHash,
+    permissions: {
+      'saude.tfd.abrir_solicitacao': true,
+      'saude.tfd.registrar_retorno': true,
+      'saude.tfd.registrar_despesa': true,
+      'saude.tfd.enviar_prestacao': true,
+    },
   })
 
   await upsertUser({
@@ -621,34 +631,22 @@ async function main() {
     pacienteCns: '898001160660003',
   })
 
-  const servidorCampograndems = await prisma.user.findUnique({
+  await prisma.servidorSetor.upsert({
     where: {
-      tenant_id_email: {
-        tenant_id: campograndems.id,
-        email: 'servidor@campograndems.saudemunic.com.br',
+      user_id_setor_id: {
+        user_id: servidorCampograndemsUser.id,
+        setor_id: IDS.campograndems.setor,
       },
     },
-    select: { id: true },
+    update: { principal: true, ativo: true },
+    create: {
+      tenant_id: campograndems.id,
+      user_id: servidorCampograndemsUser.id,
+      setor_id: IDS.campograndems.setor,
+      principal: true,
+      ativo: true,
+    },
   })
-
-  if (servidorCampograndems) {
-    await prisma.servidorSetor.upsert({
-      where: {
-        user_id_setor_id: {
-          user_id: servidorCampograndems.id,
-          setor_id: IDS.campograndems.setor,
-        },
-      },
-      update: { principal: true, ativo: true },
-      create: {
-        tenant_id: campograndems.id,
-        user_id: servidorCampograndems.id,
-        setor_id: IDS.campograndems.setor,
-        principal: true,
-        ativo: true,
-      },
-    })
-  }
   await seedOrganograma(altamirapa.id, IDS.altamirapa, {
     withModuloTfd: false,
     pacienteCpf: '39053344705',
@@ -774,6 +772,28 @@ async function main() {
   console.log(
     '\n🏥 Catálogo TFD de exemplo: Cardiologia + Consulta em cardiologia + Hospital Universitário (SP).'
   )
+
+  await seedTfdCidExemplo(prisma, campograndems.id)
+  console.log('\n🩺 Catálogo CID de exemplo: 15 códigos CID-10 pré-cadastrados.')
+
+  const prestacaoDemo = await seedTfdPrestacaoContasDemo(prisma, {
+    tenantId: campograndems.id,
+    pacienteId: IDS.campograndems.paciente,
+    setorId: IDS.campograndems.setor,
+    unidadeId: IDS.campograndems.unidade,
+    servidorId: servidorCampograndemsUser.id,
+    gestorId: gestorCampograndems.id,
+  })
+  console.log('\n📑 Prestação de contas TFD (demo):')
+  console.log(
+    `  Cenário 1 — AGUARDANDO_PC (${prestacaoDemo.protocolos.solicitacaoAguardandoPc}):`
+  )
+  console.log(`    ${prestacaoDemo.urls.aguardandoPc}`)
+  console.log(
+    `  Cenário 2 — PC_EM_ANALISE (${prestacaoDemo.protocolos.solicitacaoEmAnalise}):`
+  )
+  console.log(`    ${prestacaoDemo.urls.emAnalise}`)
+  console.log(`  Central de gestão: ${prestacaoDemo.urls.gestaoCentral}`)
 
   console.log('✅ Seed concluído.')
   console.log('\n📋 Credenciais de desenvolvimento (senha: senha123):')

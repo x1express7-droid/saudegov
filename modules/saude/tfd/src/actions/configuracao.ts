@@ -6,12 +6,15 @@ import { getPrismaForTenant } from '@saude/core-db'
 import { createAuditLog } from '@saude/core-documents'
 import type { ActionResponse } from '@saude/validators'
 import {
+  atualizarCidSchema,
   atualizarEspecialidadeSchema,
   atualizarPrestadorSchema,
   atualizarProcedimentoSchema,
+  criarCidSchema,
   criarEspecialidadeSchema,
   criarPrestadorSchema,
   criarProcedimentoSchema,
+  desativarCidSchema,
   desativarEspecialidadeSchema,
   desativarPrestadorSchema,
   desativarProcedimentoSchema,
@@ -30,6 +33,7 @@ import type { PrismaClient } from '@saude/core-db'
 
 const STUB_ERROR = 'Funcionalidade em implementação.'
 const ESPECIALIDADES_PATH = '/saude/tfd/configuracoes/especialidades'
+const CIDS_PATH = '/saude/tfd/configuracoes/cids'
 const PROCEDIMENTOS_PATH = '/saude/tfd/configuracoes/procedimentos'
 const PRESTADORES_PATH = '/saude/tfd/configuracoes/prestadores'
 const VEICULOS_PATH = '/saude/tfd/configuracoes/veiculos'
@@ -338,6 +342,240 @@ export async function desativarEspecialidadeTfd(
     return {
       success: false,
       error: 'Não foi possível desativar a especialidade. Tente novamente.',
+    }
+  }
+}
+
+// --- CIDs ---
+
+async function getCidsAdminSession() {
+  await assertModuleActive('saude', 'tfd')
+  const session = await requireTenantRole('ADMIN')
+  await requirePermission(session, TFD_PERMISSIONS.CONFIGURAR_CIDS)
+  return session
+}
+
+const CID_DUPLICADO_MSG = 'Código CID já cadastrado para este município.'
+
+export async function criarCidTfd(rawInput: unknown): Promise<ActionResponse<{ id: string }>> {
+  const session = await getCidsAdminSession()
+
+  const parsed = criarCidSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const data = parsed.data
+  const tenantId = session.user.tenantId!
+
+  try {
+    const db = await getPrismaForTenant(tenantId)
+
+    const existing = await db.tfdCid.findFirst({
+      where: {
+        tenant_id: tenantId,
+        codigo: data.codigo,
+      },
+      select: { id: true },
+    })
+
+    if (existing) {
+      return { success: false, error: CID_DUPLICADO_MSG, fieldErrors: { codigo: [CID_DUPLICADO_MSG] } }
+    }
+
+    const created = await db.tfdCid.create({
+      data: {
+        tenant_id: tenantId,
+        codigo: data.codigo,
+        descricao: data.descricao.trim(),
+        ativo: true,
+      },
+      select: { id: true, codigo: true, descricao: true, ativo: true },
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_cids',
+      entidadeId: created.id,
+      payloadDepois: {
+        codigo: created.codigo,
+        descricao: created.descricao,
+        ativo: created.ativo,
+      },
+    })
+
+    revalidatePath(CIDS_PATH)
+    return { success: true, data: { id: created.id } }
+  } catch (error) {
+    console.error('[criarCidTfd] Erro:', {
+      tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível criar o CID. Tente novamente.',
+    }
+  }
+}
+
+export async function atualizarCidTfd(rawInput: unknown): Promise<ActionResponse<{ id: string }>> {
+  const session = await getCidsAdminSession()
+
+  const parsed = atualizarCidSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const { id, codigo, descricao, ativo } = parsed.data
+  const tenantId = session.user.tenantId!
+
+  if (codigo === undefined && descricao === undefined && ativo === undefined) {
+    return { success: false, error: 'Informe ao menos um campo para atualizar.' }
+  }
+
+  try {
+    const db = await getPrismaForTenant(tenantId)
+
+    const existing = await db.tfdCid.findFirst({
+      where: { id, tenant_id: tenantId },
+      select: { id: true, codigo: true, descricao: true, ativo: true },
+    })
+
+    if (!existing) {
+      return { success: false, error: 'CID não encontrado.' }
+    }
+
+    if (codigo !== undefined && codigo !== existing.codigo) {
+      const duplicado = await db.tfdCid.findFirst({
+        where: {
+          tenant_id: tenantId,
+          codigo,
+          id: { not: id },
+        },
+        select: { id: true },
+      })
+
+      if (duplicado) {
+        return { success: false, error: CID_DUPLICADO_MSG, fieldErrors: { codigo: [CID_DUPLICADO_MSG] } }
+      }
+    }
+
+    const updated = await db.tfdCid.update({
+      where: { id, tenant_id: tenantId },
+      data: {
+        ...(codigo !== undefined ? { codigo } : {}),
+        ...(descricao !== undefined ? { descricao: descricao.trim() } : {}),
+        ...(ativo !== undefined ? { ativo } : {}),
+      },
+      select: { id: true, codigo: true, descricao: true, ativo: true },
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_cids',
+      entidadeId: updated.id,
+      payloadAntes: {
+        codigo: existing.codigo,
+        descricao: existing.descricao,
+        ativo: existing.ativo,
+      },
+      payloadDepois: {
+        codigo: updated.codigo,
+        descricao: updated.descricao,
+        ativo: updated.ativo,
+      },
+    })
+
+    revalidatePath(CIDS_PATH)
+    return { success: true, data: { id: updated.id } }
+  } catch (error) {
+    console.error('[atualizarCidTfd] Erro:', {
+      tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível atualizar o CID. Tente novamente.',
+    }
+  }
+}
+
+export async function desativarCidTfd(rawInput: unknown): Promise<ActionResponse<void>> {
+  const session = await getCidsAdminSession()
+
+  const parsed = desativarCidSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const { id } = parsed.data
+  const tenantId = session.user.tenantId!
+
+  try {
+    const db = await getPrismaForTenant(tenantId)
+
+    const existing = await db.tfdCid.findFirst({
+      where: { id, tenant_id: tenantId },
+      select: { id: true, codigo: true, descricao: true, ativo: true },
+    })
+
+    if (!existing) {
+      return { success: false, error: 'CID não encontrado.' }
+    }
+
+    if (!existing.ativo) {
+      return { success: false, error: 'Este CID já está inativo.' }
+    }
+
+    await db.tfdCid.update({
+      where: { id, tenant_id: tenantId },
+      data: { ativo: false },
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_cids',
+      entidadeId: id,
+      payloadAntes: {
+        codigo: existing.codigo,
+        descricao: existing.descricao,
+        ativo: true,
+      },
+      payloadDepois: {
+        codigo: existing.codigo,
+        descricao: existing.descricao,
+        ativo: false,
+      },
+    })
+
+    revalidatePath(CIDS_PATH)
+    return { success: true, data: undefined }
+  } catch (error) {
+    console.error('[desativarCidTfd] Erro:', {
+      tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível desativar o CID. Tente novamente.',
     }
   }
 }

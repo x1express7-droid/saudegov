@@ -7,6 +7,7 @@ import {
 import {
   getAgendamentosPorProcesso,
   getDadosClinicosProcesso,
+  getProjecaoFinanceiraSolicitacao,
   getSolicitacaoTfd,
   getVeiculosAgendamentoTfd,
   getViagensSolicitacaoTfd,
@@ -35,6 +36,8 @@ import { notFound } from 'next/navigation'
 
 import { DadosClinicosSection } from './components/dados-clinicos-section'
 import { SolicitacaoAcoes } from './components/solicitacao-acoes'
+import { SolicitacaoAnexosSection } from './components/solicitacao-anexos-section'
+import { SolicitacaoProjecaoFinanceiraSection } from './components/solicitacao-projecao-financeira-section'
 import { SolicitacaoDetalhe } from './components/solicitacao-detalhe'
 import { SolicitacaoTimeline } from './components/solicitacao-timeline'
 
@@ -141,6 +144,13 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
     }
   }
 
+  const statusEncerrados = new Set(['CONCLUIDO', 'NEGADO', 'CANCELADO'])
+  const podeAnexarDocumentos =
+    !statusEncerrados.has(solicitacao.status) &&
+    (hasPermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO) ||
+      hasPermission(session, TFD_PERMISSIONS.ANALISAR_LAUDO) ||
+      session.user.id === solicitacao.solicitante.id)
+
   const podeVerDadosClinicos =
     hasPermission(session, TFD_PERMISSIONS.REGISTRAR_DADOS_CLINICOS) ||
     hasPermission(session, TFD_PERMISSIONS.ANALISAR_LAUDO)
@@ -153,6 +163,8 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
       dadosClinicos = null
     }
   }
+
+  const projecaoFinanceira = await getProjecaoFinanceiraSolicitacao(id)
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -193,6 +205,18 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
       <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
           <SolicitacaoDetalhe solicitacao={solicitacao} />
+          <SolicitacaoAnexosSection
+            solicitacaoId={solicitacao.id}
+            processoId={solicitacao.processoId}
+            podeAnexar={podeAnexarDocumentos}
+            anexos={solicitacao.anexos}
+          />
+          {projecaoFinanceira ? (
+            <SolicitacaoProjecaoFinanceiraSection
+              session={session}
+              projecao={projecaoFinanceira}
+            />
+          ) : null}
           {dadosClinicos ? (
             <DadosClinicosSection
               session={session}

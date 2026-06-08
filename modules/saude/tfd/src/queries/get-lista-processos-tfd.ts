@@ -150,15 +150,13 @@ export async function getListaProcessosTfd(
         },
         tfd_solicitacoes: {
           select: {
+            id: true,
+            protocolo: true,
             urgencia: true,
             status: true,
             updated_at: true,
           },
-        },
-        _count: {
-          select: {
-            tfd_solicitacoes: true,
-          },
+          orderBy: { created_at: 'desc' },
         },
       },
       orderBy: { updated_at: 'desc' },
@@ -178,7 +176,10 @@ export async function getListaProcessosTfd(
           nome: row.paciente.nome,
         }
       : null,
-    totalSolicitacoes: row._count.tfd_solicitacoes,
+    solicitacoes: row.tfd_solicitacoes.map((solicitacao) => ({
+      id: solicitacao.id,
+      protocolo: solicitacao.protocolo,
+    })),
     urgenciaMaisCritica: calcularUrgenciaMaisCritica(row.tfd_solicitacoes),
     statusSolicitacaoMaisRecente: calcularStatusSolicitacaoMaisRecente(row.tfd_solicitacoes),
     ultimaMovimentacaoEm: row.updated_at.toISOString(),

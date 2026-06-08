@@ -141,6 +141,9 @@ export {
   criarEspecialidadeSchema,
   atualizarEspecialidadeSchema,
   desativarEspecialidadeSchema,
+  criarCidSchema,
+  atualizarCidSchema,
+  desativarCidSchema,
   criarProcedimentoSchema,
   atualizarProcedimentoSchema,
   desativarProcedimentoSchema,
@@ -266,6 +269,9 @@ export type {
   CriarEspecialidadeInput,
   AtualizarEspecialidadeInput,
   DesativarEspecialidadeInput,
+  CriarCidInput,
+  AtualizarCidInput,
+  DesativarCidInput,
   CriarProcedimentoInput,
   AtualizarProcedimentoInput,
   DesativarProcedimentoInput,
@@ -284,6 +290,9 @@ export {
   criarEspecialidadeTfd,
   atualizarEspecialidadeTfd,
   desativarEspecialidadeTfd,
+  criarCidTfd,
+  atualizarCidTfd,
+  desativarCidTfd,
   criarProcedimentoTfd,
   atualizarProcedimentoTfd,
   desativarProcedimentoTfd,
@@ -355,6 +364,7 @@ export { getPacienteAtendimentoTfd } from './queries/get-paciente-atendimento'
 export { isCadsusEnabledForTenant } from './queries/is-cadsus-enabled'
 export {
   abrirSolicitacaoTfd,
+  anexarDocumentosSolicitacaoTfd,
   enviarSolicitacaoTfd,
   cancelarSolicitacaoTfd,
   reclassificarSolicitacaoTfd,
@@ -366,6 +376,12 @@ export {
   enviarComplementoTfd,
 } from './actions/regulacao'
 export { decidirSolicitacaoTfd } from './actions/decisao'
+export {
+  adicionarCustoPlanejadoSolicitacaoTfd,
+  atualizarCustoPlanejadoSolicitacaoTfd,
+  excluirCustoPlanejadoSolicitacaoTfd,
+  confirmarProjecaoFinanceiraSolicitacaoTfd,
+} from './actions/projecao-financeira'
 export {
   registrarDespesa,
   enviarPrestacaoContas,
@@ -451,6 +467,8 @@ export { getEspecialidadesTfd } from './queries/get-especialidades'
 export { getProcedimentosTfd } from './queries/get-procedimentos'
 export type { GetProcedimentosFiltros } from './queries/get-procedimentos'
 export { getPrestadoresTfd } from './queries/get-prestadores'
+export { getCidsTfd } from './queries/get-cids'
+export type { TfdCidListItem } from './queries/get-cids'
 export { getVeiculosTfd } from './queries/get-veiculos'
 export { getMotoristasTfd } from './queries/get-motoristas'
 export {
@@ -551,6 +569,8 @@ export type {
 export { getDashboardTfd } from './queries/get-dashboard-tfd'
 export { getDashboardFinanceiroTfd } from './queries/get-dashboard-financeiro-tfd'
 export { getDashboardTfdOperacional } from './queries/get-dashboard-tfd-operacional'
+export { getGestaoTfdCentral } from './queries/get-gestao-tfd-central'
+export { getProjecaoFinanceiraSolicitacao } from './queries/get-projecao-financeira-solicitacao'
 export { getAlertasUrgentesTfd } from './queries/get-alertas-urgentes'
 export { getAlertasPendente30Dias } from './queries/get-alertas-regulacao'
 export { getAlertasPendente60Dias } from './queries/get-alertas-pendente-60-dias'

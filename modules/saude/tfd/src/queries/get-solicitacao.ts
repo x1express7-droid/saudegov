@@ -82,6 +82,9 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
       processo: {
         select: { protocolo: true, id: true },
       },
+      saldo: {
+        select: { id: true, descricao: true },
+      },
       reservas: {
         orderBy: { created_at: 'desc' },
         take: 1,
@@ -114,6 +117,45 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
     session.user.role === 'SERVIDOR'
       ? { visivel_servidor: true }
       : {}
+
+  const anexosVinculados = await db.tfdSolicitacaoAnexo.findMany({
+    where: {
+      tenant_id: tenantId,
+      solicitacao_id: solicitacaoId,
+    },
+    select: {
+      created_at: true,
+      anexo: {
+        select: {
+          id: true,
+          nome_original: true,
+          mime_type: true,
+          created_at: true,
+        },
+      },
+    },
+    orderBy: { created_at: 'desc' },
+  })
+
+  const anexosRows =
+    anexosVinculados.length > 0
+      ? anexosVinculados
+          .map((vinculo) => vinculo.anexo)
+          .filter((anexo): anexo is NonNullable<typeof anexo> => anexo !== null)
+      : row.laudo_anexo_id
+        ? await db.anexo.findMany({
+            where: {
+              tenant_id: tenantId,
+              id: row.laudo_anexo_id,
+            },
+            select: {
+              id: true,
+              nome_original: true,
+              mime_type: true,
+              created_at: true,
+            },
+          })
+        : []
 
   const tramitacoesRows = await db.tramitacao.findMany({
     where: {
@@ -193,6 +235,12 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
       usuario: { nome: item.usuario?.name ?? null },
     })),
     laudoAnexoId: row.laudo_anexo_id,
+    anexos: anexosRows.map((anexo) => ({
+      id: anexo.id,
+      nomeOriginal: anexo.nome_original,
+      mimeType: anexo.mime_type,
+      createdAt: anexo.created_at.toISOString(),
+    })),
     observacoesClinicas: row.observacoes_abertura,
     solicitacaoOrigemId: row.solicitacao_origem_id,
     reservaSaldo: reserva
@@ -201,6 +249,9 @@ export async function getSolicitacaoTfd(solicitacaoId: string): Promise<TfdSolic
           valor: Number(reserva.valor_estimado),
           status: reserva.status,
         }
+      : null,
+    saldoVinculado: row.saldo
+      ? { id: row.saldo.id, descricao: row.saldo.descricao }
       : null,
     elegivelCancelamentoPrazoEsgotado,
   }

@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client'
 import { z } from 'zod'
 import {
   assertModuleActive,
+  hasPermission,
   requirePermission,
   requireTenantRole,
   type UserRole,
@@ -33,6 +34,7 @@ import {
 import { gerarProtocoloTfd } from '../utils/gerar-protocolo-tfd'
 import {
   abrirSolicitacaoSchema,
+  anexarDocumentosSolicitacaoSchema,
   cancelarSolicitacaoSchema,
   enviarSolicitacaoSchema,
   resolveMotivoCancelamentoTexto,
@@ -45,6 +47,7 @@ const MSG_PROCESSO_PACIENTE_DIVERGENTE =
   'O paciente da solicitação deve ser o mesmo vinculado ao processo.'
 const MSG_PROCESSO_ENCERRADO = 'Não é possível abrir solicitação em processo encerrado.'
 const PROCESSO_STATUS_ENCERRADOS = new Set(['CONCLUIDO', 'CANCELADO', 'ARQUIVADO'])
+const SOLICITACAO_STATUS_ENCERRADOS = new Set(['CONCLUIDO', 'NEGADO', 'CANCELADO'])
 
 const reclassificarUrgenciaValues = ['NAO_AGUDA', 'BAIXA', 'INTERMEDIARIA', 'GRAVE'] as const
 
@@ -122,6 +125,47 @@ class SolicitacaoBusinessError extends Error {
   }
 }
 
+async function vincularAnexosSolicitacao(
+  tx: PrismaTransactionClient,
+  tenantId: string,
+  solicitacaoId: string,
+  processoId: string,
+  anexoIds: string[]
+): Promise<void> {
+  const ids = [...new Set(anexoIds)]
+  if (ids.length === 0) {
+    return
+  }
+
+  const count = await tx.anexo.count({
+    where: {
+      tenant_id: tenantId,
+      id: { in: ids },
+    },
+  })
+
+  if (count !== ids.length) {
+    throw new SolicitacaoBusinessError('Um ou mais arquivos não foram encontrados.')
+  }
+
+  await tx.anexo.updateMany({
+    where: {
+      id: { in: ids },
+      tenant_id: tenantId,
+    },
+    data: { processo_id: processoId, confirmado: true },
+  })
+
+  await tx.tfdSolicitacaoAnexo.createMany({
+    data: ids.map((anexoId) => ({
+      tenant_id: tenantId,
+      solicitacao_id: solicitacaoId,
+      anexo_id: anexoId,
+    })),
+    skipDuplicates: true,
+  })
+}
+
 type ReservaLockedRow = {
   id: string
   saldo_id: string
@@ -170,14 +214,14 @@ async function validarReferenciasAbertura(
   data: {
     pacienteId: string
     especialidadeId?: string
-    prestadorId: string
     procedimentos: string[]
     tipoAtendimento: 'CONSULTA' | 'RETORNO' | 'EXAME' | 'CIRURGIA'
     solicitacaoOrigemId?: string
     laudoAnexoIds?: string[]
+    cidPrincipal?: string
     acompanhanteNecessario: boolean
     acompanhante?: {
-      nome: string
+      pacienteId: string
       cpf?: string
       relacao: 'CONJUGE' | 'FILHO_A' | 'PAI_MAE' | 'RESPONSAVEL_LEGAL' | 'CUIDADOR' | 'OUTRO'
       telefone?: string
@@ -200,17 +244,56 @@ async function validarReferenciasAbertura(
     throw new SolicitacaoBusinessError('Paciente não encontrado.')
   }
 
-  if (data.acompanhanteNecessario && data.acompanhante?.cpf) {
-    if (!paciente.cpf) {
+  if (data.cidPrincipal) {
+    const cid = await tx.tfdCid.findFirst({
+      where: {
+        tenant_id: tenantId,
+        codigo: data.cidPrincipal,
+        ativo: true,
+      },
+      select: { codigo: true },
+    })
+
+    if (!cid) {
+      throw new SolicitacaoBusinessError('CID inválido ou inativo.')
+    }
+  }
+
+  if (data.acompanhanteNecessario && data.acompanhante) {
+    if (data.acompanhante.pacienteId === data.pacienteId) {
       throw new SolicitacaoBusinessError(
-        'Paciente sem CPF cadastrado. Atualize o cadastro antes de informar CPF do acompanhante.'
+        'O acompanhante deve ser diferente do paciente da solicitação.'
       )
     }
 
-    if (!cpfsAcompanhanteEDiferenteDoPaciente(paciente.cpf, data.acompanhante.cpf)) {
-      throw new SolicitacaoBusinessError(
-        'CPF do acompanhante deve ser diferente do CPF do paciente.'
-      )
+    const pacienteAcompanhante = await tx.paciente.findFirst({
+      where: {
+        id: data.acompanhante.pacienteId,
+        tenant_id: tenantId,
+        ativo: true,
+      },
+      select: {
+        id: true,
+        cpf: true,
+      },
+    })
+
+    if (!pacienteAcompanhante) {
+      throw new SolicitacaoBusinessError('Paciente acompanhante não encontrado ou inativo.')
+    }
+
+    if (data.acompanhante.cpf) {
+      if (!paciente.cpf) {
+        throw new SolicitacaoBusinessError(
+          'Paciente sem CPF cadastrado. Atualize o cadastro antes de informar CPF do acompanhante.'
+        )
+      }
+
+      if (!cpfsAcompanhanteEDiferenteDoPaciente(paciente.cpf, data.acompanhante.cpf)) {
+        throw new SolicitacaoBusinessError(
+          'CPF do acompanhante deve ser diferente do CPF do paciente.'
+        )
+      }
     }
   }
 
@@ -253,28 +336,6 @@ async function validarReferenciasAbertura(
     }
 
     especialidadeNome = especialidade.nome
-  }
-
-  const prestador = await tx.tfdPrestador.findFirst({
-    where: {
-      id: data.prestadorId,
-      tenant_id: tenantId,
-      ativo: true,
-    },
-    select: { id: true, especialidades: true },
-  })
-
-  if (!prestador) {
-    throw new SolicitacaoBusinessError('Prestador inválido ou inativo.')
-  }
-
-  if (data.especialidadeId) {
-    const especialidadesPrestador = parsePrestadorEspecialidades(prestador.especialidades)
-    if (!especialidadesPrestador.includes(data.especialidadeId)) {
-      throw new SolicitacaoBusinessError(
-        'O prestador selecionado não atende a especialidade informada.'
-      )
-    }
   }
 
   const procedimentosUnicos = [...new Set(data.procedimentos)]
@@ -350,11 +411,11 @@ export async function abrirSolicitacaoTfd(
       const { especialidadeNome } = await validarReferenciasAbertura(tx, tenantId, {
         pacienteId: data.pacienteId,
         especialidadeId: data.especialidadeId,
-        prestadorId: data.prestadorId,
         procedimentos,
         tipoAtendimento: data.tipoAtendimento,
         solicitacaoOrigemId: data.solicitacaoOrigemId,
         laudoAnexoIds: data.laudoAnexoIds,
+        cidPrincipal: data.cidPrincipal,
         acompanhanteNecessario: data.acompanhanteNecessario,
         acompanhante: data.acompanhante,
       })
@@ -435,12 +496,15 @@ export async function abrirSolicitacaoTfd(
           paciente_id: data.pacienteId,
           solicitante_id: session.user.id,
           especialidade_id: data.especialidadeId ?? null,
-          prestador_id: data.prestadorId,
+          prestador_id: null,
           procedimentos,
           tipo_atendimento: data.tipoAtendimento,
           solicitacao_origem_id: data.solicitacaoOrigemId ?? null,
           urgencia: data.urgencia,
           status: 'RASCUNHO',
+          cid_principal: data.cidPrincipal ?? null,
+          diagnostico: data.diagnostico.trim(),
+          tipo_transporte_recomendado: data.tipoTransporteRecomendado,
           laudo_anexo_id: data.laudoAnexoIds[0] ?? null,
           acompanhante_necessario: data.acompanhanteNecessario,
           observacoes_abertura: data.observacoesAbertura?.trim() || null,
@@ -448,25 +512,46 @@ export async function abrirSolicitacaoTfd(
       })
 
       const laudoIdsUnicos = [...new Set(data.laudoAnexoIds ?? [])]
-      if (laudoIdsUnicos.length > 0) {
-        await tx.anexo.updateMany({
-          where: {
-            id: { in: laudoIdsUnicos },
-            tenant_id: tenantId,
-          },
-          data: { processo_id: processoId },
-        })
-      }
+      await vincularAnexosSolicitacao(
+        tx,
+        tenantId,
+        solicitacao.id,
+        processoId,
+        laudoIdsUnicos
+      )
 
       if (data.acompanhanteNecessario && data.acompanhante) {
+        const pacienteAcompanhante = await tx.paciente.findFirst({
+          where: {
+            id: data.acompanhante.pacienteId,
+            tenant_id: tenantId,
+            ativo: true,
+          },
+          select: {
+            nome: true,
+            cpf: true,
+            telefone: true,
+            telefone_celular: true,
+          },
+        })
+
+        if (!pacienteAcompanhante) {
+          throw new SolicitacaoBusinessError('Paciente acompanhante não encontrado ou inativo.')
+        }
+
         await tx.tfdAcompanhante.create({
           data: {
             tenant_id: tenantId,
             solicitacao_id: solicitacao.id,
-            nome: data.acompanhante.nome,
-            cpf: data.acompanhante.cpf ?? null,
+            paciente_id: data.acompanhante.pacienteId,
+            nome: pacienteAcompanhante.nome,
+            cpf: data.acompanhante.cpf ?? pacienteAcompanhante.cpf ?? null,
             relacao: data.acompanhante.relacao,
-            telefone: data.acompanhante.telefone ?? null,
+            telefone:
+              data.acompanhante.telefone ??
+              pacienteAcompanhante.telefone_celular ??
+              pacienteAcompanhante.telefone ??
+              null,
           },
         })
       }
@@ -535,6 +620,101 @@ export async function abrirSolicitacaoTfd(
   }
 }
 
+export async function anexarDocumentosSolicitacaoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+
+  const parsed = anexarDocumentosSolicitacaoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const { solicitacaoId, anexoIds } = parsed.data
+  const tenantId = session.user.tenantId!
+
+  try {
+    const db = await getPrismaForTenant(tenantId)
+
+    const solicitacao = await db.tfdSolicitacao.findFirst({
+      where: {
+        id: solicitacaoId,
+        tenant_id: tenantId,
+        ...(session.user.role === 'SERVIDOR' && session.user.setorId
+          ? { processo: { setor_id: session.user.setorId } }
+          : {}),
+      },
+      select: {
+        id: true,
+        processo_id: true,
+        status: true,
+        solicitante_id: true,
+        laudo_anexo_id: true,
+      },
+    })
+
+    if (!solicitacao) {
+      return { success: false, error: 'Solicitação não encontrada.' }
+    }
+
+    if (SOLICITACAO_STATUS_ENCERRADOS.has(solicitacao.status)) {
+      return {
+        success: false,
+        error: 'Não é possível anexar documentos em solicitação encerrada.',
+      }
+    }
+
+    const podeAnexar =
+      hasPermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO) ||
+      hasPermission(session, TFD_PERMISSIONS.ANALISAR_LAUDO) ||
+      session.user.id === solicitacao.solicitante_id
+
+    if (!podeAnexar) {
+      return { success: false, error: 'Sem permissão para anexar documentos nesta solicitação.' }
+    }
+
+    await db.$transaction(async (tx) => {
+      await vincularAnexosSolicitacao(
+        tx,
+        tenantId,
+        solicitacao.id,
+        solicitacao.processo_id,
+        anexoIds
+      )
+
+      if (!solicitacao.laudo_anexo_id && anexoIds.length > 0) {
+        await tx.tfdSolicitacao.update({
+          where: { id: solicitacao.id, tenant_id: tenantId },
+          data: { laudo_anexo_id: anexoIds[0] },
+        })
+      }
+    })
+
+    revalidateSolicitacaoPaths(solicitacaoId)
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof SolicitacaoBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[anexarDocumentosSolicitacaoTfd] Erro:', {
+      tenantId,
+      solicitacaoId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível anexar os documentos. Tente novamente.',
+    }
+  }
+}
+
 export async function enviarSolicitacaoTfd(
   rawInput: unknown
 ): Promise<ActionResponse<EnviarSolicitacaoOutput>> {
@@ -594,22 +774,6 @@ export async function enviarSolicitacaoTfd(
       return {
         success: false,
         error: `A solicitação não pode ser enviada no status "${statusLabel}". Apenas rascunhos podem ser enviados.`,
-      }
-    }
-
-    const laudosProcesso = await db.anexo.findMany({
-      where: {
-        tenant_id: tenantId,
-        processo_id: solicitacao.processo_id,
-      },
-      select: { id: true, confirmado: true },
-    })
-
-    const laudoNaoConfirmado = laudosProcesso.find((anexo) => !anexo.confirmado)
-    if (laudoNaoConfirmado) {
-      return {
-        success: false,
-        error: 'Todos os laudos médicos precisam estar confirmados no storage antes do envio.',
       }
     }
 

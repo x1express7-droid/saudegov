@@ -1,8 +1,9 @@
 'use client'
 
 import type { TfdPacienteVinculadoItem } from '@saude/mod-saude-tfd/client'
-import { Badge, DataTable, type ColumnDef } from '@saude/ui'
+import { Badge, Button, DataTable, type ColumnDef } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
+import { Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { ptBR } from 'date-fns/locale'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
@@ -39,12 +40,14 @@ export interface PacientesVinculadosListaProps {
   items: TfdPacienteVinculadoItem[]
   total: number
   podeVerPerfilPaciente: boolean
+  podeEditarPaciente?: boolean
 }
 
 export function PacientesVinculadosLista({
   items,
   total,
   podeVerPerfilPaciente,
+  podeEditarPaciente = false,
 }: PacientesVinculadosListaProps) {
   const router = useRouter()
   const pathname = usePathname()
@@ -118,8 +121,35 @@ export function PacientesVinculadosLista({
             </Badge>
           ),
       },
+      ...(podeEditarPaciente
+        ? [
+            {
+              id: 'acoes',
+              header: 'Ações',
+              cell: ({ row }: { row: { original: TfdPacienteVinculadoItem } }) => {
+                const item = row.original
+                return (
+                  <Button
+                    asChild
+                    variant="ghost"
+                    className="min-h-0 min-w-0 px-[var(--space-2)] py-[var(--space-1)]"
+                  >
+                    <Link
+                      href={`/saude/tfd/pacientes/novo?pacienteId=${item.id}`}
+                      aria-label={`Editar paciente ${item.nome}`}
+                      onClick={(event) => event.stopPropagation()}
+                    >
+                      <Pencil className="size-4" aria-hidden="true" />
+                      Editar paciente
+                    </Link>
+                  </Button>
+                )
+              },
+            } satisfies ColumnDef<TfdPacienteVinculadoItem>,
+          ]
+        : []),
     ],
-    [podeVerPerfilPaciente]
+    [podeEditarPaciente, podeVerPerfilPaciente]
   )
 
   return (
@@ -129,7 +159,7 @@ export function PacientesVinculadosLista({
       pagination={{ page, perPage, total }}
       onPaginationChange={handlePaginationChange}
       emptyMessage="Nenhum paciente vinculado encontrado"
-      emptyDescription="Nenhum paciente cadastrado. Use «Novo cadastro / atendimento TFD» para registrar na base do município."
+      emptyDescription="Nenhum paciente cadastrado. Use «Cadastrar ou editar» para registrar na base do município."
     />
   )
 }

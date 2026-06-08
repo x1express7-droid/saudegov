@@ -7,7 +7,7 @@ import {
 import type { StorageMimeType } from '@saude/core-documents/storage-types'
 import { Alert, FileUpload, Spinner } from '@saude/ui'
 import { FileText, X } from 'lucide-react'
-import { useCallback, useId, useState } from 'react'
+import { useCallback, useEffect, useId, useRef, useState } from 'react'
 
 /** Alinhado a `packages/core-documents/src/storage.ts` e `.cursorrules`. */
 const MAX_FILE_SIZE_MB = 10
@@ -83,7 +83,7 @@ function getCompletedAnexoIds(items: LaudoUploadItem[]): string[] {
 const ITEM_STATE_LABEL: Record<LaudoItemState, string> = {
   idle: '',
   enviando: 'Enviando…',
-  concluido: 'Confirmado',
+  concluido: 'Enviado',
   erro: 'Falha no envio',
 }
 
@@ -91,36 +91,35 @@ export interface SolicitacaoLaudoUploadProps {
   processoId?: string | null
   disabled?: boolean
   onUploadComplete: (anexoIds: string[]) => void
+  mensagemConcluido?: string
 }
 
 export function SolicitacaoLaudoUpload({
   processoId = null,
   disabled = false,
   onUploadComplete,
+  mensagemConcluido = 'Laudo enviado. Será vinculado à solicitação ao salvar ou enviar.',
 }: SolicitacaoLaudoUploadProps) {
   const listId = useId()
   const [items, setItems] = useState<LaudoUploadItem[]>([])
   const [pickerResetKey, setPickerResetKey] = useState(0)
+  const lastNotifiedIdsRef = useRef('')
 
-  const notifyCompleted = useCallback(
-    (nextItems: LaudoUploadItem[]) => {
-      onUploadComplete(getCompletedAnexoIds(nextItems))
-    },
-    [onUploadComplete]
-  )
+  useEffect(() => {
+    const completedIds = getCompletedAnexoIds(items)
+    const signature = completedIds.join(',')
+    if (signature === lastNotifiedIdsRef.current) {
+      return
+    }
+    lastNotifiedIdsRef.current = signature
+    onUploadComplete(completedIds)
+  }, [items, onUploadComplete])
 
-  const updateItem = useCallback(
-    (localId: string, patch: Partial<LaudoUploadItem>) => {
-      setItems((current) => {
-        const next = current.map((item) =>
-          item.localId === localId ? { ...item, ...patch } : item
-        )
-        notifyCompleted(next)
-        return next
-      })
-    },
-    [notifyCompleted]
-  )
+  const updateItem = useCallback((localId: string, patch: Partial<LaudoUploadItem>) => {
+    setItems((current) =>
+      current.map((item) => (item.localId === localId ? { ...item, ...patch } : item))
+    )
+  }, [])
 
   const uploadItem = useCallback(
     async (localId: string, file: File) => {
@@ -162,12 +161,8 @@ export function SolicitacaoLaudoUpload({
           updateItem(localId, { progress: percent })
         })
 
-        const confirmResponse = await confirmarUploadAction({ anexoId: novoAnexoId })
-
-        if (!confirmResponse.success) {
-          updateItem(localId, { state: 'erro', errorMessage: confirmResponse.error })
-          return
-        }
+        // Confirmação técnica no storage (opcional); o anexo já pode ser vinculado à solicitação.
+        await confirmarUploadAction({ anexoId: novoAnexoId }).catch(() => undefined)
 
         updateItem(localId, {
           state: 'concluido',
@@ -202,20 +197,15 @@ export function SolicitacaoLaudoUpload({
     [uploadItem]
   )
 
-  const handleRemoveItem = useCallback(
-    (localId: string) => {
-      setItems((current) => {
-        const item = current.find((entry) => entry.localId === localId)
-        if (!item || item.state === 'enviando') {
-          return current
-        }
-        const next = current.filter((entry) => entry.localId !== localId)
-        notifyCompleted(next)
-        return next
-      })
-    },
-    [notifyCompleted]
-  )
+  const handleRemoveItem = useCallback((localId: string) => {
+    setItems((current) => {
+      const item = current.find((entry) => entry.localId === localId)
+      if (!item || item.state === 'enviando') {
+        return current
+      }
+      return current.filter((entry) => entry.localId !== localId)
+    })
+  }, [])
 
   const hasUploadInProgress = items.some((item) => item.state === 'enviando')
   const uploadDisabled = disabled || hasUploadInProgress
@@ -304,7 +294,7 @@ export function SolicitacaoLaudoUpload({
 
                 {item.state === 'concluido' ? (
                   <p className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                    Laudo confirmado. Será vinculado à solicitação ao salvar ou enviar.
+                    {mensagemConcluido}
                   </p>
                 ) : null}
               </li>
@@ -316,8 +306,8 @@ export function SolicitacaoLaudoUpload({
       {getCompletedAnexoIds(items).length > 0 ? (
         <Alert variant="success">
           {getCompletedAnexoIds(items).length === 1
-            ? '1 laudo enviado e confirmado com sucesso.'
-            : `${getCompletedAnexoIds(items).length} laudos enviados e confirmados com sucesso.`}
+            ? '1 laudo anexado com sucesso.'
+            : `${getCompletedAnexoIds(items).length} laudos anexados com sucesso.`}
         </Alert>
       ) : null}
     </div>

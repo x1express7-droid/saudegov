@@ -165,6 +165,37 @@ export const desativarEspecialidadeSchema = z.object({
   id: idField,
 })
 
+// --- CIDs ---
+
+const cidCodigoField = z
+  .string()
+  .trim()
+  .min(1, 'Informe o código do CID.')
+  .max(10, 'Código do CID deve ter no máximo 10 caracteres.')
+  .transform((value) => value.toUpperCase())
+
+const cidDescricaoField = z
+  .string()
+  .trim()
+  .min(3, 'Descrição deve ter pelo menos 3 caracteres.')
+  .max(500, 'Descrição deve ter no máximo 500 caracteres.')
+
+export const criarCidSchema = z.object({
+  codigo: cidCodigoField,
+  descricao: cidDescricaoField,
+})
+
+export const atualizarCidSchema = z.object({
+  id: idField,
+  codigo: cidCodigoField.optional(),
+  descricao: cidDescricaoField.optional(),
+  ativo: z.boolean().optional(),
+})
+
+export const desativarCidSchema = z.object({
+  id: idField,
+})
+
 // --- Procedimentos ---
 
 export const criarProcedimentoSchema = z.object({
@@ -302,6 +333,10 @@ export const desativarMotoristaSchema = z.object({
 export type CriarEspecialidadeInput = z.infer<typeof criarEspecialidadeSchema>
 export type AtualizarEspecialidadeInput = z.infer<typeof atualizarEspecialidadeSchema>
 export type DesativarEspecialidadeInput = z.infer<typeof desativarEspecialidadeSchema>
+
+export type CriarCidInput = z.infer<typeof criarCidSchema>
+export type AtualizarCidInput = z.infer<typeof atualizarCidSchema>
+export type DesativarCidInput = z.infer<typeof desativarCidSchema>
 
 export type CriarProcedimentoInput = z.infer<typeof criarProcedimentoSchema>
 export type AtualizarProcedimentoInput = z.infer<typeof atualizarProcedimentoSchema>

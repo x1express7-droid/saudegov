@@ -5,13 +5,12 @@ import {
   requireTenantRole,
 } from '@saude/core-auth/server'
 import {
+  getCidsTfd,
   getEspecialidadesTfd,
   getPacienteAtendimentoTfd,
-  getPrestadoresTfd,
   getProcessoTfdDetalhe,
   getProcedimentosTfd,
   getSolicitacoesOrigemRetornoTfd,
-  isCadsusEnabledForTenant,
   TFD_CATALOGO_OPCOES_PER_PAGE,
   TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
@@ -77,24 +76,21 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
 
   const pacienteIdForOrigem = initialPaciente?.id
 
-  const tenantId = tenant.id
-
-  const [especialidadesResult, procedimentosResult, prestadoresResult, solicitacoesOrigem, cadsusEnabled] =
+  const [especialidadesResult, procedimentosResult, cidsResult, solicitacoesOrigem] =
     await Promise.all([
       getEspecialidadesTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
       getProcedimentosTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
-      getPrestadoresTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
+      getCidsTfd({ ativo: true, perPage: 500 }),
       pacienteIdForOrigem
         ? getSolicitacoesOrigemRetornoTfd({ pacienteId: pacienteIdForOrigem })
         : Promise.resolve([]),
-      isCadsusEnabledForTenant(tenantId),
     ])
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
         titulo="Atendimento da Solicitação TFD"
-        subtitulo="Identifique o paciente, revise os dados cadastrais e registre a solicitação de Tratamento Fora de Domicílio."
+        subtitulo="Busque o paciente cadastrado na base do município e registre a solicitação de Tratamento Fora de Domicílio."
         breadcrumbs={[
           { label: 'Processos TFD', href: '/saude/tfd/processos' },
           ...(processoId
@@ -107,10 +103,9 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
       <AtendimentoTfdForm
         initialPaciente={initialPaciente}
         processoId={processoId}
-        cadsusEnabled={cadsusEnabled}
         especialidades={especialidadesResult.items}
         procedimentos={procedimentosResult.items}
-        prestadores={prestadoresResult.items}
+        cids={cidsResult.items}
         solicitacoesOrigem={solicitacoesOrigem}
       />
     </div>

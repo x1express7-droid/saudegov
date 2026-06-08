@@ -351,8 +351,15 @@ export interface TfdSolicitacaoDetalhe {
     usuario: { nome: string | null }
   }>
   laudoAnexoId: string | null
+  anexos: Array<{
+    id: string
+    nomeOriginal: string
+    mimeType: string
+    createdAt: string
+  }>
   solicitacaoOrigemId: string | null
   reservaSaldo: { id: string; valor: number; status: string } | null
+  saldoVinculado: { id: string; descricao: string } | null
   /** `true` quando status `PENDENTE` e complemento solicitado há ≥ 60 dias (§1.9). */
   elegivelCancelamentoPrazoEsgotado: boolean
   cidPrincipal?: string | null
@@ -592,6 +599,79 @@ export interface TfdDashboardOperacionalOutput {
     agendamentosSemTransporte: TfdAlertaAgendamentoSemTransporte[]
   }
   atividadeRecente: TfdAtividadeRecenteItem[]
+}
+
+// --- Projeção financeira (custos planejados por solicitação) ---
+
+export interface TfdCustoPlanejadoItem {
+  id: string
+  descricao: string
+  valor: number
+  createdAt: string
+  updatedAt: string
+}
+
+export interface TfdProjecaoFinanceiraOutput {
+  solicitacaoId: string
+  status: string
+  custos: TfdCustoPlanejadoItem[]
+  valorTotal: number
+  reservaAtiva: {
+    id: string
+    valor: number
+    status: string
+    saldoId: string
+    confirmadaEm: string
+  } | null
+  saldoVinculado: { id: string; descricao: string } | null
+  podeEditar: boolean
+  podeConfirmar: boolean
+  aguardandoAprovacaoParaConfirmar: boolean
+  projecaoConfirmada: boolean
+  saldosDisponiveis: SaldoListItem[]
+}
+
+// --- Central de Gestão TFD ---
+
+export type GestaoTfdInboxPrioridade = 'critica' | 'alta' | 'media' | 'baixa'
+
+export type GestaoTfdInboxCategoria =
+  | 'regulacao'
+  | 'transporte'
+  | 'financeiro'
+  | 'prestacao'
+  | 'complemento'
+
+export interface GestaoTfdInboxItem {
+  id: string
+  prioridade: GestaoTfdInboxPrioridade
+  categoria: GestaoTfdInboxCategoria
+  titulo: string
+  descricao: string
+  protocolo: string | null
+  pacienteNomeParcial: string | null
+  href: string
+  referenciaEm: string | null
+}
+
+export interface GestaoTfdCentralAlertasGestor {
+  alertasUrgentes: TfdAlertaUrgente[]
+  saldosEmAlerta: TfdDashboardSaldoItem[]
+  alertasPrestacao: AlertaPrestacaoPrazo[]
+  alertasPendente30: AlertaPendente30Dias[]
+  alertasPendente60: AlertaPendente60Dias[]
+  alertasLembreteViagem: AlertaLembreteViagemFalhou[]
+}
+
+export interface GestaoTfdCentralOutput {
+  isGestorView: boolean
+  kpis: TfdDashboardOperacionalKpis
+  inbox: GestaoTfdInboxItem[]
+  alertasOperacional: TfdDashboardOperacionalOutput['alertas']
+  alertasGestor: GestaoTfdCentralAlertasGestor | null
+  atividadeRecente: TfdAtividadeRecenteItem[]
+  totalInbox: number
+  inboxPorCategoria: Record<GestaoTfdInboxCategoria, number>
 }
 
 // --- Sprint 1.8: Relatórios ---
@@ -914,7 +994,10 @@ export interface ProcessoTfdListItem {
     id: string
     nome: string
   } | null
-  totalSolicitacoes: number
+  solicitacoes: Array<{
+    id: string
+    protocolo: string
+  }>
   urgenciaMaisCritica: string | null
   statusSolicitacaoMaisRecente: string | null
   ultimaMovimentacaoEm: string

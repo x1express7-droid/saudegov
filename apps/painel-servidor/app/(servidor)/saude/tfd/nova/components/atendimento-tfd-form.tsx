@@ -2,8 +2,8 @@
 
 import type { TfdPacienteAtendimentoDetalhe } from '@saude/mod-saude-tfd/client'
 import type {
+  TfdCidListItem,
   TfdEspecialidadeListItem,
-  TfdPrestadorListItem,
   TfdProcedimentoListItem,
   TfdSolicitacaoOrigemRetornoItem,
 } from '@saude/mod-saude-tfd/client'
@@ -12,28 +12,23 @@ import { useRouter } from 'next/navigation'
 import { useState } from 'react'
 
 import { SolicitacaoForm } from '../../components/solicitacao-form'
-import {
-  PacienteAtendimentoSection,
-  type PacienteAtendimentoFormState,
-} from './paciente-atendimento-section'
+import { PacienteBuscaSolicitacaoSection } from './paciente-busca-solicitacao-section'
 
 export interface AtendimentoTfdFormProps {
   initialPaciente?: TfdPacienteAtendimentoDetalhe | null
   processoId?: string
-  cadsusEnabled?: boolean
   especialidades: TfdEspecialidadeListItem[]
   procedimentos: TfdProcedimentoListItem[]
-  prestadores: TfdPrestadorListItem[]
+  cids: TfdCidListItem[]
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
 }
 
 export function AtendimentoTfdForm({
   initialPaciente,
   processoId,
-  cadsusEnabled = false,
   especialidades,
   procedimentos,
-  prestadores,
+  cids,
   solicitacoesOrigem: solicitacoesOrigemInitial,
 }: AtendimentoTfdFormProps) {
   const router = useRouter()
@@ -41,23 +36,31 @@ export function AtendimentoTfdForm({
   const [pacienteNome, setPacienteNome] = useState(initialPaciente?.nome ?? '')
   const [pacienteCpf, setPacienteCpf] = useState(initialPaciente?.cpf ?? '')
 
-  function handlePacienteSalvo(id: string, state: PacienteAtendimentoFormState) {
-    setPacienteId(id)
-    setPacienteNome(state.nome)
-    setPacienteCpf(state.cpf)
+  function handlePacienteSelecionado(paciente: TfdPacienteAtendimentoDetalhe) {
+    setPacienteId(paciente.id)
+    setPacienteNome(paciente.nome)
+    setPacienteCpf(paciente.cpf ?? '')
 
-    if (id !== initialPaciente?.id) {
-      router.replace(`/saude/tfd/nova?pacienteId=${id}`)
+    if (paciente.id !== initialPaciente?.id) {
+      router.replace(`/saude/tfd/nova?pacienteId=${paciente.id}`)
       router.refresh()
     }
   }
 
+  function handlePacienteRemovido() {
+    setPacienteId(undefined)
+    setPacienteNome('')
+    setPacienteCpf('')
+    router.replace('/saude/tfd/nova')
+    router.refresh()
+  }
+
   return (
     <div className="flex flex-col gap-8">
-      <PacienteAtendimentoSection
-        initialDetalhe={initialPaciente}
-        cadsusEnabled={cadsusEnabled}
-        onPacienteSalvo={handlePacienteSalvo}
+      <PacienteBuscaSolicitacaoSection
+        initialPaciente={initialPaciente}
+        onPacienteSelecionado={handlePacienteSelecionado}
+        onPacienteRemovido={handlePacienteRemovido}
       />
 
       {pacienteId ? (
@@ -71,12 +74,12 @@ export function AtendimentoTfdForm({
           processoId={processoId}
           especialidades={especialidades}
           procedimentos={procedimentos}
-          prestadores={prestadores}
+          cids={cids}
           solicitacoesOrigem={solicitacoesOrigemInitial}
         />
       ) : (
         <Alert variant="info">
-          Identifique e salve o paciente acima para habilitar o preenchimento da solicitação TFD.
+          Selecione um paciente cadastrado acima para habilitar o preenchimento da solicitação TFD.
         </Alert>
       )}
     </div>

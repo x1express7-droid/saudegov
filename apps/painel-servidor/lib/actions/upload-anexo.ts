@@ -1,6 +1,11 @@
 'use server'
 
-import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth/server'
+import {
+  assertModuleActive,
+  hasPermission,
+  requirePermission,
+  requireTenantRole,
+} from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import {
   confirmarUpload,
@@ -62,6 +67,36 @@ function resolveNomeArquivo(
   return nomeArquivoPorMime[mimeType]
 }
 
+async function requireTfdUploadPermission(
+  session: Awaited<ReturnType<typeof requireTenantRole>>,
+  db: Awaited<ReturnType<typeof getPrismaForTenant>>,
+  processoId?: string | null
+): Promise<void> {
+  if (
+    hasPermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO) ||
+    hasPermission(session, TFD_PERMISSIONS.ANALISAR_LAUDO)
+  ) {
+    return
+  }
+
+  if (processoId) {
+    const solicitacaoDoUsuario = await db.tfdSolicitacao.findFirst({
+      where: {
+        tenant_id: session.user.tenantId!,
+        processo_id: processoId,
+        solicitante_id: session.user.id,
+      },
+      select: { id: true },
+    })
+
+    if (solicitacaoDoUsuario) {
+      return
+    }
+  }
+
+  await requirePermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
+}
+
 function mapStorageErrorToMessage(error: unknown): string {
   if (error instanceof StorageValidationError) {
     return error.message
@@ -89,8 +124,6 @@ export async function solicitarUrlUploadAction(
 
   const session = await requireTenantRole('SERVIDOR')
 
-  await requirePermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
-
   const parsed = solicitarUrlUploadActionSchema.safeParse(rawInput)
   if (!parsed.success) {
     return {
@@ -105,6 +138,8 @@ export async function solicitarUrlUploadAction(
 
   try {
     const db = await getPrismaForTenant(tenantId)
+
+    await requireTfdUploadPermission(session, db, data.processoId)
 
     const resultado = await solicitarUrlUpload(
       {
@@ -139,8 +174,6 @@ export async function confirmarUploadAction(
 
   const session = await requireTenantRole('SERVIDOR')
 
-  await requirePermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
-
   const parsed = confirmarUploadActionSchema.safeParse(rawInput)
   if (!parsed.success) {
     return {
@@ -155,6 +188,20 @@ export async function confirmarUploadAction(
 
   try {
     const db = await getPrismaForTenant(tenantId)
+
+    const anexo = await db.anexo.findFirst({
+      where: {
+        id: data.anexoId,
+        tenant_id: tenantId,
+      },
+      select: { processo_id: true },
+    })
+
+    if (!anexo) {
+      return { success: false, error: 'Anexo não encontrado.' }
+    }
+
+    await requireTfdUploadPermission(session, db, anexo.processo_id)
 
     const resultado = await confirmarUpload(
       {

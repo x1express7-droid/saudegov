@@ -81,6 +81,7 @@ const KEY_GRUPO_TFD: Record<string, (typeof ORDEM_GRUPOS_TFD)[number]> = {
   'saude.tfd.ver_dashboard': 'relatorios',
   'saude.tfd.exportar_relatorio': 'relatorios',
   'saude.tfd.configurar_especialidades': 'cadastros',
+  'saude.tfd.configurar_cids': 'cadastros',
   'saude.tfd.configurar_procedimentos': 'cadastros',
   'saude.tfd.configurar_prestadores': 'cadastros',
 }
