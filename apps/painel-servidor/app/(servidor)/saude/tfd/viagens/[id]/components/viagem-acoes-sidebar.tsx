@@ -48,7 +48,6 @@ export function ViagemAcoesSidebar({ session, viagem }: ViagemAcoesSidebarProps)
   const [kmChegada, setKmChegada] = useState('')
   const [dataChegada, setDataChegada] = useState('')
   const [horaChegada, setHoraChegada] = useState('')
-  const [custoReal, setCustoReal] = useState('')
   const [motivoCancelamento, setMotivoCancelamento] = useState('')
 
   const statusFinal = viagem.status === 'CONCLUIDA' || viagem.status === 'CANCELADA'
@@ -73,7 +72,6 @@ export function ViagemAcoesSidebar({ session, viagem }: ViagemAcoesSidebarProps)
         kmChegada: kmChegada ? Number.parseInt(kmChegada, 10) : undefined,
         dataChegada: dataChegada || undefined,
         horaChegada: horaChegada || undefined,
-        custoReal: custoReal ? Number.parseFloat(custoReal.replace(',', '.')) : undefined,
       })
 
       if (!result.success) {
@@ -202,13 +200,11 @@ export function ViagemAcoesSidebar({ session, viagem }: ViagemAcoesSidebarProps)
               value={horaChegada}
               onChange={(event) => setHoraChegada(event.target.value)}
             />
-            <Input
-              id="chegada-custo"
-              label="Custo real (R$)"
-              inputMode="decimal"
-              value={custoReal}
-              onChange={(event) => setCustoReal(event.target.value)}
-            />
+            {/* BLOCO-4: custo real removido — calculado pela soma das despesas na PC */}
+            <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              O custo real da viagem será calculado automaticamente a partir das despesas lançadas
+              na Prestação de Contas.
+            </p>
           </div>
           <DialogFooter>
             <Button type="button" variant="secondary" onClick={() => setChegadaOpen(false)}>

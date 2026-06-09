@@ -1,13 +1,26 @@
-import { validarCEP, validarCNS } from '@saude/validators'
+import { validateCpf, validarCEP, validarCNS } from '@saude/validators'
 import { z } from 'zod'
 
 const sexoValues = ['MASCULINO', 'FEMININO', 'NAO_INFORMADO'] as const
 
-const cpfOptional = z
+const cpfRequired = z
   .string()
   .transform((v) => v.replace(/\D/g, ''))
-  .refine((v) => v === '' || v.length === 11, 'CPF deve ter 11 dígitos numéricos.')
-  .optional()
+  .refine((v) => v.length === 11, 'CPF é obrigatório.')
+  .refine((v) => validateCpf(v), 'CPF inválido.')
+
+const emailRequired = z
+  .string()
+  .trim()
+  .min(1, 'E-mail é obrigatório.')
+  .email('E-mail inválido.')
+  .max(255)
+
+const telefoneCelularRequired = z
+  .string()
+  .transform((v) => v.replace(/\D/g, ''))
+  .refine((v) => v.length >= 10, 'Telefone celular é obrigatório.')
+  .refine((v) => v.length <= 11, 'Telefone celular inválido.')
 
 const cnsOptional = z
   .string()
@@ -38,7 +51,9 @@ export const salvarPacienteAtendimentoSchema = z
       .trim()
       .min(3, 'Nome deve ter pelo menos 3 caracteres.')
       .max(200, 'Nome deve ter no máximo 200 caracteres.'),
-    cpf: cpfOptional,
+    cpf: cpfRequired,
+    email: emailRequired,
+    telefoneCelular: telefoneCelularRequired,
     cns: cnsOptional,
     dataNascimento: z
       .string()

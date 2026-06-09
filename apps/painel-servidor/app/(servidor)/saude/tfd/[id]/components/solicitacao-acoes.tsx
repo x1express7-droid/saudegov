@@ -418,7 +418,8 @@ export function SolicitacaoAcoes({
                 <Link
                   href={`/saude/tfd/processos/${solicitacao.processoId}/agendamentos/novo?solicitacaoId=${solicitacao.id}`}
                 >
-                  {solicitacao.status === 'APROVADO' ? 'Agendar viagem' : 'Novo agendamento'}
+                  {/* BLOCO-1: label alinhado à etapa de agendamento (não viagem) */}
+                  {solicitacao.status === 'APROVADO' ? 'Criar agendamento' : 'Novo agendamento'}
                 </Link>
               </Button>
             </div>

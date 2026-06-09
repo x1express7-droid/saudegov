@@ -38,7 +38,6 @@ import { SegmentosViagemSection } from './segmentos-viagem-section'
 
 const TABS = [
   { id: 'detalhes', label: 'Detalhes' },
-  { id: 'segmentos', label: 'Segmentos' },
   { id: 'passageiros', label: 'Passageiros' },
   { id: 'historico', label: 'Histórico' },
   { id: 'prestacao', label: 'Prestação de Contas' },
@@ -63,17 +62,6 @@ function formatDataHora(data: string | null, hora: string | null): string {
     return '—'
   }
   return hora ? `${data} ${hora}` : data
-}
-
-function formatMoeda(value: string | null): string {
-  if (!value) {
-    return '—'
-  }
-  const numero = Number.parseFloat(value)
-  if (!Number.isFinite(numero)) {
-    return value
-  }
-  return numero.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
 function cnhStatusBadge(validade: string) {
@@ -104,6 +92,7 @@ export interface ViagemDetalheViewProps {
   session: SaudeMunicSession
   viagem: ViagemDetalheOutput
   prestacao: PrestacaoDetalheViagemNovaOutput | null
+  valorReservaSaldo?: number | null
   initialTab?: TabId
 }
 
@@ -111,6 +100,7 @@ export function ViagemDetalheView({
   session,
   viagem,
   prestacao,
+  valorReservaSaldo = null,
   initialTab,
 }: ViagemDetalheViewProps) {
   const router = useRouter()
@@ -157,18 +147,6 @@ export function ViagemDetalheView({
     label: `${item.paciente.nome} — ${item.dataConsulta} (${item.tipoAtendimento})`,
   }))
 
-  const custoEstimadoNumero = viagem.custoEstimado
-    ? Number.parseFloat(viagem.custoEstimado)
-    : null
-  const custoRealNumero = viagem.custoReal ? Number.parseFloat(viagem.custoReal) : null
-  const diferencaCusto =
-    custoEstimadoNumero !== null &&
-    custoRealNumero !== null &&
-    Number.isFinite(custoEstimadoNumero) &&
-    Number.isFinite(custoRealNumero)
-      ? custoRealNumero - custoEstimadoNumero
-      : null
-
   async function abrirVincularDialog() {
     setServerError(null)
     setVincularOpen(true)
@@ -177,8 +155,9 @@ export function ViagemDetalheView({
     setTipoTrecho('IDA')
 
     const items = await buscarAgendamentosDisponiveisViagemDetalheAction(
-      viagem.processoId,
-      viagem.id
+      viagem.id,
+      viagem.dataSaida,
+      viagem.destinoDescricao
     )
     setAgendamentosDisponiveis(items)
     setLoadingDisponiveis(false)
@@ -254,15 +233,28 @@ export function ViagemDetalheView({
 
         {tab === 'detalhes' ? (
           <div className="flex flex-col gap-[var(--space-6)]">
+            {/* BLOCO-3: segmentos como primeira seção na aba Detalhes */}
+            <SegmentosViagemSection
+              session={session}
+              viagemId={viagem.id}
+              viagemProtocolo={viagem.protocolo}
+              viagemStatus={viagem.status}
+              segmentos={viagem.segmentos}
+            />
+
             <Card header={<CardHeader>Rota e deslocamento</CardHeader>}>
               <dl className="grid gap-[var(--space-4)] sm:grid-cols-2">
-                <div className="sm:col-span-2">
+                <div>
                   <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
-                    Trajeto
+                    Origem
                   </dt>
-                  <dd className="mt-1 text-[var(--color-text)]">
-                    {viagem.origemDescricao} → {viagem.destinoDescricao}
-                  </dd>
+                  <dd className="mt-1 text-[var(--color-text)]">{viagem.origemDescricao}</dd>
+                </div>
+                <div>
+                  <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
+                    Destino
+                  </dt>
+                  <dd className="mt-1 text-[var(--color-text)]">{viagem.destinoDescricao}</dd>
                 </div>
                 <div>
                   <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
@@ -298,34 +290,7 @@ export function ViagemDetalheView({
                     {viagem.tempoEstimadoMin ? `${viagem.tempoEstimadoMin} min` : '—'}
                   </dd>
                 </div>
-                <div>
-                  <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
-                    Custo estimado
-                  </dt>
-                  <dd className="mt-1">{formatMoeda(viagem.custoEstimado)}</dd>
-                </div>
-                <div>
-                  <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
-                    Custo real
-                  </dt>
-                  <dd className="mt-1">{formatMoeda(viagem.custoReal)}</dd>
-                </div>
-                {diferencaCusto !== null ? (
-                  <div className="sm:col-span-2">
-                    <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
-                      Diferença estimado vs real
-                    </dt>
-                    <dd className="mt-1">
-                      <Badge variant={diferencaCusto > 0 ? 'orange' : 'green'}>
-                        {diferencaCusto > 0 ? '+' : ''}
-                        {diferencaCusto.toLocaleString('pt-BR', {
-                          style: 'currency',
-                          currency: 'BRL',
-                        })}
-                      </Badge>
-                    </dd>
-                  </div>
-                ) : null}
+                {/* BLOCO-4: custos removidos da aba Detalhes — exibidos na Prestação de Contas */}
               </dl>
             </Card>
 
@@ -370,25 +335,7 @@ export function ViagemDetalheView({
                 ) : null}
               </dl>
             </Card>
-
-            <SegmentosViagemSection
-              session={session}
-              viagemId={viagem.id}
-              viagemProtocolo={viagem.protocolo}
-              viagemStatus={viagem.status}
-              segmentos={viagem.segmentos}
-            />
           </div>
-        ) : null}
-
-        {tab === 'segmentos' ? (
-          <SegmentosViagemSection
-            session={session}
-            viagemId={viagem.id}
-            viagemProtocolo={viagem.protocolo}
-            viagemStatus={viagem.status}
-            segmentos={viagem.segmentos}
-          />
         ) : null}
 
         {tab === 'passageiros' ? (
@@ -462,9 +409,10 @@ export function ViagemDetalheView({
           <PrestacaoViagemView
             session={session}
             viagemNovaId={viagem.id}
-            processoId={viagem.processoId}
+            viagemProtocolo={viagem.protocolo}
             viagemStatus={viagem.status}
-            custoEstimado={viagem.custoEstimado}
+            dataChegadaViagem={viagem.dataChegada}
+            valorReservaSaldo={valorReservaSaldo}
             segmentos={viagem.segmentos}
             prestacao={prestacao}
           />

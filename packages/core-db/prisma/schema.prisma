@@ -1337,7 +1337,7 @@ model TfdViagem {
   id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   tenant_id          String              @db.Uuid
   protocolo          String              @db.VarChar(50)
-  processo_id        String              @db.Uuid
+  processo_id        String?             @db.Uuid // REMOVE-PROCESSO-PARTE-1
   veiculo_id         String?             @db.Uuid
   motorista_id       String?             @db.Uuid
   data_saida         DateTime            @db.Date
@@ -1356,7 +1356,7 @@ model TfdViagem {
   created_at         DateTime            @default(now()) @db.Timestamptz
   updated_at         DateTime            @updatedAt @db.Timestamptz
   tenant             Tenant              @relation(fields: [tenant_id], references: [id], onDelete: Cascade)
-  processo           Processo            @relation(fields: [processo_id], references: [id], onDelete: Cascade)
+  processo           Processo?           @relation(fields: [processo_id], references: [id], onDelete: Cascade) // REMOVE-PROCESSO-PARTE-1
   veiculo            TfdVeiculo?         @relation(fields: [veiculo_id], references: [id], onDelete: SetNull)
   motorista          TfdMotorista?       @relation(fields: [motorista_id], references: [id], onDelete: SetNull)
   passageiros        TfdViagemPassageiro[]
@@ -1365,7 +1365,6 @@ model TfdViagem {
   transportes        TfdTransporte[]
 
   @@index([tenant_id], map: "idx_tfd_viagens_nova_tenant")
-  @@index([processo_id], map: "idx_tfd_viagens_nova_processo")
   @@index([motorista_id], map: "idx_tfd_viagens_nova_motorista")
   @@index([veiculo_id], map: "idx_tfd_viagens_nova_veiculo")
   @@index([status], map: "idx_tfd_viagens_nova_status")

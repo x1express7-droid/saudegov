@@ -7,19 +7,16 @@ import {
 import { getPacientesTfd, isCadsusEnabledForTenant, TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { Suspense } from 'react'
 
-import { PacienteBuscaForm } from './components/paciente-busca-form'
-import { PacientesVinculadosFiltro } from './components/pacientes-vinculados-filtro'
-import { PacientesVinculadosLista } from './components/pacientes-vinculados-lista'
+import { PacientesPageLayout } from './components/pacientes-page-layout'
 
+// BLOCO-7-PACIENTES
 export const metadata: Metadata = {
   title: 'Pacientes — TFD',
 }
 
 interface PacientesPageProps {
   searchParams: Promise<{
-    nome?: string
     page?: string
     perPage?: string
   }>
@@ -44,11 +41,9 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
   const params = await searchParams
   const page = parsePositiveInt(params.page, 1)
   const perPage = Math.min(100, parsePositiveInt(params.perPage, 20))
-  const nome = params.nome?.trim()
 
   const [{ items, total }, cadsusEnabled] = await Promise.all([
     getPacientesTfd({
-      nome: nome || undefined,
       page,
       perPage,
     }),
@@ -56,46 +51,16 @@ export default async function PacientesPage({ searchParams }: PacientesPageProps
   ])
 
   return (
-    <PacienteBuscaForm
+    <PacientesPageLayout
+      items={items}
+      total={total}
+      page={page}
+      perPage={perPage}
       cadsusEnabled={cadsusEnabled}
+      podeVerPerfilPaciente={podeVerPerfilPaciente}
+      podeEditarPaciente={podeCadastrarPaciente}
+      podeNovaSolicitacao={podeCadastrarPaciente}
       podeCadastrarPaciente={podeCadastrarPaciente}
-      vinculadosSection={
-        <>
-          <section
-            aria-labelledby="pacientes-vinculados-tfd"
-            className="flex flex-col gap-[var(--space-4)]"
-          >
-            <div>
-              <h2
-                id="pacientes-vinculados-tfd"
-                className="text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]"
-              >
-                Pacientes vinculados ao município
-              </h2>
-              <p className="mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                Pacientes já cadastrados e disponíveis para solicitações TFD neste município.
-              </p>
-            </div>
-
-            <Suspense
-              fallback={
-                <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                  Carregando busca…
-                </p>
-              }
-            >
-              <PacientesVinculadosFiltro />
-            </Suspense>
-
-            <PacientesVinculadosLista
-              items={items}
-              total={total}
-              podeVerPerfilPaciente={podeVerPerfilPaciente}
-              podeEditarPaciente={podeCadastrarPaciente}
-            />
-          </section>
-        </>
-      }
     />
   )
 }

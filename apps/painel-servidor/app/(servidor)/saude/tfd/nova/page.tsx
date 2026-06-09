@@ -4,8 +4,8 @@ import {
   requirePermission,
   requireTenantRole,
 } from '@saude/core-auth/server'
+// BLOCO-CID-COMPLETO
 import {
-  getCidsTfd,
   getEspecialidadesTfd,
   getPacienteAtendimentoTfd,
   getProcessoTfdDetalhe,
@@ -76,15 +76,13 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
 
   const pacienteIdForOrigem = initialPaciente?.id
 
-  const [especialidadesResult, procedimentosResult, cidsResult, solicitacoesOrigem] =
-    await Promise.all([
-      getEspecialidadesTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
-      getProcedimentosTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
-      getCidsTfd({ ativo: true, perPage: 500 }),
-      pacienteIdForOrigem
-        ? getSolicitacoesOrigemRetornoTfd({ pacienteId: pacienteIdForOrigem })
-        : Promise.resolve([]),
-    ])
+  const [especialidadesResult, procedimentosResult, solicitacoesOrigem] = await Promise.all([
+    getEspecialidadesTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
+    getProcedimentosTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
+    pacienteIdForOrigem
+      ? getSolicitacoesOrigemRetornoTfd({ pacienteId: pacienteIdForOrigem })
+      : Promise.resolve([]),
+  ])
 
   return (
     <div className="flex flex-col gap-8">
@@ -105,7 +103,6 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
         processoId={processoId}
         especialidades={especialidadesResult.items}
         procedimentos={procedimentosResult.items}
-        cids={cidsResult.items}
         solicitacoesOrigem={solicitacoesOrigem}
       />
     </div>

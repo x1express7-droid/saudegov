@@ -22,6 +22,7 @@ import { notFound } from 'next/navigation'
 import { AgendamentoStatusBadge } from '../../../../components/agendamento-status-badge'
 import { AgendamentoAcoesSidebar } from './components/agendamento-acoes-sidebar'
 import { DeslocamentoSection } from './components/deslocamento-section'
+import { SegmentosHistoricosLegadoAccordion } from './components/segmentos-historicos-legado-accordion'
 
 const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
   CONSULTA: 'Consulta',
@@ -187,11 +188,13 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
 
           <DeslocamentoSection
             session={session}
-            processoId={processoId}
             agendamentoId={agId}
+            dataConsulta={agendamento.dataConsulta}
             viagensVinculadas={agendamento.viagensVinculadas}
-            transportesLegado={transportesLegado}
           />
+
+          {/* BLOCO-1: accordion legado após Deslocamento, colapsado por padrão */}
+          <SegmentosHistoricosLegadoAccordion transportesLegado={transportesLegado} />
         </div>
 
         <aside className="min-w-0">

@@ -1,3 +1,4 @@
+// REMOVE-PROCESSO-PARTE-4: busca de agendamentos por data de saída (janela ±3 dias)
 import { assertModuleActive, requirePermission, requireTenantRole } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import type { TfdAgendamentoStatus, TfdTipoViagem } from '@prisma/client'
@@ -13,11 +14,24 @@ export interface AgendamentoDisponivelViagemItem {
   acompanhantesCount: number
 }
 
-export interface GetAgendamentosDisponiveisParaViagemOptions {
+export interface GetAgendamentosDisponiveisParaViagemFiltros {
+  /** Filtro principal: janela ±3 dias em data_consulta. */
+  dataSaida?: string
+  /** Reservado para filtro futuro por destino. */
+  destinoDescricao?: string
   /** Exclui agendamentos já vinculados a esta viagem. */
   viagemId?: string
-  /** Reservado para compatibilidade; não restringe mais por data. */
-  dataSaida?: string
+}
+
+function parseDataUtc(data: string): Date {
+  const [year, month, day] = data.split('-').map(Number) as [number, number, number]
+  return new Date(Date.UTC(year, month - 1, day))
+}
+
+function addDaysUtc(data: Date, dias: number): Date {
+  const result = new Date(data)
+  result.setUTCDate(result.getUTCDate() + dias)
+  return result
 }
 
 function trechoJaVinculado(
@@ -53,28 +67,45 @@ function trechoDisponivel(
 const STATUS_AGENDAMENTO_ELEGIVEIS: TfdAgendamentoStatus[] = ['AGENDADO']
 
 export async function getAgendamentosDisponiveisParaViagem(
-  processoId: string,
-  options: GetAgendamentosDisponiveisParaViagemOptions = {}
+  tenantId: string,
+  filtros: GetAgendamentosDisponiveisParaViagemFiltros = {}
 ): Promise<AgendamentoDisponivelViagemItem[]> {
   await assertModuleActive('saude', 'tfd')
   const session = await requireTenantRole('SERVIDOR')
   await requirePermission(session, TFD_PERMISSIONS.GERENCIAR_VIAGEM)
 
-  const tenantId = session.user.tenantId!
+  if (session.user.tenantId !== tenantId) {
+    return []
+  }
+
+  const dataSaida = filtros.dataSaida?.trim() || undefined
+
+  if (!dataSaida) {
+    return []
+  }
+
   const db = await getPrismaForTenant(tenantId)
+
+  // Janela de 3 dias permite encontrar agendamentos próximos
+  // à data de saída da viagem (ida antes / consulta depois)
+  const referencia = parseDataUtc(dataSaida)
+  const dataConsultaFilter = {
+    gte: addDaysUtc(referencia, -3),
+    lte: addDaysUtc(referencia, 3),
+  }
 
   const rows = await db.tfdAgendamento.findMany({
     where: {
       tenant_id: tenantId,
-      processo_id: processoId,
+      data_consulta: dataConsultaFilter,
       status: { in: STATUS_AGENDAMENTO_ELEGIVEIS },
       solicitacao: {
         status: { in: ['APROVADO', 'AGENDADO'] },
       },
-      ...(options.viagemId
+      ...(filtros.viagemId
         ? {
             viagem_passageiros: {
-              none: { viagem_id: options.viagemId },
+              none: { viagem_id: filtros.viagemId },
             },
           }
         : {}),

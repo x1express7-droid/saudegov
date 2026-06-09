@@ -134,7 +134,7 @@ export function TfdDashboardAlertas({
                 {saldosBaixo.map((saldo) => (
                   <li key={saldo.id}>
                     <Link
-                      href="/saude/tfd/configuracoes/saldos"
+                      href="/saude/tfd/saldos"
                       className="font-medium text-[var(--color-warning)] underline-offset-2 hover:underline"
                     >
                       {saldo.descricao}

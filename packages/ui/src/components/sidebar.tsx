@@ -90,11 +90,8 @@ function isActivePath(pathname: string, href: string): boolean {
       pathname.startsWith('/saude/tfd/configuracoes/')
     )
   }
-  if (href === '/saude/tfd/configuracoes/saldos') {
-    return (
-      pathname === '/saude/tfd/configuracoes/saldos' ||
-      pathname.startsWith('/saude/tfd/configuracoes/saldos/')
-    )
+  if (href === '/saude/tfd/saldos') {
+    return pathname === '/saude/tfd/saldos' || pathname.startsWith('/saude/tfd/saldos/')
   }
   return pathname === href || pathname.startsWith(`${href}/`)
 }

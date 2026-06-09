@@ -169,16 +169,17 @@ export const registrarDespesaTransporteSchema = z
 
 export type RegistrarDespesaTransporteInput = z.infer<typeof registrarDespesaTransporteSchema>
 
-export const registrarDespesaViagemNovaSchema = z
-  .object({
-    viagemNovaId: viagemNovaIdField,
-    segmentoId: segmentoIdField,
-    ...despesaCamposComuns,
-  })
-  .refine(comprovanteObrigatorioRefine.refine, {
-    message: comprovanteObrigatorioRefine.message,
-    path: ['comprovanteAnexoId'],
-  })
+// BLOCO-4.1: comprovanteAnexoId opcional — sem mínimo de valor por despesa
+export const registrarDespesaViagemNovaSchema = z.object({
+  viagemNovaId: viagemNovaIdField,
+  segmentoId: segmentoIdField,
+  ...despesaCamposComuns,
+})
+// TODO BLOCO-4: reativar validação de comprovante após estabilização do fluxo
+// .refine(comprovanteObrigatorioRefine.refine, {
+//   message: comprovanteObrigatorioRefine.message,
+//   path: ['comprovanteAnexoId'],
+// })
 
 export type RegistrarDespesaViagemNovaInput = z.infer<typeof registrarDespesaViagemNovaSchema>
 

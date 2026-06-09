@@ -18,14 +18,20 @@ import {
 } from '@saude/ui'
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
-import { PermissionGate } from '@saude/ui/permission-gate'
-
-import { MoverFilaDialog } from './mover-fila-dialog'
+import { SolicitacaoAcoesCelula } from './solicitacao-acoes-celula'
+import { SolicitacaoKanbanView } from './solicitacao-kanban-view'
+import { SolicitacaoListaCompactaView } from './solicitacao-lista-compacta-view'
+import { SolicitacaoListaPaginacao } from './solicitacao-lista-paginacao'
 import { TfdExportCsvButton } from './tfd-export-csv-button'
+import {
+  SolicitacaoViewToggle,
+  TFD_SOLICITACOES_VIEW_STORAGE_KEY,
+  type SolicitacaoViewMode,
+} from './solicitacao-view-toggle'
 
+// BLOCO-6-REVISADO
 const TFD_DETAIL_BASE = '/saude/tfd'
 const DEFAULT_PER_PAGE = 20
 
@@ -44,35 +50,36 @@ const STATUS_VALUES = new Set<string>([
   'CANCELADO',
 ])
 
-const URGENCIA_VALUES = new Set<string>(['BAIXA', 'INTERMEDIARIA', 'GRAVE', 'MUITO_URGENTE'])
-
-const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
-  CONSULTA: 'Consulta',
-  RETORNO: 'Retorno',
-  EXAME: 'Exame',
-  CIRURGIA: 'Cirurgia',
-}
+const URGENCIA_VALUES = new Set<string>([
+  'NAO_AGUDA',
+  'BAIXA',
+  'INTERMEDIARIA',
+  'GRAVE',
+  'MUITO_URGENTE',
+])
 
 function formatDataAbertura(iso: string): string {
-  return new Date(iso).toLocaleString('pt-BR', {
+  return new Date(iso).toLocaleDateString('pt-BR', {
     day: '2-digit',
     month: '2-digit',
     year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
   })
 }
 
-function labelTipoAtendimento(tipo: string): string {
-  return TIPO_ATENDIMENTO_LABEL[tipo] ?? tipo
+function asTfdUrgencia(value: string): TfdUrgencia {
+  return value in TFD_URGENCIA_CONFIG ? (value as TfdUrgencia) : 'NAO_AGUDA'
 }
 
-function isTfdStatus(value: string): value is TfdStatus {
-  return value in TFD_STATUS_CONFIG
+function asTfdStatus(value: string): TfdStatus {
+  return value in TFD_STATUS_CONFIG ? (value as TfdStatus) : 'RASCUNHO'
 }
 
-function isTfdUrgencia(value: string): value is TfdUrgencia {
-  return value in TFD_URGENCIA_CONFIG
+function normalizeSearch(text: string): string {
+  return text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase()
+    .trim()
 }
 
 function buildQueryString(
@@ -92,10 +99,25 @@ function buildQueryString(
   return next.toString()
 }
 
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query)
+    const update = () => setMatches(mediaQuery.matches)
+    update()
+    mediaQuery.addEventListener('change', update)
+    return () => mediaQuery.removeEventListener('change', update)
+  }, [query])
+
+  return matches
+}
+
 export interface SolicitacaoListaProps {
   items: TfdSolicitacaoListItem[]
   total: number
   session: SaudeMunicSession
+  pacienteBusca?: string
 }
 
 function buildExportFiltros(searchParams: URLSearchParams) {
@@ -110,10 +132,39 @@ function buildExportFiltros(searchParams: URLSearchParams) {
   }
 }
 
-export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProps) {
+function isValidViewMode(value: string | null): value is SolicitacaoViewMode {
+  return value === 'table' || value === 'kanban' || value === 'list'
+}
+
+export function SolicitacaoLista({
+  items,
+  total,
+  session,
+  pacienteBusca = '',
+}: SolicitacaoListaProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
+
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
+
+  const [viewMode, setViewMode] = useState<SolicitacaoViewMode>('table')
+  const [mostrarEncerradas, setMostrarEncerradas] = useState(false)
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(TFD_SOLICITACOES_VIEW_STORAGE_KEY)
+    if (isValidViewMode(stored)) {
+      setViewMode(stored)
+    }
+  }, [])
+
+  const handleViewModeChange = useCallback((nextView: SolicitacaoViewMode) => {
+    setViewMode(nextView)
+    window.localStorage.setItem(TFD_SOLICITACOES_VIEW_STORAGE_KEY, nextView)
+  }, [])
+
+  const effectiveViewMode: SolicitacaoViewMode = isMobile ? 'list' : viewMode
 
   const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1)
   const perPage = Math.max(
@@ -121,6 +172,15 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
     Number.parseInt(searchParams.get('perPage') ?? String(DEFAULT_PER_PAGE), 10) ||
       DEFAULT_PER_PAGE
   )
+
+  const filteredItems = useMemo(() => {
+    const query = normalizeSearch(pacienteBusca)
+    if (!query) {
+      return items
+    }
+
+    return items.filter((item) => normalizeSearch(item.paciente.nome).includes(query))
+  }, [items, pacienteBusca])
 
   const handlePaginationChange = useCallback(
     (nextPage: number) => {
@@ -140,17 +200,21 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
     [router]
   )
 
-  const columns = useMemo<ColumnDef<TfdSolicitacaoListItem>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<TfdSolicitacaoListItem>[]>(() => {
+    const baseColumns: ColumnDef<TfdSolicitacaoListItem>[] = [
       {
         id: 'protocolo',
         header: 'Solicitação',
         cell: ({ row }) => (
           <div
+            className="min-w-0"
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <ProtocoloBadge protocolo={row.original.protocolo} />
+            <ProtocoloBadge
+              protocolo={row.original.protocolo}
+              className="max-w-full [&_.protocolo]:font-mono [&_.protocolo]:text-xs [&_.protocolo]:font-bold [&_.protocolo]:whitespace-nowrap"
+            />
           </div>
         ),
       },
@@ -158,7 +222,7 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
         id: 'paciente',
         header: 'Paciente',
         cell: ({ row }) => (
-          <span className="font-medium text-[var(--color-text)]">
+          <span className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
             {row.original.paciente.nome}
           </span>
         ),
@@ -167,58 +231,49 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
         id: 'especialidade',
         header: 'Especialidade',
         cell: ({ row }) => (
-          <span className="text-[var(--color-text)]">{row.original.especialidade}</span>
+          <span className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+            {row.original.especialidade}
+          </span>
         ),
       },
       {
         id: 'urgencia',
         header: 'Urgência',
-        cell: ({ row }) =>
-          isTfdUrgencia(row.original.urgencia) ? (
-            <UrgenciaBadge urgencia={row.original.urgencia} />
-          ) : (
-            <span className="text-[var(--color-text-muted)]">{row.original.urgencia}</span>
-          ),
+        cell: ({ row }) => (
+          <UrgenciaBadge urgencia={asTfdUrgencia(row.original.urgencia)} size="sm" />
+        ),
       },
       {
         id: 'status',
         header: 'Status',
-        cell: ({ row }) =>
-          isTfdStatus(row.original.status) ? (
-            <StatusBadge status={row.original.status} />
-          ) : (
-            <span className="text-[var(--color-text-muted)]">{row.original.status}</span>
-          ),
+        cell: ({ row }) => <StatusBadge status={asTfdStatus(row.original.status)} />,
       },
-      {
+    ]
+
+    if (!isTablet) {
+      baseColumns.push({
         id: 'posicaoFila',
         header: 'Posição',
         cell: ({ row }) => {
           const posicao = row.original.posicaoFila
           if (posicao == null) {
-            return <span className="text-[var(--color-text-muted)]">—</span>
+            return <span className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">—</span>
           }
           return (
-            <Badge variant="blue" size="sm">
+            <Badge variant="gray" size="sm">
               #{posicao}
             </Badge>
           )
         },
-      },
-      {
-        id: 'tipoAtendimento',
-        header: 'Tipo de atendimento',
-        cell: ({ row }) => (
-          <span className="text-[var(--color-text)]">
-            {labelTipoAtendimento(row.original.tipoAtendimento)}
-          </span>
-        ),
-      },
+      })
+    }
+
+    baseColumns.push(
       {
         id: 'criadoEm',
-        header: 'Data de abertura',
+        header: 'Data',
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-[var(--color-text-muted)]">
+          <span className="whitespace-nowrap text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
             {formatDataAbertura(row.original.criadoEm)}
           </span>
         ),
@@ -226,73 +281,77 @@ export function SolicitacaoLista({ items, total, session }: SolicitacaoListaProp
       {
         id: 'acoes',
         header: 'Ações',
-        cell: ({ row }) => {
-          const posicao = row.original.posicaoFila
-          const agendamentoHabilitado = row.original.status === 'APROVADO'
-          const agendamentoHref = `/saude/tfd/processos/${row.original.processoId}/agendamentos/novo?solicitacaoId=${row.original.id}`
+        cell: ({ row }) => <SolicitacaoAcoesCelula item={row.original} session={session} />,
+      }
+    )
 
-          return (
-            <div
-              className="flex flex-wrap items-center justify-end gap-[var(--space-2)]"
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-            >
-              {posicao != null ? (
-                <PermissionGate session={session} permission={TFD_PERMISSIONS.MOVER_FILA}>
-                  <MoverFilaDialog
-                    session={session}
-                    solicitacaoId={row.original.id}
-                    protocolo={row.original.protocolo}
-                    posicaoAtual={posicao}
-                  />
-                </PermissionGate>
-              ) : null}
+    return baseColumns
+  }, [isTablet, session])
 
-              <PermissionGate session={session} permission={TFD_PERMISSIONS.CRIAR_AGENDAMENTO}>
-                {agendamentoHabilitado ? (
-                  <Button variant="secondary" asChild>
-                    <Link href={agendamentoHref}>Agendar</Link>
-                  </Button>
-                ) : (
-                  <Button
-                    variant="secondary"
-                    disabled
-                    title="Disponível após aprovação"
-                  >
-                    Agendar
-                  </Button>
-                )}
-              </PermissionGate>
-            </div>
-          )
-        },
-      },
-    ],
-    [session]
-  )
+  const pacienteFiltrado = pacienteBusca.trim().length > 0
+  const paginationProps = { page, perPage, total, onPaginationChange: handlePaginationChange }
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
-      <div className="flex justify-end">
+      <div className="flex flex-col gap-[var(--space-3)] md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-[var(--space-3)]">
+          <SolicitacaoViewToggle value={viewMode} onChange={handleViewModeChange} />
+          {effectiveViewMode === 'kanban' ? (
+            <label className="hidden cursor-pointer items-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)] md:inline-flex">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-[var(--color-border)]"
+                checked={mostrarEncerradas}
+                onChange={(event) => setMostrarEncerradas(event.target.checked)}
+              />
+              Mostrar encerradas
+            </label>
+          ) : null}
+          <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+            {total} registros
+          </p>
+        </div>
         <TfdExportCsvButton
           session={session}
           onExport={() => exportarSolicitacoesTfdCsv(buildExportFiltros(searchParams))}
         />
       </div>
-      <DataTable
-        data={items}
-        columns={columns}
-        pagination={{ page, perPage, total }}
-        onPaginationChange={handlePaginationChange}
-        onRowClick={handleRowClick}
-        emptyMessage="Nenhuma solicitação encontrada"
-        emptyDescription="Ajuste os filtros ou abra uma nova solicitação para iniciar o fluxo TFD."
-        emptyCta={
-          <Button variant="primary" asChild>
-            <Link href="/saude/tfd/nova">Nova solicitação</Link>
-          </Button>
-        }
-      />
+
+      {pacienteFiltrado ? (
+        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+          {filteredItems.length} solicitação(ões) nesta página correspondem à busca por paciente.
+        </p>
+      ) : null}
+
+      {effectiveViewMode === 'table' ? (
+        <>
+          <DataTable
+            data={filteredItems}
+            columns={columns}
+            pagination={{ page, perPage, total }}
+            onPaginationChange={handlePaginationChange}
+            onRowClick={handleRowClick}
+            emptyMessage="Nenhuma solicitação encontrada"
+            emptyDescription="Ajuste os filtros ou abra uma nova solicitação para iniciar o fluxo TFD."
+            emptyCta={
+              <Button variant="primary" asChild>
+                <Link href="/saude/tfd/nova">Nova solicitação</Link>
+              </Button>
+            }
+          />
+        </>
+      ) : null}
+
+      {effectiveViewMode === 'kanban' ? (
+        <SolicitacaoKanbanView items={filteredItems} mostrarEncerradas={mostrarEncerradas} />
+      ) : null}
+
+      {effectiveViewMode === 'list' ? (
+        <>
+          <SolicitacaoListaCompactaView items={filteredItems} />
+          <SolicitacaoListaPaginacao {...paginationProps} />
+        </>
+      ) : null}
     </div>
   )
 }

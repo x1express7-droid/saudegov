@@ -52,7 +52,16 @@ function buildQueryString(
   return next.toString()
 }
 
-export function SolicitacaoFiltros() {
+// BLOCO-6-SOLICITACOES
+export interface SolicitacaoFiltrosProps {
+  pacienteBusca?: string
+  onPacienteBuscaChange?: (value: string) => void
+}
+
+export function SolicitacaoFiltros({
+  pacienteBusca = '',
+  onPacienteBuscaChange,
+}: SolicitacaoFiltrosProps) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -106,7 +115,7 @@ export function SolicitacaoFiltros() {
       <h2 className="mb-[var(--space-4)] text-[length:var(--text-sm)] font-semibold uppercase tracking-wide text-[var(--color-text-muted)]">
         Filtros
       </h2>
-      <div className="grid gap-[var(--space-4)] md:grid-cols-3">
+      <div className="grid gap-[var(--space-4)] md:grid-cols-2 lg:grid-cols-4">
         <Select
           id="filtro-status-tfd"
           label="Status"
@@ -130,6 +139,13 @@ export function SolicitacaoFiltros() {
               urgencia: value === ALL_FILTER_VALUE ? undefined : value,
             })
           }
+        />
+        <Input
+          id="filtro-paciente-tfd"
+          label="Paciente"
+          placeholder="Buscar por paciente..."
+          value={pacienteBusca}
+          onChange={(event) => onPacienteBuscaChange?.(event.target.value)}
         />
         <Input
           id="filtro-protocolo-tfd"

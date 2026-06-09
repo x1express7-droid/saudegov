@@ -8,8 +8,8 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
-import { SolicitacaoFiltros } from '../components/solicitacao-filtros'
-import { SolicitacaoLista } from '../components/solicitacao-lista'
+// BLOCO-6-SOLICITACOES
+import { SolicitacaoListagem } from '../components/solicitacao-listagem'
 
 export const metadata: Metadata = {
   title: 'Solicitações TFD',
@@ -125,21 +125,11 @@ export default async function TfdSolicitacoesPage({ searchParams }: TfdSolicitac
       <Suspense
         fallback={
           <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            Carregando filtros…
-          </p>
-        }
-      >
-        <SolicitacaoFiltros />
-      </Suspense>
-
-      <Suspense
-        fallback={
-          <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
             Carregando solicitações…
           </p>
         }
       >
-        <SolicitacaoLista items={items} total={total} session={session} />
+        <SolicitacaoListagem items={items} total={total} session={session} />
       </Suspense>
     </div>
   )

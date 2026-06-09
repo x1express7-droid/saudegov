@@ -445,7 +445,7 @@ export async function registrarDespesa(
         possuiComprovante: resultado.possuiComprovante,
         protocolo: viagem.solicitacao.processo.protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -668,7 +668,7 @@ export async function enviarPrestacaoContas(
         quantidadeItens: resultado.quantidadeItens,
         protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -876,7 +876,7 @@ export async function registrarVisualizacaoComprovante(
         quantidadeComprovantesVistos: resultado.quantidadeVistos,
         protocolo: viagem.solicitacao.processo.protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -1094,7 +1094,7 @@ export async function decidirPrestacaoContas(
           aprovado: false,
           protocolo,
           modulo: MODULO_TFD,
-          processoId: resultado.processoId,
+          processoId: resultado.processoId ?? null,
         },
       })
 
@@ -1103,7 +1103,7 @@ export async function decidirPrestacaoContas(
           tenantId,
           evento: NOTIFICATION_EVENTS.PRESTACAO_REJEITADA,
           modulo: MODULO_TFD,
-          processoId: resultado.processoId,
+          processoId: resultado.processoId ?? null,
           context: {
             protocolo,
             especialidade: especialidadeNome,
@@ -1332,7 +1332,7 @@ export async function decidirPrestacaoContas(
         valorLiberacao: resultado.valorLiberacao,
         protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -1341,7 +1341,7 @@ export async function decidirPrestacaoContas(
         tenantId,
         evento: NOTIFICATION_EVENTS.PRESTACAO_APROVADA,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
         context: {
           protocolo,
           especialidade: especialidadeNome,
@@ -1539,12 +1539,41 @@ function extrairSequenciaProtocoloViagemNova(protocolo: string): number {
   return Number.isFinite(sequencia) ? sequencia : 1
 }
 
-function revalidateViagemNovaFinanceiroPaths(processoId: string, viagemNovaId: string): void {
+// REMOVE-PROCESSO-PARTE-4: processos dos passageiros quando viagem não tem processo_id (legado)
+async function resolveProcessoIdsViagemNova(
+  db: Awaited<ReturnType<typeof getPrismaForTenant>>,
+  tenantId: string,
+  viagemId: string,
+  viagemProcessoId: string | null
+): Promise<string[]> {
+  if (viagemProcessoId) {
+    return [viagemProcessoId]
+  }
+
+  const passageiros = await db.tfdViagemPassageiro.findMany({
+    where: { viagem_id: viagemId, tenant_id: tenantId },
+    select: {
+      agendamento: { select: { processo_id: true } },
+    },
+  })
+
+  return [
+    ...new Set(passageiros.map((passageiro) => passageiro.agendamento.processo_id)),
+  ]
+}
+
+// REMOVE-PROCESSO-PARTE-2: revalidação de processo condicional
+function revalidateViagemNovaFinanceiroPaths(
+  processoId: string | null | undefined,
+  viagemNovaId: string
+): void {
   revalidatePath('/saude/tfd')
   revalidatePath('/saude/tfd/viagens')
   revalidatePath('/saude/tfd/prestacoes')
   revalidatePath(`/saude/tfd/viagens/${viagemNovaId}`)
-  revalidatePath(`/saude/tfd/processos/${processoId}`)
+  if (processoId) {
+    revalidatePath(`/saude/tfd/processos/${processoId}`)
+  }
 }
 
 export async function registrarDespesaAgendamento(
@@ -1713,7 +1742,7 @@ export async function registrarDespesaAgendamento(
         possuiComprovante: resultado.possuiComprovante,
         protocolo: agendamento.solicitacao.processo.protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -1934,7 +1963,7 @@ export async function registrarDespesaTransporte(
         possuiComprovante: resultado.possuiComprovante,
         protocolo: agendamento.solicitacao.processo.protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -2163,7 +2192,7 @@ export async function enviarPrestacaoContasAgendamento(
         agendamentoId: resultado.agendamentoId,
         protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -2391,7 +2420,7 @@ export async function registrarVisualizacaoComprovanteAgendamento(
         quantidadeComprovantesVistos: resultado.quantidadeVistos,
         protocolo: agendamento.solicitacao.processo.protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -2627,7 +2656,7 @@ export async function decidirPrestacaoContasAgendamento(
           decisao: 'REJEITADA',
           protocolo,
           modulo: MODULO_TFD,
-          processoId: resultado.processoId,
+          processoId: resultado.processoId ?? null,
           agendamentoId: resultado.agendamentoId,
         },
       })
@@ -2637,7 +2666,7 @@ export async function decidirPrestacaoContasAgendamento(
           tenantId,
           evento: NOTIFICATION_EVENTS.PRESTACAO_REJEITADA,
           modulo: MODULO_TFD,
-          processoId: resultado.processoId,
+          processoId: resultado.processoId ?? null,
           context: {
             protocolo,
             especialidade: especialidadeNome,
@@ -2887,7 +2916,7 @@ export async function decidirPrestacaoContasAgendamento(
         valorLiberacao: resultado.valorLiberacao,
         protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
         agendamentoId: resultado.agendamentoId,
       },
     })
@@ -2897,7 +2926,7 @@ export async function decidirPrestacaoContasAgendamento(
         tenantId,
         evento: NOTIFICATION_EVENTS.PRESTACAO_APROVADA,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
         context: {
           protocolo,
           especialidade: especialidadeNome,
@@ -2960,15 +2989,8 @@ export async function registrarDespesaViagemNova(
   }
   const data = parsed.data
 
-  if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
-    return {
-      success: false,
-      error: MSG_COMPROVANTE_OBRIGATORIO,
-      fieldErrors: {
-        comprovanteAnexoId: [MSG_COMPROVANTE_OBRIGATORIO],
-      },
-    }
-  }
+  // BLOCO-4.1: TODO reativar obrigatoriedade de comprovante
+  // if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) { ... }
 
   try {
     const tenantId = session.user.tenantId!
@@ -3047,9 +3069,10 @@ export async function registrarDespesaViagemNova(
         throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
       }
 
-      if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
-        throw new FinanceiroBusinessError(MSG_COMPROVANTE_OBRIGATORIO)
-      }
+      // BLOCO-4.1: TODO reativar obrigatoriedade de comprovante
+      // if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
+      //   throw new FinanceiroBusinessError(MSG_COMPROVANTE_OBRIGATORIO)
+      // }
 
       if (data.comprovanteAnexoId) {
         await validarComprovanteAnexo(tx, tenantId, data.comprovanteAnexoId)
@@ -3094,7 +3117,7 @@ export async function registrarDespesaViagemNova(
         despesaId: item.id,
         viagemNovaId: viagemLocked.id,
         prestacaoId: viagemLocked.prestacao_conta.id,
-        processoId: viagemLocked.processo_id,
+        processoId: viagemLocked.processo_id ?? null,
         protocolo: viagemLocked.protocolo,
         transporteId: transporteIdLocked,
         tipo: data.tipo,
@@ -3119,7 +3142,7 @@ export async function registrarDespesaViagemNova(
         possuiComprovante: resultado.possuiComprovante,
         protocolo: resultado.protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -3207,16 +3230,14 @@ export async function enviarPrestacaoContasViagemNova(
 
     const itensDespesa = await buscarItensDespesaDaViagemNova(db, tenantId, viagem.id)
 
-    try {
-      validarItensDespesaComComprovante(itensDespesa)
-    } catch (error) {
-      if (error instanceof FinanceiroBusinessError) {
-        return { success: false, error: error.message }
-      }
-      throw error
+    if (itensDespesa.length === 0) {
+      return { success: false, error: MSG_SEM_ITENS_DESPESA }
     }
 
-    const protocolo = viagem.processo.protocolo
+    // BLOCO-4.1: TODO reativar validação de comprovantes no envio
+    // validarItensDespesaComComprovante(itensDespesa)
+
+    const protocolo = viagem.processo?.protocolo ?? viagem.protocolo // REMOVE-PROCESSO-PARTE-2
 
     const resultado = await db.$transaction(async (tx) => {
       const viagemLocked = await tx.tfdViagem.findFirst({
@@ -3256,7 +3277,13 @@ export async function enviarPrestacaoContasViagemNova(
       }
 
       const itensLocked = await buscarItensDespesaDaViagemNova(tx, tenantId, viagemLocked.id)
-      validarItensDespesaComComprovante(itensLocked)
+
+      if (itensLocked.length === 0) {
+        throw new FinanceiroBusinessError(MSG_SEM_ITENS_DESPESA)
+      }
+
+      // BLOCO-4.1: TODO reativar validação de comprovantes no envio
+      // validarItensDespesaComComprovante(itensLocked)
 
       const valorTotal = itensLocked.reduce((acc, item) => acc + Number(item.valor), 0)
 
@@ -3269,27 +3296,30 @@ export async function enviarPrestacaoContasViagemNova(
         },
       })
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: viagemLocked.processo_id,
-          tipo: 'PRESTACAO_ENVIADA',
-          descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} enviada para análise (total ${formatValorBrl(valorTotal)}).`,
-          usuarioId: session.user.id,
-          metadata: {
-            prestacaoId: viagemLocked.prestacao_conta.id,
-            viagemNovaId: viagemLocked.id,
-            valorTotal,
-            quantidadeItens: itensLocked.length,
+      // REMOVE-PROCESSO-PARTE-2
+      if (viagemLocked.processo_id) {
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagemLocked.processo_id,
+            tipo: 'PRESTACAO_ENVIADA',
+            descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} enviada para análise (total ${formatValorBrl(valorTotal)}).`,
+            usuarioId: session.user.id,
+            metadata: {
+              prestacaoId: viagemLocked.prestacao_conta.id,
+              viagemNovaId: viagemLocked.id,
+              valorTotal,
+              quantidadeItens: itensLocked.length,
+            },
           },
-        },
-        tx
-      )
+          tx
+        )
+      }
 
       return {
         prestacaoId: viagemLocked.prestacao_conta.id,
         viagemNovaId: viagemLocked.id,
-        processoId: viagemLocked.processo_id,
+        processoId: viagemLocked.processo_id ?? null,
         protocolo: viagemLocked.protocolo,
         sequenciaViagem: extrairSequenciaProtocoloViagemNova(viagemLocked.protocolo),
         valorTotal,
@@ -3310,23 +3340,25 @@ export async function enviarPrestacaoContasViagemNova(
         viagemNovaId: resultado.viagemNovaId,
         protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
-    await dispararNotificacao({
-      tenantId,
-      evento: NOTIFICATION_EVENTS.PRESTACAO_ENVIADA,
-      modulo: MODULO_TFD,
-      processoId: resultado.processoId,
-      context: {
-        protocolo,
-        especialidade: 'TFD',
-        sequenciaViagem: resultado.sequenciaViagem,
-        valorTotalFormatado: formatValorBrl(resultado.valorTotal),
-      },
-      excludeUserIds: [session.user.id],
-    })
+    if (resultado.processoId) {
+      await dispararNotificacao({
+        tenantId,
+        evento: NOTIFICATION_EVENTS.PRESTACAO_ENVIADA,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId,
+        context: {
+          protocolo,
+          especialidade: 'TFD',
+          sequenciaViagem: resultado.sequenciaViagem,
+          valorTotalFormatado: formatValorBrl(resultado.valorTotal),
+        },
+        excludeUserIds: [session.user.id],
+      })
+    }
 
     revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
 
@@ -3462,7 +3494,7 @@ export async function registrarVisualizacaoComprovanteViagemNova(
       return {
         prestacaoId: viagemLocked.prestacao_conta.id,
         viagemNovaId: viagemLocked.id,
-        processoId: viagemLocked.processo_id,
+        processoId: viagemLocked.processo_id ?? null,
         quantidadeVistos: comprovantesAtualizados.length,
       }
     })
@@ -3488,9 +3520,9 @@ export async function registrarVisualizacaoComprovanteViagemNova(
         comprovanteAnexoId: data.comprovanteAnexoId,
         visualizadoAt,
         quantidadeComprovantesVistos: resultado.quantidadeVistos,
-        protocolo: viagem.processo.protocolo,
+        protocolo: viagem.processo?.protocolo ?? viagem.protocolo, // REMOVE-PROCESSO-PARTE-2
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
       },
     })
 
@@ -3585,8 +3617,8 @@ export async function decidirPrestacaoContasViagemNova(
       return { success: false, error: MSG_PRESTACAO_ENVIADA_APENAS }
     }
 
-    const protocolo = viagem.processo.protocolo
-    const servidorResponsavelId = viagem.processo.aberto_por_id
+    const protocolo = viagem.processo?.protocolo ?? viagem.protocolo // REMOVE-PROCESSO-PARTE-2
+    const servidorResponsavelId = viagem.processo?.aberto_por_id ?? null
     const decididoAt = new Date()
 
     const itensDespesaInicial = await buscarItensDespesaDaViagemNova(db, tenantId, viagem.id)
@@ -3631,25 +3663,28 @@ export async function decidirPrestacaoContasViagemNova(
           },
         })
 
-        await registrarTramitacao(
-          {
-            tenantId,
-            processoId: viagemLocked.processo_id,
-            tipo: 'PRESTACAO_REJEITADA',
-            descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} rejeitada. ${observacoesGestor}`,
-            usuarioId: session.user.id,
-            metadata: {
-              prestacaoId: viagemLocked.prestacao_conta.id,
-              viagemNovaId: viagemLocked.id,
+        // REMOVE-PROCESSO-PARTE-2
+        if (viagemLocked.processo_id) {
+          await registrarTramitacao(
+            {
+              tenantId,
+              processoId: viagemLocked.processo_id,
+              tipo: 'PRESTACAO_REJEITADA',
+              descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} rejeitada. ${observacoesGestor}`,
+              usuarioId: session.user.id,
+              metadata: {
+                prestacaoId: viagemLocked.prestacao_conta.id,
+                viagemNovaId: viagemLocked.id,
+              },
             },
-          },
-          tx
-        )
+            tx
+          )
+        }
 
         return {
           prestacaoId: viagemLocked.prestacao_conta.id,
           viagemNovaId: viagemLocked.id,
-          processoId: viagemLocked.processo_id,
+          processoId: viagemLocked.processo_id ?? null,
           protocolo: viagemLocked.protocolo,
           sequenciaViagem: extrairSequenciaProtocoloViagemNova(viagemLocked.protocolo),
         }
@@ -3667,12 +3702,12 @@ export async function decidirPrestacaoContasViagemNova(
           decisao: 'REJEITADA',
           protocolo,
           modulo: MODULO_TFD,
-          processoId: resultado.processoId,
+          processoId: resultado.processoId ?? null,
           viagemNovaId: resultado.viagemNovaId,
         },
       })
 
-      if (servidorResponsavelId) {
+      if (servidorResponsavelId && resultado.processoId) {
         await dispararNotificacao({
           tenantId,
           evento: NOTIFICATION_EVENTS.PRESTACAO_REJEITADA,
@@ -3694,25 +3729,37 @@ export async function decidirPrestacaoContasViagemNova(
       return { success: true, data: undefined }
     }
 
-    const comprovantesVistos = parseComprovantesVistos(viagem.prestacao_conta.comprovantes_vistos)
+    // BLOCO-4.1: TODO reativar checagem de comprovantes visualizados
+    // const comprovantesVistos = parseComprovantesVistos(viagem.prestacao_conta.comprovantes_vistos)
+    // assertTodosComprovantesVisualizados(itensDespesaInicial, comprovantesVistos)
 
-    try {
-      assertTodosComprovantesVisualizados(itensDespesaInicial, comprovantesVistos)
-    } catch (error) {
-      if (error instanceof FinanceiroBusinessError) {
-        return { success: false, error: error.message }
-      }
-      throw error
+    if (itensDespesaInicial.length === 0) {
+      return { success: false, error: MSG_SEM_ITENS_DESPESA }
     }
 
-    const reservaAtiva = await db.tfdReservaSaldo.findFirst({
-      where: {
-        tenant_id: tenantId,
-        status: 'ATIVA',
-        solicitacao: { processo_id: viagem.processo_id },
-      },
-      select: { saldo_id: true, solicitacao_id: true },
-    })
+    const processoIdsReserva = await resolveProcessoIdsViagemNova(
+      db,
+      tenantId,
+      viagem.id,
+      viagem.processo_id
+    )
+
+    const reservaAtiva =
+      processoIdsReserva.length > 0
+        ? await db.tfdReservaSaldo.findFirst({
+            where: {
+              tenant_id: tenantId,
+              status: 'ATIVA',
+              solicitacao: {
+                processo_id:
+                  processoIdsReserva.length === 1
+                    ? processoIdsReserva[0]
+                    : { in: processoIdsReserva },
+              },
+            },
+            select: { saldo_id: true, solicitacao_id: true },
+          })
+        : null // REMOVE-PROCESSO-PARTE-4
 
     const saldoIdAfetado = reservaAtiva?.saldo_id ?? null
     let jaEstavaEmAlertaBaixo = false
@@ -3752,11 +3799,16 @@ export async function decidirPrestacaoContasViagemNova(
 
       const itensLocked = await buscarItensDespesaDaViagemNova(tx, tenantId, viagemLocked.id)
 
-      assertTodosComprovantesVisualizados(
-        itensLocked,
-        parseComprovantesVistos(viagemLocked.prestacao_conta.comprovantes_vistos)
-      )
-      validarItensDespesaComComprovante(itensLocked)
+      if (itensLocked.length === 0) {
+        throw new FinanceiroBusinessError(MSG_SEM_ITENS_DESPESA)
+      }
+
+      // BLOCO-4.1: TODO reativar checagem de comprovantes visualizados
+      // assertTodosComprovantesVisualizados(
+      //   itensLocked,
+      //   parseComprovantesVistos(viagemLocked.prestacao_conta.comprovantes_vistos)
+      // )
+      // validarItensDespesaComComprovante(itensLocked)
 
       const valorReal = roundMoney(
         itensLocked.reduce((acc, item) => acc + Number(item.valor), 0)
@@ -3824,48 +3876,51 @@ export async function decidirPrestacaoContasViagemNova(
         },
       })
 
-      await tx.processo.update({
-        where: { id: viagemLocked.processo_id },
-        data: { status: 'CONCLUIDO' },
-      })
+      // REMOVE-PROCESSO-PARTE-2
+      if (viagemLocked.processo_id) {
+        await tx.processo.update({
+          where: { id: viagemLocked.processo_id },
+          data: { status: 'CONCLUIDO' },
+        })
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: viagemLocked.processo_id,
-          tipo: 'PRESTACAO_APROVADA',
-          descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} aprovada (total ${formatValorBrl(valorReal)}).`,
-          usuarioId: session.user.id,
-          metadata: {
-            prestacaoId: viagemLocked.prestacao_conta.id,
-            viagemNovaId: viagemLocked.id,
-            valorReal,
-            valorReservado,
-            valorLiberacao,
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagemLocked.processo_id,
+            tipo: 'PRESTACAO_APROVADA',
+            descricao: `Prestação de contas da viagem ${viagemLocked.protocolo} aprovada (total ${formatValorBrl(valorReal)}).`,
+            usuarioId: session.user.id,
+            metadata: {
+              prestacaoId: viagemLocked.prestacao_conta.id,
+              viagemNovaId: viagemLocked.id,
+              valorReal,
+              valorReservado,
+              valorLiberacao,
+            },
           },
-        },
-        tx
-      )
+          tx
+        )
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: viagemLocked.processo_id,
-          tipo: 'CONCLUSAO',
-          descricao: `Processo TFD concluído após aprovação da prestação da viagem ${viagemLocked.protocolo}.`,
-          usuarioId: session.user.id,
-          metadata: {
-            prestacaoId: viagemLocked.prestacao_conta.id,
-            viagemNovaId: viagemLocked.id,
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagemLocked.processo_id,
+            tipo: 'CONCLUSAO',
+            descricao: `Processo TFD concluído após aprovação da prestação da viagem ${viagemLocked.protocolo}.`,
+            usuarioId: session.user.id,
+            metadata: {
+              prestacaoId: viagemLocked.prestacao_conta.id,
+              viagemNovaId: viagemLocked.id,
+            },
           },
-        },
-        tx
-      )
+          tx
+        )
+      }
 
       return {
         prestacaoId: viagemLocked.prestacao_conta.id,
         viagemNovaId: viagemLocked.id,
-        processoId: viagemLocked.processo_id,
+        processoId: viagemLocked.processo_id ?? null,
         protocolo: viagemLocked.protocolo,
         sequenciaViagem: extrairSequenciaProtocoloViagemNova(viagemLocked.protocolo),
         valorReal,
@@ -3890,12 +3945,12 @@ export async function decidirPrestacaoContasViagemNova(
         valorLiberacao: resultado.valorLiberacao,
         protocolo,
         modulo: MODULO_TFD,
-        processoId: resultado.processoId,
+        processoId: resultado.processoId ?? null,
         viagemNovaId: resultado.viagemNovaId,
       },
     })
 
-    if (servidorResponsavelId) {
+    if (servidorResponsavelId && resultado.processoId) {
       await dispararNotificacao({
         tenantId,
         evento: NOTIFICATION_EVENTS.PRESTACAO_APROVADA,

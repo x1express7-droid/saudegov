@@ -40,7 +40,7 @@ export const TFD_FINANCEIRO_SECTION_LABEL = 'Financeiro' as const
 export const TFD_FINANCEIRO_NAV_CATALOG = [
   {
     label: 'Saldos',
-    href: '/saude/tfd/configuracoes/saldos',
+    href: '/saude/tfd/saldos',
     icon: 'Wallet',
   },
   {
@@ -50,7 +50,7 @@ export const TFD_FINANCEIRO_NAV_CATALOG = [
   },
   {
     label: 'Relatórios',
-    href: '/saude/tfd/dashboard',
+    href: '/saude/tfd/relatorios',
     icon: 'BarChart3',
   },
 ] as const satisfies ReadonlyArray<SaudeNavChildConfig>

@@ -39,7 +39,9 @@ function normalizeOptionalString(value: string | undefined): string | null {
 
 function buildPacienteData(data: {
   nome: string
-  cpf?: string
+  cpf: string
+  email: string
+  telefoneCelular: string
   cns?: string
   dataNascimento?: string
   sexo?: Sexo
@@ -55,12 +57,14 @@ function buildPacienteData(data: {
   telefone?: string
   telefoneAlternativo?: string
 }) {
-  const cpf = data.cpf?.length === 11 ? data.cpf : null
+  const cpf = data.cpf.length === 11 ? data.cpf : null
   const cns = data.cns?.length === 15 ? data.cns : null
 
   return {
     nome: data.nome.trim(),
     cpf,
+    email: data.email.trim(),
+    telefone_celular: data.telefoneCelular,
     cns,
     data_nascimento: parseDataNascimento(data.dataNascimento),
     sexo: data.sexo ?? 'NAO_INFORMADO',
@@ -195,6 +199,8 @@ export async function salvarPacienteAtendimentoTfd(
   const pacientePayload = buildPacienteData({
     nome: data.nome,
     cpf: data.cpf,
+    email: data.email,
+    telefoneCelular: data.telefoneCelular,
     cns: data.cns,
     dataNascimento: data.dataNascimento || undefined,
     sexo: data.sexo,

@@ -22,6 +22,7 @@ import { seedSprint43TfdPlatformFeatures } from './seeds/sprint-4-3-platform-fea
 import { seedSprint46TfdPlatformFeatures } from './seeds/sprint-4-6-platform-features'
 import { seedTfdSaldoExemplo } from './seeds/tfd-saldo-exemplo'
 import { seedTfdCatalogoExemplo } from './seeds/tfd-catalogo-exemplo'
+import { seedTfdCidCompleto } from './seeds/tfd-cid-completo'
 import { seedTfdCidExemplo } from './seeds/tfd-cid-exemplo'
 import { seedTfdPrestacaoContasDemo } from './seeds/tfd-prestacao-contas-demo'
 
@@ -773,8 +774,12 @@ async function main() {
     '\n🏥 Catálogo TFD de exemplo: Cardiologia + Consulta em cardiologia + Hospital Universitário (SP).'
   )
 
-  await seedTfdCidExemplo(prisma, campograndems.id)
-  console.log('\n🩺 Catálogo CID de exemplo: 15 códigos CID-10 pré-cadastrados.')
+  // BLOCO-CID-COMPLETO
+  await seedTfdCidCompleto(prisma, campograndems.id)
+  console.log('\n🩺 Catálogo CID completo (DATASUS 2008) importado para campograndems.')
+
+  await seedTfdCidExemplo(prisma, altamirapa.id)
+  console.log('\n🩺 Catálogo CID de exemplo: 15 códigos CID-10 pré-cadastrados (altamirapa).')
 
   const prestacaoDemo = await seedTfdPrestacaoContasDemo(prisma, {
     tenantId: campograndems.id,

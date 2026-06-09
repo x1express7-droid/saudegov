@@ -256,22 +256,24 @@ export function SegmentosViagemSection({
             <Button asChild variant="secondary" className="w-full sm:w-auto">
               <Link href={novoSegmentoHref}>
                 <Plus className="mr-[var(--space-2)] size-4" aria-hidden="true" />
-                Adicionar segmento
+                {/* BLOCO-3: rótulo do botão de novo trecho */}
+                + Adicionar trecho de deslocamento
               </Link>
             </Button>
           </PermissionGate>
         ) : null}
 
         {segmentos.length === 0 ? (
+          // BLOCO-3: estado vazio com orientação para viagem municipal
           <EmptyState
             icon={<Route className="size-6" aria-hidden="true" />}
             titulo="Nenhum segmento cadastrado"
-            descricao="Nenhum segmento cadastrado. Adicione o deslocamento desta viagem."
+            descricao="Para a maioria das viagens com van municipal, adicione um único trecho de Campo Grande até o destino."
             cta={
               podeAdicionar ? (
                 <PermissionGate session={session} permission={TFD_PERMISSIONS.GERENCIAR_VIAGEM}>
                   <Button asChild variant="primary">
-                    <Link href={novoSegmentoHref}>Adicionar segmento</Link>
+                    <Link href={novoSegmentoHref}>+ Adicionar trecho de deslocamento</Link>
                   </Button>
                 </PermissionGate>
               ) : undefined

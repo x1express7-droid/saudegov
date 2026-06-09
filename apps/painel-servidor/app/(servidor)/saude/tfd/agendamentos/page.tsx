@@ -1,5 +1,5 @@
 import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
-import { getAgendamentosTfd } from '@saude/mod-saude-tfd'
+import { getAgendamentosConsulta, getAgendamentosTfd } from '@saude/mod-saude-tfd'
 import type { TfdAgendamentoStatus } from '@prisma/client'
 import { PageHeader } from '@saude/ui'
 import { getDefaultAgendamentosPeriodo } from '@/lib/tfd/default-agendamentos-periodo'
@@ -7,13 +7,12 @@ import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
 import { Suspense } from 'react'
 
-import { getAgendamentosConsulta } from '@saude/mod-saude-tfd'
+import {
+  AgendamentoListagemConsultas,
+  AgendamentoListagemLegado,
+} from './components/agendamento-listagem'
 
-import { AgendamentoConsultaLista } from './components/agendamento-consulta-lista'
-import { AgendamentoFiltros } from './components/agendamento-filtros'
-import { AgendamentoLista } from './components/agendamento-lista'
-import { AgendamentosTabs } from './components/agendamentos-tabs'
-
+// BLOCO-9-AGENDAMENTOS
 export const metadata: Metadata = {
   title: 'Agendamentos TFD',
 }
@@ -70,6 +69,25 @@ function parseAgendamentoStatus(value: string | undefined): TfdAgendamentoStatus
     return undefined
   }
   return value as TfdAgendamentoStatus
+}
+
+function temFiltrosServidorAtivos(params: {
+  status?: string
+  dataInicio?: string
+  dataFim?: string
+}): boolean {
+  const { dataInicio: defaultInicio, dataFim: defaultFim } = getDefaultAgendamentosPeriodo()
+
+  if (params.status && AGENDAMENTO_STATUS_VALUES.has(params.status)) {
+    return true
+  }
+  if (params.dataInicio && params.dataInicio !== defaultInicio) {
+    return true
+  }
+  if (params.dataFim && params.dataFim !== defaultFim) {
+    return true
+  }
+  return false
 }
 
 export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamentosPageProps) {
@@ -130,14 +148,10 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
         titulo="Agendamentos TFD"
         subtitulo={subtitulo}
         breadcrumbs={[
-          { label: 'Solicitações', href: '/saude/tfd/solicitacoes' },
+          { label: 'TFD', href: '/saude/tfd' },
           { label: 'Agendamentos' },
         ]}
       />
-
-      <Suspense fallback={null}>
-        <AgendamentosTabs />
-      </Suspense>
 
       {fonte === 'viagens' ? (
         <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
@@ -148,22 +162,12 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
       <Suspense
         fallback={
           <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            Carregando filtros…
-          </p>
-        }
-      >
-        <AgendamentoFiltros modo={fonte} />
-      </Suspense>
-
-      <Suspense
-        fallback={
-          <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
             Carregando agendamentos…
           </p>
         }
       >
         {fonte === 'viagens' ? (
-          <AgendamentosViagensLista
+          <AgendamentosViagensListagem
             session={session}
             dataInicio={dataInicioParam}
             dataFim={dataFimParam}
@@ -173,13 +177,18 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
             perPage={perPage}
           />
         ) : (
-          <AgendamentosConsultasLista
+          <AgendamentosConsultasListagem
             dataInicio={dataInicioParam}
             dataFim={dataFimParam}
             prestadorId={parseUuidParam(params.prestadorId)}
             status={parseAgendamentoStatus(params.status)}
             page={page}
             perPage={perPage}
+            temFiltrosServidor={temFiltrosServidorAtivos({
+              status: params.status,
+              dataInicio: dataInicioParam,
+              dataFim: dataFimParam,
+            })}
           />
         )}
       </Suspense>
@@ -187,7 +196,7 @@ export default async function TfdAgendamentosPage({ searchParams }: TfdAgendamen
   )
 }
 
-async function AgendamentosViagensLista({
+async function AgendamentosViagensListagem({
   session,
   dataInicio,
   dataFim,
@@ -196,7 +205,7 @@ async function AgendamentosViagensLista({
   page,
   perPage,
 }: {
-  session: Parameters<typeof AgendamentoLista>[0]['session']
+  session: Parameters<typeof AgendamentoListagemLegado>[0]['session']
   dataInicio?: string
   dataFim?: string
   motoristaId?: string
@@ -213,16 +222,17 @@ async function AgendamentosViagensLista({
     perPage,
   })
 
-  return <AgendamentoLista items={items} total={total} session={session} />
+  return <AgendamentoListagemLegado items={items} total={total} session={session} />
 }
 
-async function AgendamentosConsultasLista({
+async function AgendamentosConsultasListagem({
   dataInicio,
   dataFim,
   prestadorId,
   status,
   page,
   perPage,
+  temFiltrosServidor,
 }: {
   dataInicio?: string
   dataFim?: string
@@ -230,6 +240,7 @@ async function AgendamentosConsultasLista({
   status?: TfdAgendamentoStatus
   page: number
   perPage: number
+  temFiltrosServidor: boolean
 }) {
   const { items, total } = await getAgendamentosConsulta({
     dataInicio,
@@ -240,5 +251,13 @@ async function AgendamentosConsultasLista({
     perPage,
   })
 
-  return <AgendamentoConsultaLista items={items} total={total} />
+  return (
+    <AgendamentoListagemConsultas
+      items={items}
+      total={total}
+      page={page}
+      perPage={perPage}
+      temFiltrosServidor={temFiltrosServidor}
+    />
+  )
 }

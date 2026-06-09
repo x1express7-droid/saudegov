@@ -20,6 +20,15 @@ const tests = [
         especialidadeId: '00000000-0000-4000-8000-000000000003',
       }).success,
   ],
+  [
+    'Consulta sem tipo de transporte',
+    () =>
+      abrirSolicitacaoSchema.safeParse({
+        ...base,
+        tipoTransporteRecomendado: undefined,
+        especialidadeId: '00000000-0000-4000-8000-000000000003',
+      }).success,
+  ],
   ['Exame sem proc', () => !abrirSolicitacaoSchema.safeParse({ ...base, tipoAtendimento: 'EXAME', procedimentos: [] }).success],
   ['Cirurgia sem esp', () => abrirSolicitacaoSchema.safeParse({ ...base, tipoAtendimento: 'CIRURGIA' }).success],
   [

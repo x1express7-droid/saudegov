@@ -92,3 +92,9 @@
 **Decisão:** a action `atualizarPermissoesServidor` rejeita qualquer chave não presente em `TFD_GRANULAR_PERMISSION_DEFINITIONS`. Retorna `ActionResponse` com `success: false` e `fieldErrors`. Impede injeção de permissões arbitrárias via request manipulado.
 **Motivo:** o JSONB `users.permissions` é fonte de autorização; chaves desconhecidas não devem ser aceitas silenciosamente.
 **Alternativa descartada:** ignorar chaves inválidas — comportamento permissivo que mascara tentativas de escalação de privilégio.
+
+### D18 — TfdViagem desvinculada de processo TFD (09/06/2026)
+**Decisão:** `saude_tfd.viagens.processo_id` permanece nullable no banco (FK preservada para dados legados), mas foi removido do fluxo principal de criação e listagem. Uma viagem representa um evento de transporte independente; passageiros trazem seu processo via `agendamento_id`. Busca de agendamentos e viagens elegíveis usa `data_saida` / `data_consulta` (janela ±3 dias), não `processo_id`. Índice `idx_tfd_viagens_nova_processo` removido (migration `20260609130000_viagem_processo_id_drop_index`).
+**Motivo:** viagens multi-processo (agendamentos de processos distintos na mesma rota/data).
+**Referência:** REMOVE-PROCESSO-PARTE-1 a PARTE-4.
+**Alternativa descartada:** manter viagem 1:1 com processo — impedia consolidar transporte de pacientes de solicitações diferentes.

@@ -25,7 +25,6 @@ export interface ViagemPassageiroDetalhe {
 export interface ViagemDetalheOutput {
   id: string
   protocolo: string
-  processoId: string
   status: TfdViagemStatusV2
   dataSaida: string
   horaSaida: string | null
@@ -98,7 +97,6 @@ export async function getViagemDetalhe(viagemId: string): Promise<ViagemDetalheO
     select: {
       id: true,
       protocolo: true,
-      processo_id: true,
       status: true,
       data_saida: true,
       hora_saida: true,
@@ -144,6 +142,7 @@ export async function getViagemDetalhe(viagemId: string): Promise<ViagemDetalheO
           agendamento: {
             select: {
               id: true,
+              processo_id: true,
               data_consulta: true,
               hora_consulta: true,
               tipo_atendimento: true,
@@ -164,28 +163,42 @@ export async function getViagemDetalhe(viagemId: string): Promise<ViagemDetalheO
     return null
   }
 
-  const tramitacoes = await db.tramitacao.findMany({
-    where: {
-      tenant_id: tenantId,
-      processo_id: viagem.processo_id,
-    },
-    select: {
-      id: true,
-      tipo: true,
-      descricao: true,
-      created_at: true,
-      usuario: { select: { name: true } },
-    },
-    orderBy: { created_at: 'desc' },
-    take: 10,
-  })
+  // REMOVE-PROCESSO-PARTE-4: tramitações dos processos dos passageiros (agendamentos vinculados)
+  const processoIdsTramitacoes = [
+    ...new Set(
+      viagem.passageiros
+        .map((passageiro) => passageiro.agendamento.processo_id)
+        .filter((id): id is string => Boolean(id))
+    ),
+  ]
+
+  const tramitacoes =
+    processoIdsTramitacoes.length > 0
+      ? await db.tramitacao.findMany({
+          where: {
+            tenant_id: tenantId,
+            processo_id:
+              processoIdsTramitacoes.length === 1
+                ? processoIdsTramitacoes[0]
+                : { in: processoIdsTramitacoes },
+          },
+          select: {
+            id: true,
+            tipo: true,
+            descricao: true,
+            created_at: true,
+            usuario: { select: { name: true } },
+          },
+          orderBy: { created_at: 'desc' },
+          take: 10,
+        })
+      : []
 
   const segmentos = await fetchSegmentosViagemForTenant(db, tenantId, viagem.id)
 
   return {
     id: viagem.id,
     protocolo: viagem.protocolo,
-    processoId: viagem.processo_id,
     status: viagem.status,
     dataSaida: viagem.data_saida.toISOString().slice(0, 10),
     horaSaida: formatHora(viagem.hora_saida),

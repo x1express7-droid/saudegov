@@ -90,9 +90,22 @@ export const abrirSolicitacaoSchema = z
       .trim()
       .min(10, 'Informe o motivo/diagnóstico/justificativa com pelo menos 10 caracteres.')
       .max(5000, 'Motivo/diagnóstico/justificativa deve ter no máximo 5000 caracteres.'),
-    tipoTransporteRecomendado: z.enum(tipoTransporteRecomendadoValues, {
-      errorMap: () => ({ message: 'Selecione o tipo de transporte recomendado.' }),
-    }),
+    tipoTransporteRecomendado: z.preprocess(
+      (value) => {
+        if (value === undefined || value === null) {
+          return undefined
+        }
+        if (typeof value === 'string' && value.trim() === '') {
+          return undefined
+        }
+        return value
+      },
+      z
+        .enum(tipoTransporteRecomendadoValues, {
+          errorMap: () => ({ message: 'Tipo de transporte recomendado inválido.' }),
+        })
+        .optional()
+    ),
     /** Opcional; anexos vinculados ao processo para consulta e análise. */
     laudoAnexoIds: z.array(z.string().uuid('ID do laudo inválido.')).optional().default([]),
     observacoesAbertura: z

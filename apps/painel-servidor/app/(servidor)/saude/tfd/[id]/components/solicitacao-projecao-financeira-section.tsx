@@ -22,9 +22,17 @@ const currencyFormatter = new Intl.NumberFormat('pt-BR', {
   currency: 'BRL',
 })
 
+const RESERVA_STATUS_LABEL: Record<string, string> = {
+  ATIVA: 'Ativa',
+  CONSUMIDA: 'Consumida',
+  LIBERADA: 'Liberada',
+  CANCELADA: 'Cancelada',
+}
+
 export interface SolicitacaoProjecaoFinanceiraSectionProps {
   session: SaudeMunicSession
   projecao: TfdProjecaoFinanceiraOutput
+  temViagensVinculadas?: boolean
 }
 
 function parseValorInput(value: string): number | null {
@@ -36,9 +44,45 @@ function parseValorInput(value: string): number | null {
   return Number.isFinite(numero) ? numero : null
 }
 
+function ReservaSaldoViagemCard({ projecao }: { projecao: TfdProjecaoFinanceiraOutput }) {
+  const reserva = projecao.reservaAtiva
+
+  return (
+    <Card header={<CardHeader>Reserva de saldo ativa</CardHeader>}>
+      {reserva ? (
+        <dl className="grid gap-[var(--space-2)] text-[length:var(--text-sm)]">
+          <div>
+            <dt className="text-[var(--color-text-muted)]">Valor reservado</dt>
+            <dd className="font-semibold text-[var(--color-text)]">
+              {currencyFormatter.format(reserva.valor)}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[var(--color-text-muted)]">Saldo</dt>
+            <dd className="text-[var(--color-text)]">
+              {projecao.saldoVinculado?.descricao ?? 'Saldo vinculado'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-[var(--color-text-muted)]">Status da reserva</dt>
+            <dd className="text-[var(--color-text)]">
+              {RESERVA_STATUS_LABEL[reserva.status] ?? reserva.status}
+            </dd>
+          </div>
+        </dl>
+      ) : (
+        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+          Saldo será reservado automaticamente na aprovação da solicitação.
+        </p>
+      )}
+    </Card>
+  )
+}
+
 export function SolicitacaoProjecaoFinanceiraSection({
   session,
   projecao,
+  temViagensVinculadas = false,
 }: SolicitacaoProjecaoFinanceiraSectionProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -199,6 +243,7 @@ export function SolicitacaoProjecaoFinanceiraSection({
   if (!exibirSecao) {
     return (
       <PermissionGate session={session} permission={TFD_PERMISSIONS.GERENCIAR_SALDO}>
+        <div className="flex flex-col gap-[var(--space-4)]">
         <Card
           header={
             <div>
@@ -215,11 +260,17 @@ export function SolicitacaoProjecaoFinanceiraSection({
             descricao="A projeção financeira pode ser registrada quando a solicitação estiver enviada, em análise ou aprovada (antes da reserva)."
           />
         </Card>
+        {temViagensVinculadas ? (
+          // BLOCO-4: card de reserva de saldo vinculado à viagem
+          <ReservaSaldoViagemCard projecao={projecao} />
+        ) : null}
+        </div>
       </PermissionGate>
     )
   }
 
   return (
+    <div className="flex flex-col gap-[var(--space-4)]">
     <Card
       header={
         <div>
@@ -488,5 +539,10 @@ export function SolicitacaoProjecaoFinanceiraSection({
         ) : null}
       </div>
     </Card>
+    {temViagensVinculadas ? (
+      // BLOCO-4: card de reserva de saldo vinculado à viagem
+      <ReservaSaldoViagemCard projecao={projecao} />
+    ) : null}
+    </div>
   )
 }

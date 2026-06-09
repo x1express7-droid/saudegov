@@ -20,9 +20,14 @@ const nextConfig: NextConfig = {
         permanent: false,
       },
       {
-        source: '/saude/tfd/saldos',
-        destination: '/saude/tfd/configuracoes/saldos',
-        permanent: false,
+        source: '/saude/tfd/configuracoes/saldos',
+        destination: '/saude/tfd/saldos',
+        permanent: true,
+      },
+      {
+        source: '/saude/tfd/configuracoes/saldos/:path*',
+        destination: '/saude/tfd/saldos/:path*',
+        permanent: true,
       },
     ]
   },

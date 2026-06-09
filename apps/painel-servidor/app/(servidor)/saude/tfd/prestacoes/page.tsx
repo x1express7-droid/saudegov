@@ -46,7 +46,7 @@ export default async function TfdPrestacoesPage({ searchParams }: TfdPrestacoesP
 
   const params = await searchParams
   const page = parsePositiveInt(params.page, 1)
-  const perPage = Math.min(100, parsePositiveInt(params.perPage, 20))
+  const perPage = Math.min(100, parsePositiveInt(params.perPage, 100))
 
   const { items, total } = await getPrestacoesTfd({
     status: parseStatus(params.status),
@@ -56,12 +56,13 @@ export default async function TfdPrestacoesPage({ searchParams }: TfdPrestacoesP
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
+      {/* BLOCO-1: breadcrumb da central de prestações */}
       <PageHeader
         titulo="Prestações de Contas TFD"
         subtitulo="Prestações vinculadas às viagens realizadas — acompanhamento e envio para análise."
         breadcrumbs={[
-          { label: 'Solicitações', href: '/saude/tfd/solicitacoes' },
-          { label: 'Prestações' },
+          { label: 'TFD', href: '/saude/tfd' },
+          { label: 'Prestações de Contas' },
         ]}
       />
 

@@ -1,13 +1,13 @@
 'use client'
 
+// BLOCO-7-PACIENTES
 import { buscarPacientePorCns, vincularPaciente } from '@saude/mod-saude-tfd/actions/paciente'
 import { Alert, Badge, Button, Card, Input, PageHeader } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Plus } from 'lucide-react'
 import Link from 'next/link'
-import type { ReactNode } from 'react'
-import { useState, useTransition } from 'react'
+import { useEffect, useState, useTransition } from 'react'
 
 type Etapa = 'busca' | 'confirmacao' | 'sucesso'
 
@@ -57,13 +57,13 @@ function formatSexo(value: DadosCadsus['sexo']): string {
 export interface PacienteBuscaFormProps {
   cadsusEnabled: boolean
   podeCadastrarPaciente?: boolean
-  vinculadosSection?: ReactNode
+  onEtapaChange?: (etapa: Etapa) => void
 }
 
 export function PacienteBuscaForm({
   cadsusEnabled,
   podeCadastrarPaciente = false,
-  vinculadosSection,
+  onEtapaChange,
 }: PacienteBuscaFormProps) {
   const [etapa, setEtapa] = useState<Etapa>('busca')
   const [cns, setCns] = useState('')
@@ -72,6 +72,10 @@ export function PacienteBuscaForm({
   const [vinculoSucesso, setVinculoSucesso] = useState<VinculoSucesso | null>(null)
   const [erro, setErro] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
+
+  useEffect(() => {
+    onEtapaChange?.(etapa)
+  }, [etapa, onEtapaChange])
 
   function reiniciarFluxo() {
     setEtapa('busca')
@@ -149,11 +153,11 @@ export function PacienteBuscaForm({
   }
 
   const subtitulo = cadsusEnabled
-    ? 'Cadastre pacientes na base do município ou importe dados pelo CADSUS quando disponível.'
-    : 'Cadastre e gerencie pacientes na base local do município. A integração CADSUS não está ativa.'
+    ? 'Pacientes vinculados ao município para solicitações TFD.'
+    : 'Pacientes cadastrados na base local do município.'
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
+    <>
       <PageHeader
         titulo="Pacientes TFD"
         subtitulo={subtitulo}
@@ -166,35 +170,27 @@ export function PacienteBuscaForm({
             <Button asChild variant="primary">
               <Link href="/saude/tfd/pacientes/novo">
                 <Plus className="size-4" aria-hidden="true" />
-                Cadastrar ou editar
+                Novo paciente
               </Link>
             </Button>
           ) : undefined
         }
       />
 
+      {etapa === 'busca' && !cadsusEnabled ? (
+        <p
+          className="flex items-center gap-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--color-text-muted)]"
+          role="status"
+        >
+          <span aria-hidden="true">⚠</span>
+          CADSUS não configurado — pacientes cadastrados apenas na base local.
+        </p>
+      ) : null}
+
       {erro ? (
         <p role="alert" className="text-[length:var(--text-sm)] text-[var(--color-error)]">
           {erro}
         </p>
-      ) : null}
-
-      {etapa === 'busca' && podeCadastrarPaciente ? (
-        <Card
-          header={
-            <h2 className="text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]">
-              Cadastrar ou editar paciente
-            </h2>
-          }
-        >
-          <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            Abra o formulário para buscar um paciente existente e atualizar os dados, ou registrar um
-            novo na base do município.
-          </p>
-          <Button asChild variant="primary">
-            <Link href="/saude/tfd/pacientes/novo">Abrir formulário</Link>
-          </Button>
-        </Card>
       ) : null}
 
       {etapa === 'busca' && cadsusEnabled ? (
@@ -229,15 +225,6 @@ export function PacienteBuscaForm({
           </form>
         </Card>
       ) : null}
-
-      {etapa === 'busca' && !cadsusEnabled ? (
-        <Alert variant="info" titulo="CADSUS não configurado">
-          A consulta à base nacional está desativada neste município. Os pacientes são cadastrados
-          apenas na base local — use o botão acima ou a busca por nome na lista abaixo.
-        </Alert>
-      ) : null}
-
-      {etapa === 'busca' && vinculadosSection ? vinculadosSection : null}
 
       {etapa === 'confirmacao' && dadosCadsus ? (
         <Card
@@ -358,6 +345,6 @@ export function PacienteBuscaForm({
           </div>
         </Card>
       ) : null}
-    </div>
+    </>
   )
 }

@@ -12,15 +12,13 @@ import {
   getAlertasUrgentesTfd,
   getDashboardFinanceiroTfd,
   getDashboardTfd,
-  getMotoristasRelatorioOpcoesTfd,
-  getPrestadoresRelatorioOpcoesTfd,
   getSolicitacoesTfd,
   TFD_PERMISSIONS,
 } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
-import { notFound } from 'next/navigation'
 import Link from 'next/link'
+import { notFound } from 'next/navigation'
 
 import { TfdDashboardAlertas } from './components/tfd-dashboard-alertas'
 import { TfdDashboardFinanceiro } from './components/tfd-dashboard-financeiro'
@@ -28,14 +26,16 @@ import { TfdDashboardGraficoStatus } from './components/tfd-dashboard-grafico-st
 import { TfdDashboardKpis } from './components/tfd-dashboard-kpis'
 import { TfdDashboardOperacional } from './components/tfd-dashboard-operacional'
 import { TfdDashboardUltimasSolicitacoes } from './components/tfd-dashboard-ultimas-solicitacoes'
-import { TfdRelatoriosPanel } from './components/tfd-relatorios-panel'
 
+// BLOCO-12-RELATORIOS
 export const metadata: Metadata = {
   title: 'Dashboard TFD',
 }
 
 async function GestorDashboard() {
   const session = await requireTenantRole('GESTOR')
+
+  const podeExportarRelatorio = hasPermission(session, TFD_PERMISSIONS.EXPORTAR_RELATORIO)
 
   const [
     dashboard,
@@ -46,8 +46,6 @@ async function GestorDashboard() {
     alertasPendente60,
     alertasLembreteViagem,
     listagem,
-    prestadoresOpcoes,
-    motoristasOpcoes,
   ] = await Promise.all([
     getDashboardTfd(),
     getDashboardFinanceiroTfd(),
@@ -57,8 +55,6 @@ async function GestorDashboard() {
     getAlertasPendente60Dias(),
     getAlertasLembreteViagemTfd(),
     getSolicitacoesTfd({ page: 1, perPage: 10 }),
-    getPrestadoresRelatorioOpcoesTfd(),
-    getMotoristasRelatorioOpcoesTfd(),
   ])
 
   return (
@@ -105,11 +101,18 @@ async function GestorDashboard() {
         <TfdDashboardUltimasSolicitacoes items={listagem.items} />
       </section>
 
-      <TfdRelatoriosPanel
-        session={session}
-        prestadoresOpcoes={prestadoresOpcoes}
-        motoristasOpcoes={motoristasOpcoes}
-      />
+      {podeExportarRelatorio ? (
+        <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+          Para gerar relatórios, acesse{' '}
+          <Link
+            href="/saude/tfd/relatorios"
+            className="font-medium text-[var(--color-primary)] hover:underline"
+          >
+            Relatórios
+          </Link>
+          .
+        </p>
+      ) : null}
     </div>
   )
 }

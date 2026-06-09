@@ -19,8 +19,21 @@ import {
   Input,
   Select,
 } from '@saude/ui'
-import { useCallback, useState, useTransition } from 'react'
+import { Loader2 } from 'lucide-react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 
+import { MunicipioNascimentoCombobox } from '../../components/municipio-nascimento-combobox'
+import {
+  BUSCA_PACIENTE_DEBOUNCE_MS,
+  formatCpfDisplay,
+  formatTelefoneBr,
+  hintTermoBuscaPaciente,
+  onlyDigits,
+  termoProntoParaBuscaPaciente,
+  validarCpfObrigatorio,
+  validarEmailObrigatorio,
+  validarTelefoneCelularObrigatorio,
+} from '../../components/paciente-form-utils'
 import { buscarEnderecoPorCep } from '../../../../../../lib/viacep'
 
 export type PacienteAtendimentoFormState = {
@@ -80,28 +93,19 @@ const MODO_BUSCA_OPTIONS = [
   { value: 'cns', label: 'CNS (Cartão SUS)' },
 ]
 
-function onlyDigits(value: string): string {
-  return value.replace(/\D/g, '')
-}
-
 async function salvarCamposComplementaresPaciente(form: PacienteAtendimentoFormState): Promise<string | null> {
   if (!form.pacienteId) {
     return null
   }
 
   const nomeSocial = form.nomeSocial.trim()
-  const email = form.email.trim()
-  const telefoneCelular = form.telefoneCelular.trim()
-
-  if (!nomeSocial && !email && !telefoneCelular) {
+  if (!nomeSocial) {
     return null
   }
 
   const result = await atualizarPacienteCompletoTfd({
     pacienteId: form.pacienteId,
-    ...(nomeSocial ? { nomeSocial } : {}),
-    ...(email ? { email } : {}),
-    ...(telefoneCelular ? { telefoneCelular } : {}),
+    nomeSocial,
   })
 
   if (!result.success) {
@@ -116,9 +120,9 @@ function detalheToFormState(detalhe: TfdPacienteAtendimentoDetalhe): PacienteAte
     pacienteId: detalhe.id,
     nome: detalhe.nome,
     nomeSocial: '',
-    email: '',
-    telefoneCelular: '',
-    cpf: detalhe.cpf ?? '',
+    email: detalhe.email ?? '',
+    telefoneCelular: detalhe.telefoneCelular ? formatTelefoneBr(detalhe.telefoneCelular) : '',
+    cpf: detalhe.cpf ? formatCpfDisplay(detalhe.cpf) : '',
     cns: detalhe.cns ?? '',
     dataNascimento: detalhe.dataNascimento ?? '',
     sexo: detalhe.sexo ?? 'NAO_INFORMADO',
@@ -131,8 +135,10 @@ function detalheToFormState(detalhe: TfdPacienteAtendimentoDetalhe): PacienteAte
     bairro: detalhe.bairro ?? '',
     municipio: detalhe.municipio ?? '',
     uf: detalhe.uf ?? '',
-    telefone: detalhe.telefone ?? '',
-    telefoneAlternativo: detalhe.telefoneAlternativo ?? '',
+    telefone: detalhe.telefone ? formatTelefoneBr(detalhe.telefone) : '',
+    telefoneAlternativo: detalhe.telefoneAlternativo
+      ? formatTelefoneBr(detalhe.telefoneAlternativo)
+      : '',
   }
 }
 
@@ -167,9 +173,16 @@ export function PacienteAtendimentoSection({
     { id: string; nome: string; cpf: string | null; cns: string | null }[]
   >([])
   const [erro, setErro] = useState<string | null>(null)
+  const [cpfErro, setCpfErro] = useState<string | null>(null)
+  const [emailErro, setEmailErro] = useState<string | null>(null)
+  const [celularErro, setCelularErro] = useState<string | null>(null)
   const [cepErro, setCepErro] = useState<string | null>(null)
   const [isPending, startTransition] = useTransition()
   const [cepLoading, setCepLoading] = useState(false)
+  const [buscando, setBuscando] = useState(false)
+  const [listaAberta, setListaAberta] = useState(false)
+  const [buscaSemResultado, setBuscaSemResultado] = useState(false)
+  const buscaRequestId = useRef(0)
 
   const updateField = useCallback(
     <K extends keyof PacienteAtendimentoFormState>(key: K, value: PacienteAtendimentoFormState[K]) => {
@@ -178,47 +191,111 @@ export function PacienteAtendimentoSection({
     []
   )
 
-  function handleBuscarLocal() {
+  useEffect(() => {
+    if (!listaAberta) {
+      return
+    }
+
+    const termo =
+      modoBusca === 'cpf' || modoBusca === 'cns' ? onlyDigits(termoBusca) : termoBusca.trim()
+
+    if (!termoProntoParaBuscaPaciente(termoBusca, modoBusca)) {
+      setResultados([])
+      setBuscando(false)
+      setBuscaSemResultado(false)
+      return
+    }
+
+    setBuscando(true)
     setErro(null)
+    setBuscaSemResultado(false)
+
+    const requestId = ++buscaRequestId.current
+    const timer = window.setTimeout(() => {
+      void (async () => {
+        const response = await buscarPacientesAtendimentoTfd({ termo, modo: modoBusca })
+        if (requestId !== buscaRequestId.current) {
+          return
+        }
+
+        setBuscando(false)
+
+        if (!response.success) {
+          setResultados([])
+          setErro(response.error)
+          setBuscaSemResultado(false)
+          return
+        }
+
+        setResultados(response.data)
+        if (response.data.length === 0) {
+          setErro(
+            modoBusca === 'cns' && cadsusEnabled
+              ? 'Paciente não encontrado no município. Consulte o CADSUS ou preencha os dados manualmente abaixo.'
+              : 'Nenhum paciente encontrado. Preencha os dados abaixo para cadastrar na base do município.'
+          )
+          setBuscaSemResultado(true)
+        } else {
+          setErro(null)
+          setBuscaSemResultado(false)
+        }
+      })()
+    }, BUSCA_PACIENTE_DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timer)
+    }
+  }, [cadsusEnabled, listaAberta, modoBusca, termoBusca])
+
+  function handleModoBuscaChange(value: 'nome' | 'cpf' | 'cns') {
+    setModoBusca(value)
+    setTermoBusca('')
     setResultados([])
-    startTransition(async () => {
-      const response = await buscarPacientesAtendimentoTfd({ termo: termoBusca, modo: modoBusca })
-      if (!response.success) {
-        setErro(response.error)
-        return
-      }
-      setResultados(response.data)
-      if (response.data.length === 0) {
-        setErro(
-          modoBusca === 'cns' && cadsusEnabled
-            ? 'Paciente não encontrado no município. Consulte o CADSUS ou preencha os dados manualmente abaixo.'
-            : 'Nenhum paciente encontrado. Preencha os dados abaixo para cadastrar na base do município.'
-        )
-      }
-    })
+    setErro(null)
+    setBuscaSemResultado(false)
+    setListaAberta(true)
+    buscaRequestId.current += 1
+  }
+
+  function handleTermoChange(value: string) {
+    const nextValue =
+      modoBusca === 'cpf'
+        ? formatCpfDisplay(value)
+        : modoBusca === 'cns'
+          ? onlyDigits(value).slice(0, 15)
+          : value
+
+    setTermoBusca(nextValue)
+    setListaAberta(true)
   }
 
   function handleSelecionar(pacienteId: string) {
     setErro(null)
+    setListaAberta(false)
     startTransition(async () => {
       const response = await carregarPacienteAtendimentoTfd({ pacienteId })
       if (!response.success) {
         setErro(response.error)
+        setListaAberta(true)
         return
       }
       const next: PacienteAtendimentoFormState = {
         ...detalheToFormState(response.data),
         nomeSocial: form.nomeSocial,
-        email: form.email,
-        telefoneCelular: form.telefoneCelular,
       }
       const complementarErro = await salvarCamposComplementaresPaciente(next)
       if (complementarErro) {
         setErro(complementarErro)
+        setListaAberta(true)
         return
       }
       setForm(next)
       setResultados([])
+      setTermoBusca('')
+      setBuscaSemResultado(false)
+      setCpfErro(null)
+      setEmailErro(null)
+      setCelularErro(null)
       if (!notificarSalvoApenasAoSalvar) {
         onPacienteSalvo(response.data.id, next)
       }
@@ -292,14 +369,48 @@ export function PacienteAtendimentoSection({
     }))
   }
 
+  function handleCpfBlur() {
+    setCpfErro(validarCpfObrigatorio(form.cpf))
+  }
+
+  function handleEmailBlur() {
+    setEmailErro(validarEmailObrigatorio(form.email))
+  }
+
+  function handleCelularBlur() {
+    setCelularErro(validarTelefoneCelularObrigatorio(form.telefoneCelular))
+  }
+
   function handleSalvarPaciente() {
     setErro(null)
+
+    const cpfValidacao = validarCpfObrigatorio(form.cpf)
+    const emailValidacao = validarEmailObrigatorio(form.email)
+    const celularValidacao = validarTelefoneCelularObrigatorio(form.telefoneCelular)
+
+    setCpfErro(cpfValidacao)
+    setEmailErro(emailValidacao)
+    setCelularErro(celularValidacao)
+
+    const primeiraValidacao = cpfValidacao ?? emailValidacao ?? celularValidacao
+    if (primeiraValidacao) {
+      setErro(primeiraValidacao)
+      return
+    }
+
+    if (!form.nome.trim()) {
+      setErro('Nome do paciente é obrigatório.')
+      return
+    }
+
     const atualizado = Boolean(form.pacienteId)
     startTransition(async () => {
       const response = await salvarPacienteAtendimentoTfd({
         pacienteId: form.pacienteId,
         nome: form.nome,
-        cpf: onlyDigits(form.cpf) || undefined,
+        cpf: onlyDigits(form.cpf),
+        email: form.email.trim(),
+        telefoneCelular: onlyDigits(form.telefoneCelular),
         cns: onlyDigits(form.cns) || undefined,
         dataNascimento: form.dataNascimento || undefined,
         sexo: form.sexo,
@@ -312,8 +423,8 @@ export function PacienteAtendimentoSection({
         bairro: form.bairro || undefined,
         municipio: form.municipio || undefined,
         uf: form.uf || undefined,
-        telefone: form.telefone || undefined,
-        telefoneAlternativo: form.telefoneAlternativo || undefined,
+        telefone: onlyDigits(form.telefone) || undefined,
+        telefoneAlternativo: onlyDigits(form.telefoneAlternativo) || undefined,
       })
 
       if (!response.success) {
@@ -342,12 +453,12 @@ export function PacienteAtendimentoSection({
     variant === 'cadastro' ? 'Dados do paciente' : 'Identificação do paciente'
   const descricaoCard =
     variant === 'cadastro'
-      ? `Busque um paciente já cadastrado para editar ou preencha os campos para um novo cadastro na base do município. CPF e CNS são opcionais.${
+      ? `Busque um paciente já cadastrado para editar ou preencha os campos para um novo cadastro na base do município. Nome, e-mail, telefone celular e CPF são obrigatórios.${
           cadsusEnabled
             ? ' Com a integração CADSUS ativa, você também pode importar dados pelo CNS.'
             : ''
         }`
-      : `Busque por nome, CPF ou CNS na base do município ou cadastre um novo paciente preenchendo os campos abaixo. CPF e CNS são opcionais.${
+      : `Busque por nome, CPF ou CNS na base do município ou cadastre um novo paciente preenchendo os campos abaixo. Nome, e-mail, telefone celular e CPF são obrigatórios.${
           cadsusEnabled
             ? ' Com a integração CADSUS ativa, você também pode importar dados pelo CNS.'
             : ''
@@ -359,6 +470,15 @@ export function PacienteAtendimentoSection({
         : 'Cadastrar paciente'
       : 'Salvar dados do paciente'
 
+  const formularioPronto =
+    form.nome.trim().length >= 3 &&
+    !validarCpfObrigatorio(form.cpf) &&
+    !validarEmailObrigatorio(form.email) &&
+    !validarTelefoneCelularObrigatorio(form.telefoneCelular)
+
+  const exibirLista =
+    listaAberta && (buscando || resultados.length > 0 || buscaSemResultado || Boolean(erro))
+
   return (
     <Card
       header={<CardHeader>{tituloCard}</CardHeader>}
@@ -366,70 +486,87 @@ export function PacienteAtendimentoSection({
     >
         <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">{descricaoCard}</p>
 
-        <div className="grid gap-5 md:grid-cols-[140px_1fr_auto]">
+        <div className="grid gap-5 md:grid-cols-[140px_1fr]">
           <Select
             id="modo-busca-paciente"
             label="Buscar por"
             options={MODO_BUSCA_OPTIONS}
             value={modoBusca}
-            onValueChange={(value) => setModoBusca(value as 'nome' | 'cpf' | 'cns')}
+            onValueChange={(value) => handleModoBuscaChange(value as 'nome' | 'cpf' | 'cns')}
             disabled={disabled || isPending}
           />
-          <Input
-            id="termo-busca-paciente"
-            label="Termo de busca"
-            value={termoBusca}
-            onChange={(event) => setTermoBusca(event.target.value)}
-            disabled={disabled || isPending}
-            placeholder={
-              modoBusca === 'nome'
-                ? 'Nome do paciente'
-                : modoBusca === 'cpf'
-                  ? '00000000000'
-                  : '000000000000000'
-            }
-            inputMode={modoBusca === 'nome' ? 'text' : 'numeric'}
-          />
-          <div className="flex items-end">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={handleBuscarLocal}
-              disabled={disabled || isPending || !termoBusca.trim()}
-              loading={isPending}
-            >
-              Buscar
-            </Button>
+          <div className="relative">
+            <Input
+              id="termo-busca-paciente"
+              label="Termo de busca"
+              value={termoBusca}
+              onChange={(event) => handleTermoChange(event.target.value)}
+              onFocus={() => setListaAberta(true)}
+              onBlur={() => {
+                window.setTimeout(() => setListaAberta(false), 150)
+              }}
+              disabled={disabled || isPending}
+              placeholder={
+                modoBusca === 'nome'
+                  ? 'Digite o nome do paciente'
+                  : modoBusca === 'cpf'
+                    ? '123.456.789-09'
+                    : '000000000000000'
+              }
+              inputMode={modoBusca === 'nome' ? 'text' : 'numeric'}
+              autoComplete="off"
+              hint={hintTermoBuscaPaciente(modoBusca, termoBusca, buscando)}
+              aria-autocomplete="list"
+              aria-controls="paciente-busca-listbox"
+              aria-expanded={exibirLista}
+            />
+
+            {exibirLista ? (
+              <div
+                id="paciente-busca-listbox"
+                className="absolute z-20 mt-[var(--space-1)] w-full overflow-hidden rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] shadow-[var(--shadow-md)]"
+                role="listbox"
+                aria-label="Sugestões de pacientes"
+              >
+                {buscando ? (
+                  <div className="flex items-center gap-[var(--space-2)] px-[var(--space-3)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                    <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+                    Buscando pacientes…
+                  </div>
+                ) : resultados.length > 0 ? (
+                  <ul className="max-h-48 overflow-y-auto py-[var(--space-1)]">
+                    {resultados.map((item) => (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          role="option"
+                          aria-selected={false}
+                          className="w-full px-[var(--space-3)] py-[var(--space-2)] text-left text-[length:var(--text-sm)] hover:bg-[var(--color-bg)]"
+                          onMouseDown={(event) => event.preventDefault()}
+                          onClick={() => handleSelecionar(item.id)}
+                          disabled={disabled || isPending}
+                        >
+                          <span className="font-medium text-[var(--color-text)]">{item.nome}</span>
+                          {item.cpf ? (
+                            <span className="ml-[var(--space-2)] text-[var(--color-text-muted)]">
+                              CPF: {formatCpfDisplay(item.cpf)}
+                            </span>
+                          ) : null}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div className="px-[var(--space-3)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                    {erro ?? 'Nenhum paciente encontrado.'}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         </div>
 
-        {resultados.length > 0 ? (
-          <ul
-            className="flex max-h-40 flex-col gap-[var(--space-1)] overflow-y-auto rounded-[var(--radius)] border border-[var(--color-border)] p-[var(--space-2)]"
-            role="listbox"
-            aria-label="Resultados da busca"
-          >
-            {resultados.map((item) => (
-              <li key={item.id}>
-                <button
-                  type="button"
-                  className="w-full rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-2)] text-left text-[length:var(--text-sm)] hover:bg-[var(--color-bg)]"
-                  onClick={() => handleSelecionar(item.id)}
-                  disabled={disabled || isPending}
-                >
-                  <span className="font-medium text-[var(--color-text)]">{item.nome}</span>
-                  {item.cpf ? (
-                    <span className="ml-[var(--space-2)] text-[var(--color-text-muted)]">
-                      CPF: {item.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
-                    </span>
-                  ) : null}
-                </button>
-              </li>
-            ))}
-          </ul>
-        ) : null}
-
-        {erro ? (
+        {erro && !exibirLista ? (
           <p role="alert" className="text-[length:var(--text-sm)] text-[var(--color-error)]">
             {erro}
           </p>
@@ -453,28 +590,54 @@ export function PacienteAtendimentoSection({
           />
           <Input
             id="paciente-email"
-            label="E-mail (opcional)"
+            label="E-mail"
             type="email"
             value={form.email}
-            onChange={(event) => updateField('email', event.target.value)}
+            onChange={(event) => {
+              updateField('email', event.target.value)
+              if (emailErro) {
+                setEmailErro(null)
+              }
+            }}
+            onBlur={handleEmailBlur}
             disabled={disabled || isPending}
+            required
+            error={emailErro ?? undefined}
           />
           <Input
             id="paciente-celular"
-            label="Telefone celular (opcional)"
+            label="Telefone celular"
             value={form.telefoneCelular}
-            onChange={(event) => updateField('telefoneCelular', event.target.value)}
+            onChange={(event) => {
+              updateField('telefoneCelular', formatTelefoneBr(event.target.value))
+              if (celularErro) {
+                setCelularErro(null)
+              }
+            }}
+            onBlur={handleCelularBlur}
             disabled={disabled || isPending}
+            inputMode="tel"
+            placeholder="(00) 00000-0000"
+            required
+            error={celularErro ?? undefined}
           />
           <Input
             id="paciente-cpf"
-            label="CPF (opcional)"
+            label="CPF"
             value={form.cpf}
-            onChange={(event) => updateField('cpf', onlyDigits(event.target.value).slice(0, 11))}
+            onChange={(event) => {
+              updateField('cpf', formatCpfDisplay(event.target.value))
+              if (cpfErro) {
+                setCpfErro(null)
+              }
+            }}
+            onBlur={handleCpfBlur}
             disabled={disabled || isPending}
             inputMode="numeric"
-            maxLength={11}
-            placeholder="00000000000"
+            maxLength={14}
+            placeholder="123.456.789-09"
+            required
+            error={cpfErro ?? undefined}
           />
           <Input
             id="paciente-cns"
@@ -493,13 +656,10 @@ export function PacienteAtendimentoSection({
             onChange={(event) => updateField('dataNascimento', event.target.value)}
             disabled={disabled || isPending}
           />
-          <Input
-            id="paciente-municipio-nasc"
-            label="Município de nascimento"
+          <MunicipioNascimentoCombobox
             value={form.municipioNascimento}
-            onChange={(event) => updateField('municipioNascimento', event.target.value)}
+            onChange={(value) => updateField('municipioNascimento', value)}
             disabled={disabled || isPending}
-            placeholder="Cidade/UF"
           />
           <Select
             id="paciente-sexo"
@@ -587,15 +747,21 @@ export function PacienteAtendimentoSection({
               id="paciente-telefone"
               label="Telefone"
               value={form.telefone}
-              onChange={(event) => updateField('telefone', event.target.value)}
+              onChange={(event) => updateField('telefone', formatTelefoneBr(event.target.value))}
               disabled={disabled || isPending}
+              inputMode="tel"
+              placeholder="(00) 0000-0000"
             />
             <Input
               id="paciente-telefone-alt"
               label="Telefone alternativo"
               value={form.telefoneAlternativo}
-              onChange={(event) => updateField('telefoneAlternativo', event.target.value)}
+              onChange={(event) =>
+                updateField('telefoneAlternativo', formatTelefoneBr(event.target.value))
+              }
               disabled={disabled || isPending}
+              inputMode="tel"
+              placeholder="(00) 00000-0000"
             />
           </div>
           {cepErro ? (
@@ -621,7 +787,7 @@ export function PacienteAtendimentoSection({
             type="button"
             variant="primary"
             onClick={handleSalvarPaciente}
-            disabled={disabled || isPending || !form.nome.trim()}
+            disabled={disabled || isPending || !formularioPronto}
             loading={isPending}
           >
             {rotuloSalvar}

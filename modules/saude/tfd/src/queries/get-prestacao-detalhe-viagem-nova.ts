@@ -23,6 +23,8 @@ export interface PrestacaoDetalheViagemNovaOutput {
     descricao: string | null
     comprovanteAnexoId: string | null
     responsavelPagamento: string
+    transporteId: string | null
+    createdAt: string
   }>
   valorTotal: number
 }
@@ -100,6 +102,8 @@ export async function getPrestacaoDetalheViagemNova(
     descricao: item.descricao,
     comprovanteAnexoId: item.comprovante_anexo_id,
     responsavelPagamento: item.responsavel_pagamento,
+    transporteId: item.transporte_id,
+    createdAt: item.created_at.toISOString(),
   }))
 
   const valorTotal = itensDespesa.reduce((acc, item) => acc + item.valor, 0)

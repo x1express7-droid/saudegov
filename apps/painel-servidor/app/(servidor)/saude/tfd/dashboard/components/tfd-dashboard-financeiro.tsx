@@ -6,7 +6,7 @@ import { Alert, Card, EmptyState } from '@saude/ui'
 import { ArrowRight, Wallet } from 'lucide-react'
 import Link from 'next/link'
 
-const SALDOS_HREF = '/saude/tfd/configuracoes/saldos'
+const SALDOS_HREF = '/saude/tfd/saldos'
 
 export interface TfdDashboardFinanceiroProps {
   financeiro: TfdDashboardFinanceiroOutput

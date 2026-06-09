@@ -6,60 +6,58 @@ import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import {
   Button,
   DataTable,
+  EmptyState,
   ProtocoloBadge,
+  StatusBadge,
+  TFD_STATUS_CONFIG,
+  TFD_URGENCIA_CONFIG,
   UrgenciaBadge,
   type ColumnDef,
+  type TfdStatus,
   type TfdUrgencia,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import Link from 'next/link'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { useCallback, useMemo } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { ProcessoStatusBadge } from '../../components/processo-status-badge'
+import { ProcessoAcoesCelula } from './processo-acoes-celula'
+import { ProcessoKanbanView } from './processo-kanban-view'
+import { ProcessoListaCompactaView } from './processo-lista-compacta-view'
+import { ProcessoListaPaginacao } from './processo-lista-paginacao'
+import { ProcessoSolicitacoesCelula } from './processo-solicitacoes-celula'
+import { formatDateTimeFull, formatRelativeTime } from './processo-lista-utils'
+import {
+  ProcessoViewToggle,
+  TFD_PROCESSOS_VIEW_STORAGE_KEY,
+  type ProcessoViewMode,
+} from './processo-view-toggle'
 
+// BLOCO-8-PROCESSOS
 const PROCESSOS_BASE = '/saude/tfd/processos'
-const DEFAULT_PER_PAGE = 20
+const PACIENTE_BASE = '/saude/tfd/pacientes'
 
-function formatRelativeTime(iso: string): string {
-  const then = new Date(iso).getTime()
-  const now = Date.now()
-  const diffSec = Math.round((then - now) / 1000)
-  const absSec = Math.abs(diffSec)
+type ProcessoTableRow = ProcessoTfdListItem & { urgencia?: string }
 
-  const units: Array<[Intl.RelativeTimeFormatUnit, number]> = [
-    ['year', 60 * 60 * 24 * 365],
-    ['month', 60 * 60 * 24 * 30],
-    ['day', 60 * 60 * 24],
-    ['hour', 60 * 60],
-    ['minute', 60],
-    ['second', 1],
-  ]
-
-  const rtf = new Intl.RelativeTimeFormat('pt-BR', { numeric: 'auto' })
-
-  for (const [unit, secondsInUnit] of units) {
-    if (absSec >= secondsInUnit || unit === 'second') {
-      const value = Math.round(diffSec / secondsInUnit)
-      return rtf.format(value, unit)
-    }
+function asTfdStatus(value: string | null): TfdStatus | null {
+  if (!value || !(value in TFD_STATUS_CONFIG)) {
+    return null
   }
-
-  return rtf.format(0, 'second')
+  return value as TfdStatus
 }
 
-function isTfdUrgencia(value: string | null): value is TfdUrgencia {
-  if (!value) {
-    return false
+function asTfdUrgencia(value: string | null): TfdUrgencia | null {
+  if (!value || !(value in TFD_URGENCIA_CONFIG)) {
+    return null
   }
-  return value in { BAIXA: true, INTERMEDIARIA: true, GRAVE: true, MUITO_URGENTE: true }
+  return value as TfdUrgencia
 }
 
 function buildQueryString(
-  current: URLSearchParams,
+  currentSearch: string,
   patch: Record<string, string | undefined>
 ): string {
-  const next = new URLSearchParams(current.toString())
+  const next = new URLSearchParams(currentSearch)
 
   for (const [key, value] of Object.entries(patch)) {
     if (!value) {
@@ -72,33 +70,84 @@ function buildQueryString(
   return next.toString()
 }
 
+function useMediaQuery(query: string): boolean {
+  const [matches, setMatches] = useState(false)
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia(query)
+    const update = () => setMatches(mediaQuery.matches)
+    update()
+    mediaQuery.addEventListener('change', update)
+    return () => mediaQuery.removeEventListener('change', update)
+  }, [query])
+
+  return matches
+}
+
+function isValidViewMode(value: string | null): value is ProcessoViewMode {
+  return value === 'table' || value === 'kanban' || value === 'list'
+}
+
 export interface ProcessoListaProps {
   items: ProcessoTfdListItem[]
   total: number
+  page: number
+  perPage: number
   session: SaudeMunicSession
+  podeNovaSolicitacao: boolean
 }
 
-export function ProcessoLista({ items, total, session }: ProcessoListaProps) {
+export function ProcessoLista({
+  items,
+  total,
+  page,
+  perPage,
+  session,
+  podeNovaSolicitacao,
+}: ProcessoListaProps) {
   const router = useRouter()
   const pathname = usePathname()
-  const searchParams = useSearchParams()
 
-  const page = Math.max(1, Number.parseInt(searchParams.get('page') ?? '1', 10) || 1)
-  const perPage = Math.max(
-    1,
-    Number.parseInt(searchParams.get('perPage') ?? String(DEFAULT_PER_PAGE), 10) ||
-      DEFAULT_PER_PAGE
+  const isMobile = useMediaQuery('(max-width: 767px)')
+  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
+
+  const [viewMode, setViewMode] = useState<ProcessoViewMode>('table')
+  const [mostrarEncerrados, setMostrarEncerrados] = useState(false)
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem(TFD_PROCESSOS_VIEW_STORAGE_KEY)
+    if (isValidViewMode(stored)) {
+      setViewMode(stored)
+    }
+  }, [])
+
+  const handleViewModeChange = useCallback((nextView: ProcessoViewMode) => {
+    setViewMode(nextView)
+    window.localStorage.setItem(TFD_PROCESSOS_VIEW_STORAGE_KEY, nextView)
+  }, [])
+
+  const effectiveViewMode: ProcessoViewMode = isMobile ? 'list' : viewMode
+
+  const tableData = useMemo<ProcessoTableRow[]>(
+    () =>
+      items.map((item) => ({
+        ...item,
+        urgencia: item.urgenciaMaisCritica ?? undefined,
+      })),
+    [items]
   )
 
   const handlePaginationChange = useCallback(
     (nextPage: number) => {
-      const query = buildQueryString(searchParams, {
+      const currentSearch =
+        typeof window !== 'undefined' ? window.location.search.replace(/^\?/, '') : ''
+      const query = buildQueryString(currentSearch, {
         page: nextPage <= 1 ? undefined : String(nextPage),
       })
       const href = query ? `${pathname}?${query}` : pathname
       router.push(href)
     },
-    [pathname, router, searchParams]
+    [pathname, router]
   )
 
   const handleRowClick = useCallback(
@@ -108,14 +157,21 @@ export function ProcessoLista({ items, total, session }: ProcessoListaProps) {
     [router]
   )
 
-  const columns = useMemo<ColumnDef<ProcessoTfdListItem>[]>(
-    () => [
+  const columns = useMemo<ColumnDef<ProcessoTableRow>[]>(() => {
+    const baseColumns: ColumnDef<ProcessoTableRow>[] = [
       {
         id: 'protocolo',
         header: 'Processo',
         cell: ({ row }) => (
-          <div onClick={(event) => event.stopPropagation()} onKeyDown={(event) => event.stopPropagation()}>
-            <ProtocoloBadge protocolo={row.original.protocolo} />
+          <div
+            className="min-w-0"
+            onClick={(event) => event.stopPropagation()}
+            onKeyDown={(event) => event.stopPropagation()}
+          >
+            <ProtocoloBadge
+              protocolo={row.original.protocolo}
+              className="max-w-full [&_.protocolo]:font-mono [&_.protocolo]:text-xs [&_.protocolo]:font-bold [&_.protocolo]:whitespace-nowrap"
+            />
           </div>
         ),
       },
@@ -125,8 +181,8 @@ export function ProcessoLista({ items, total, session }: ProcessoListaProps) {
         cell: ({ row }) =>
           row.original.paciente ? (
             <Link
-              href={`${PROCESSOS_BASE}/${row.original.processoId}`}
-              className="font-medium text-[var(--color-primary)] hover:underline"
+              href={`${PACIENTE_BASE}/${row.original.paciente.id}`}
+              className="text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
               onClick={(event) => event.stopPropagation()}
             >
               {row.original.paciente.nome}
@@ -138,76 +194,141 @@ export function ProcessoLista({ items, total, session }: ProcessoListaProps) {
       {
         id: 'status',
         header: 'Status',
-        cell: ({ row }) => <ProcessoStatusBadge status={row.original.statusProcesso} />,
+        cell: ({ row }) => {
+          const status = asTfdStatus(row.original.statusSolicitacaoMaisRecente)
+          if (!status) {
+            return <span className="text-[var(--color-text-muted)]">—</span>
+          }
+          return <StatusBadge status={status} size="sm" />
+        },
       },
       {
         id: 'urgencia',
         header: 'Urgência',
-        cell: ({ row }) =>
-          isTfdUrgencia(row.original.urgenciaMaisCritica) ? (
-            <UrgenciaBadge urgencia={row.original.urgenciaMaisCritica} />
-          ) : (
-            <span className="text-[var(--color-text-muted)]">—</span>
-          ),
-      },
-      {
-        id: 'solicitacoes',
-        header: 'Solicitações',
         cell: ({ row }) => {
-          const solicitacoes = row.original.solicitacoes
-
-          if (solicitacoes.length === 0) {
+          const urgencia = asTfdUrgencia(row.original.urgenciaMaisCritica)
+          if (!urgencia) {
             return <span className="text-[var(--color-text-muted)]">—</span>
           }
-
-          return (
-            <div
-              className="flex flex-wrap gap-[var(--space-2)]"
-              onClick={(event) => event.stopPropagation()}
-              onKeyDown={(event) => event.stopPropagation()}
-            >
-              {solicitacoes.map((solicitacao) => (
-                <Link
-                  key={solicitacao.id}
-                  href={`/saude/tfd/${solicitacao.id}`}
-                  className="hover:opacity-90"
-                >
-                  <ProtocoloBadge protocolo={solicitacao.protocolo} />
-                </Link>
-              ))}
-            </div>
-          )
+          return <UrgenciaBadge urgencia={urgencia} size="sm" />
         },
       },
+    ]
+
+    if (!isTablet) {
+      baseColumns.push({
+        id: 'solicitacoes',
+        header: 'Solicitações',
+        cell: ({ row }) => (
+          <ProcessoSolicitacoesCelula solicitacoes={row.original.solicitacoes} />
+        ),
+      })
+    }
+
+    baseColumns.push(
       {
         id: 'movimentacao',
         header: 'Última movimentação',
         cell: ({ row }) => (
-          <span className="whitespace-nowrap text-[var(--color-text-muted)]">
+          <span
+            className="whitespace-nowrap text-[length:var(--text-xs)] text-[var(--color-text-muted)]"
+            title={formatDateTimeFull(row.original.ultimaMovimentacaoEm)}
+          >
             {formatRelativeTime(row.original.ultimaMovimentacaoEm)}
           </span>
         ),
       },
-    ],
-    []
+      {
+        id: 'acoes',
+        header: 'Ações',
+        cell: ({ row }) => (
+          <ProcessoAcoesCelula item={row.original} podeNovaSolicitacao={podeNovaSolicitacao} />
+        ),
+      }
+    )
+
+    return baseColumns
+  }, [isTablet, podeNovaSolicitacao])
+
+  const paginationProps = { page, perPage, total, onPaginationChange: handlePaginationChange }
+
+  const emptyCta = (
+    <PermissionGate session={session} permission={TFD_PERMISSIONS.ABRIR_SOLICITACAO}>
+      <Button variant="primary" asChild>
+        <Link href="/saude/tfd/processos/novo">Novo processo</Link>
+      </Button>
+    </PermissionGate>
   )
 
   return (
-    <DataTable
-      data={items}
-      columns={columns}
-      pagination={{ page, perPage, total }}
-      onPaginationChange={handlePaginationChange}
-      onRowClick={handleRowClick}
-      emptyMessage="Nenhum processo encontrado"
-      emptyDescription="Ajuste os filtros ou abra um novo processo para iniciar o fluxo TFD."
-      emptyCta={
+    <div className="flex flex-col gap-[var(--space-4)]">
+      <div className="flex flex-col gap-[var(--space-3)] md:flex-row md:items-center md:justify-between">
+        <div className="flex flex-wrap items-center gap-[var(--space-3)]">
+          <ProcessoViewToggle value={viewMode} onChange={handleViewModeChange} />
+          {effectiveViewMode === 'kanban' ? (
+            <label className="hidden cursor-pointer items-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)] md:inline-flex">
+              <input
+                type="checkbox"
+                className="size-4 rounded border-[var(--color-border)]"
+                checked={mostrarEncerrados}
+                onChange={(event) => setMostrarEncerrados(event.target.checked)}
+              />
+              Mostrar encerrados
+            </label>
+          ) : null}
+          <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+            {total} registros
+          </p>
+        </div>
         <PermissionGate session={session} permission={TFD_PERMISSIONS.ABRIR_SOLICITACAO}>
-          <Button variant="primary" asChild>
+          <Button variant="primary" asChild className="w-full md:w-auto">
             <Link href="/saude/tfd/processos/novo">Novo processo</Link>
           </Button>
         </PermissionGate>
-      }
-    />
+      </div>
+
+      {effectiveViewMode === 'table' ? (
+        <DataTable
+          data={tableData}
+          columns={columns}
+          pagination={{ page, perPage, total }}
+          onPaginationChange={handlePaginationChange}
+          onRowClick={handleRowClick}
+          emptyMessage="Nenhum processo encontrado"
+          emptyDescription="Ajuste os filtros ou abra um novo processo para iniciar o fluxo TFD."
+          emptyCta={emptyCta}
+        />
+      ) : null}
+
+      {effectiveViewMode === 'kanban' ? (
+        items.length === 0 ? (
+          <EmptyState
+            titulo="Nenhum processo encontrado"
+            descricao="Ajuste os filtros ou abra um novo processo para iniciar o fluxo TFD."
+            cta={emptyCta}
+          />
+        ) : (
+          <>
+            <ProcessoKanbanView items={items} mostrarEncerrados={mostrarEncerrados} />
+            <ProcessoListaPaginacao {...paginationProps} />
+          </>
+        )
+      ) : null}
+
+      {effectiveViewMode === 'list' ? (
+        items.length === 0 ? (
+          <EmptyState
+            titulo="Nenhum processo encontrado"
+            descricao="Ajuste os filtros ou abra um novo processo para iniciar o fluxo TFD."
+            cta={emptyCta}
+          />
+        ) : (
+          <>
+            <ProcessoListaCompactaView items={items} />
+            <ProcessoListaPaginacao {...paginationProps} />
+          </>
+        )
+      ) : null}
+    </div>
   )
 }

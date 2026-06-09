@@ -3,10 +3,13 @@ import {
   getTenantContext,
   requireTenantRole,
 } from '@saude/core-auth/server'
+import { getPrismaForTenant } from '@saude/core-db'
 import {
   getAgendamentoDetalhe,
-  getListaProcessosTfd,
+  getPrestadoresTfd,
+  getSolicitacaoTfd,
   getVeiculosAgendamentoTfd,
+  TFD_CATALOGO_OPCOES_PER_PAGE,
 } from '@saude/mod-saude-tfd'
 import { Alert, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
@@ -28,6 +31,32 @@ function isUuid(value: string): boolean {
   )
 }
 
+function pickMunicipioSede(settings: unknown): { cidade: string; estado: string } | null {
+  if (typeof settings !== 'object' || settings === null) {
+    return null
+  }
+
+  const record = settings as Record<string, unknown>
+  const cidade =
+    typeof record.municipio_origem_cidade === 'string'
+      ? record.municipio_origem_cidade.trim()
+      : typeof record.municipioOrigemCidade === 'string'
+        ? record.municipioOrigemCidade.trim()
+        : ''
+  const estado =
+    typeof record.municipio_origem_estado === 'string'
+      ? record.municipio_origem_estado.trim()
+      : typeof record.municipioOrigemEstado === 'string'
+        ? record.municipioOrigemEstado.trim()
+        : ''
+
+  if (!cidade || !estado) {
+    return null
+  }
+
+  return { cidade, estado }
+}
+
 export default async function NovaViagemPage({ searchParams }: NovaViagemPageProps) {
   const tenant = await getTenantContext()
   if (!tenant.modules?.saude?.tfd) {
@@ -38,23 +67,38 @@ export default async function NovaViagemPage({ searchParams }: NovaViagemPagePro
   const session = await requireTenantRole('SERVIDOR')
 
   const { agendamentoId } = await searchParams
-  let processoIdInicial: string | undefined
   let agendamentoIdPreSelecionado: string | undefined
+  let dataSaidaInicial: string | undefined
+  let agendamentoContext: { protocolo: string; pacienteNome: string } | undefined
 
   if (agendamentoId && isUuid(agendamentoId)) {
     const agendamento = await getAgendamentoDetalhe(agendamentoId)
     if (agendamento) {
-      processoIdInicial = agendamento.processoId
       agendamentoIdPreSelecionado = agendamento.id
+      dataSaidaInicial = agendamento.dataConsulta
+
+      const solicitacao = await getSolicitacaoTfd(agendamento.solicitacaoId)
+      const pacienteNome = solicitacao?.paciente.nome ?? 'Paciente'
+
+      agendamentoContext = {
+        protocolo: agendamento.protocolo,
+        pacienteNome,
+      }
     }
   }
 
+  const db = await getPrismaForTenant(session.user.tenantId!)
+  const tenantRow = await db.tenant.findUnique({
+    where: { id: session.user.tenantId! },
+    select: { settings: true },
+  })
+  const municipioSede = pickMunicipioSede(tenantRow?.settings)
+
   const veiculos = await getVeiculosAgendamentoTfd(false)
-  const { items: processosLista } = await getListaProcessosTfd({ perPage: 100, page: 1 })
-  const processos = processosLista.map((item) => ({
-    value: item.processoId,
-    label: `${item.protocolo} — ${item.paciente?.nome ?? 'Sem paciente'}`,
-  }))
+  const prestadoresResult = await getPrestadoresTfd({
+    ativo: true,
+    perPage: TFD_CATALOGO_OPCOES_PER_PAGE,
+  })
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -67,17 +111,21 @@ export default async function NovaViagemPage({ searchParams }: NovaViagemPagePro
         ]}
       />
 
-      <Alert variant="info">
-        Para vincular um agendamento específico, acesse o agendamento e clique em &quot;Criar
-        viagem&quot; — o processo e o agendamento serão pré-selecionados automaticamente.
-      </Alert>
+      {agendamentoContext ? (
+        // REMOVE-PROCESSO-PARTE-3: banner contextual sem campo de processo
+        <Alert variant="info">
+          Você está criando uma viagem para o agendamento {agendamentoContext.protocolo}. O paciente{' '}
+          {agendamentoContext.pacienteNome} será adicionado automaticamente como passageiro.
+        </Alert>
+      ) : null}
 
       <NovaViagemForm
         session={session}
         veiculos={veiculos}
-        processos={processos}
-        processoIdInicial={processoIdInicial}
+        prestadores={prestadoresResult.items}
+        municipioSede={municipioSede}
         agendamentoIdPreSelecionado={agendamentoIdPreSelecionado}
+        dataSaidaInicial={dataSaidaInicial}
       />
     </div>
   )

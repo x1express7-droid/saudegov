@@ -1,22 +1,31 @@
-import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
+import {
+  assertModuleActive,
+  getTenantContext,
+  hasPermission,
+  requireTenantRole,
+} from '@saude/core-auth/server'
 import { getListaProcessosTfd, TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
 import type { ProcessoStatus, TfdUrgencia } from '@prisma/client'
-import { Button, PageHeader } from '@saude/ui'
-import { PermissionGate } from '@saude/ui/permission-gate'
+import { PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
-import { ProcessoFiltros } from './components/processo-filtros'
-import { ProcessoLista } from './components/processo-lista'
+import { ProcessoListagem } from './components/processo-listagem'
 import { PROCESSO_STATUS_CONFIG, type ProcessoStatusValue } from '../components/processo-status-badge'
 
+// BLOCO-8-PROCESSOS
 export const metadata: Metadata = {
   title: 'Processos TFD',
 }
 
-const URGENCIA_VALUES = new Set<string>(['BAIXA', 'INTERMEDIARIA', 'GRAVE', 'MUITO_URGENTE'])
+const URGENCIA_VALUES = new Set<string>([
+  'NAO_AGUDA',
+  'BAIXA',
+  'INTERMEDIARIA',
+  'GRAVE',
+  'MUITO_URGENTE',
+])
 
 interface ProcessosTfdPageProps {
   searchParams: Promise<{
@@ -58,6 +67,7 @@ export default async function ProcessosTfdPage({ searchParams }: ProcessosTfdPag
 
   await assertModuleActive('saude', 'tfd')
   const session = await requireTenantRole('SERVIDOR')
+  const podeNovaSolicitacao = hasPermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
 
   const params = await searchParams
   const page = parsePositiveInt(params.page, 1)
@@ -79,24 +89,7 @@ export default async function ProcessosTfdPage({ searchParams }: ProcessosTfdPag
       <PageHeader
         titulo="Processos TFD"
         subtitulo="Processos de Tratamento Fora de Domicílio e suas solicitações vinculadas."
-        acoes={
-          <PermissionGate session={session} permission={TFD_PERMISSIONS.ABRIR_SOLICITACAO}>
-            <Button variant="primary" asChild>
-              <Link href="/saude/tfd/processos/novo">Novo processo</Link>
-            </Button>
-          </PermissionGate>
-        }
       />
-
-      <Suspense
-        fallback={
-          <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            Carregando filtros…
-          </p>
-        }
-      >
-        <ProcessoFiltros />
-      </Suspense>
 
       <Suspense
         fallback={
@@ -105,7 +98,14 @@ export default async function ProcessosTfdPage({ searchParams }: ProcessosTfdPag
           </p>
         }
       >
-        <ProcessoLista items={items} total={total} session={session} />
+        <ProcessoListagem
+          items={items}
+          total={total}
+          page={page}
+          perPage={perPage}
+          session={session}
+          podeNovaSolicitacao={podeNovaSolicitacao}
+        />
       </Suspense>
     </div>
   )

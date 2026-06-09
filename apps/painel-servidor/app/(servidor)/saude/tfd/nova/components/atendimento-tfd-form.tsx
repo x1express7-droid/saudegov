@@ -1,8 +1,8 @@
+// BLOCO-CID-COMPLETO
 'use client'
 
 import type { TfdPacienteAtendimentoDetalhe } from '@saude/mod-saude-tfd/client'
 import type {
-  TfdCidListItem,
   TfdEspecialidadeListItem,
   TfdProcedimentoListItem,
   TfdSolicitacaoOrigemRetornoItem,
@@ -19,7 +19,6 @@ export interface AtendimentoTfdFormProps {
   processoId?: string
   especialidades: TfdEspecialidadeListItem[]
   procedimentos: TfdProcedimentoListItem[]
-  cids: TfdCidListItem[]
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
 }
 
@@ -28,7 +27,6 @@ export function AtendimentoTfdForm({
   processoId,
   especialidades,
   procedimentos,
-  cids,
   solicitacoesOrigem: solicitacoesOrigemInitial,
 }: AtendimentoTfdFormProps) {
   const router = useRouter()
@@ -74,7 +72,6 @@ export function AtendimentoTfdForm({
           processoId={processoId}
           especialidades={especialidades}
           procedimentos={procedimentos}
-          cids={cids}
           solicitacoesOrigem={solicitacoesOrigemInitial}
         />
       ) : (

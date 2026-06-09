@@ -360,6 +360,8 @@ export {
   carregarPacienteAtendimentoTfd,
   salvarPacienteAtendimentoTfd,
 } from './actions/paciente-atendimento'
+export { buscarCidsTfd } from './actions/cid'
+export type { TfdCidBuscaResultItem } from './actions/cid'
 export { getPacienteAtendimentoTfd } from './queries/get-paciente-atendimento'
 export { isCadsusEnabledForTenant } from './queries/is-cadsus-enabled'
 export {
@@ -468,6 +470,8 @@ export { getProcedimentosTfd } from './queries/get-procedimentos'
 export type { GetProcedimentosFiltros } from './queries/get-procedimentos'
 export { getPrestadoresTfd } from './queries/get-prestadores'
 export { getCidsTfd } from './queries/get-cids'
+export { getCidsTfdBusca } from './queries/get-cids-tfd'
+export type { TfdCidBuscaItem } from './queries/get-cids-tfd'
 export type { TfdCidListItem } from './queries/get-cids'
 export { getVeiculosTfd } from './queries/get-veiculos'
 export { getMotoristasTfd } from './queries/get-motoristas'
@@ -557,7 +561,7 @@ export type { MotoristaDetalheOutput } from './queries/get-motorista-detalhe'
 export { getAgendamentosDisponiveisParaViagem } from './queries/get-agendamentos-disponiveis-para-viagem'
 export type {
   AgendamentoDisponivelViagemItem,
-  GetAgendamentosDisponiveisParaViagemOptions,
+  GetAgendamentosDisponiveisParaViagemFiltros,
 } from './queries/get-agendamentos-disponiveis-para-viagem'
 export { getVagasViagem } from './queries/get-vagas-viagem'
 export type { VagasViagemOutput } from './queries/get-vagas-viagem'

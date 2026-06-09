@@ -107,9 +107,10 @@ export default async function NovoAgendamentoPage({
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
+      {/* BLOCO-1: subtítulo orienta que deslocamento é etapa posterior */}
       <PageHeader
         titulo="Novo agendamento"
-        subtitulo="Marque a consulta vinculada ao processo TFD."
+        subtitulo="Registre a consulta médica. O deslocamento será organizado na etapa seguinte."
         breadcrumbs={[
           { label: 'Processos TFD', href: '/saude/tfd' },
           { label: processo.protocolo, href: `/saude/tfd/processos/${processoId}` },

@@ -1,5 +1,11 @@
 'use server'
 
+// DECISÃO ARQUITETURAL (09/06/2026):
+// TfdViagem.processo_id foi tornado nullable e removido do fluxo principal.
+// Uma viagem representa um evento de transporte independente de processo TFD.
+// Passageiros trazem seu processo via agendamento_id.
+// Referência: REMOVE-PROCESSO-PARTE-1 a PARTE-4.
+
 import { revalidatePath } from 'next/cache'
 import { Prisma } from '@prisma/client'
 import {
@@ -29,7 +35,6 @@ import {
 
 const MODULO_TFD = 'saude.tfd'
 
-const MSG_PROCESSO_NAO_ENCONTRADO = 'Processo não encontrado.'
 const MSG_VIAGEM_NAO_ENCONTRADA = 'Viagem não encontrada.'
 const MSG_AGENDAMENTO_NAO_ENCONTRADO = 'Agendamento não encontrado.'
 const MSG_VEICULO_NAO_ENCONTRADO = 'Veículo não encontrado ou inativo.'
@@ -113,30 +118,6 @@ export async function criarViagem(
     const tenantId = session.user.tenantId!
     const db = await getPrismaForTenant(tenantId)
 
-    const processo = await db.processo.findFirst({
-      where: {
-        id: data.processoId,
-        tenant_id: tenantId,
-        modulo: MODULO_TFD,
-      },
-      select: {
-        id: true,
-        protocolo: true,
-        tfd_solicitacoes: {
-          take: 1,
-          orderBy: { created_at: 'desc' },
-          select: {
-            urgencia: true,
-            especialidade: { select: { nome: true } },
-          },
-        },
-      },
-    })
-
-    if (!processo) {
-      return { success: false, error: MSG_PROCESSO_NAO_ENCONTRADO }
-    }
-
     if (data.veiculoId) {
       const veiculo = await db.tfdVeiculo.findFirst({
         where: { id: data.veiculoId, tenant_id: tenantId, ativo: true },
@@ -164,7 +145,7 @@ export async function criarViagem(
         data: {
           tenant_id: tenantId,
           protocolo,
-          processo_id: data.processoId,
+          processo_id: null, // REMOVE-PROCESSO-PARTE-4
           veiculo_id: data.veiculoId ?? null,
           motorista_id: data.motoristaId ?? null,
           data_saida: parseDataUtc(data.dataSaida),
@@ -178,22 +159,6 @@ export async function criarViagem(
         select: { id: true, protocolo: true },
       })
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: data.processoId,
-          tipo: 'VIAGEM_CRIADA',
-          descricao: `Viagem ${protocolo} criada (${data.origemDescricao} → ${data.destinoDescricao}).`,
-          usuarioId: session.user.id,
-          metadata: {
-            viagemId: viagem.id,
-            protocolo,
-            dataSaida: data.dataSaida,
-          },
-        },
-        tx
-      )
-
       return viagem
     })
 
@@ -205,26 +170,10 @@ export async function criarViagem(
       entidadeId: resultado.id,
       payloadDepois: {
         protocolo: resultado.protocolo,
-        processoId: data.processoId,
         dataSaida: data.dataSaida,
         modulo: MODULO_TFD,
       },
     })
-
-    if (data.veiculoId || data.motoristaId) {
-      const solicitacao = processo.tfd_solicitacoes[0]
-      await dispararNotificacao({
-        tenantId,
-        evento: NOTIFICATION_EVENTS.AGENDAMENTO_TFD_CRIADO,
-        modulo: MODULO_TFD,
-        processoId: data.processoId,
-        context: {
-          protocolo: processo.protocolo,
-          especialidade: solicitacao?.especialidade?.nome ?? 'TFD',
-          urgencia: solicitacao?.urgencia ?? 'BAIXA',
-        },
-      })
-    }
 
     revalidateViagemPaths(resultado.id)
 
@@ -277,7 +226,6 @@ export async function vincularAgendamentoNaViagem(
       },
       select: {
         id: true,
-        processo_id: true,
         veiculo: {
           select: {
             capacidade_passageiros: true,
@@ -293,11 +241,11 @@ export async function vincularAgendamentoNaViagem(
       return { success: false, error: MSG_VIAGEM_NAO_ENCONTRADA }
     }
 
+    // REMOVE-PROCESSO-PARTE-2: agendamentos de qualquer processo podem ser vinculados
     const agendamento = await db.tfdAgendamento.findFirst({
       where: {
         id: data.agendamentoId,
         tenant_id: tenantId,
-        processo_id: viagem.processo_id,
       },
       select: {
         id: true,
@@ -502,21 +450,24 @@ export async function mudarStatusViagem(
         data: { status: data.novoStatus },
       })
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: viagem.processo_id,
-          tipo: 'VIAGEM_STATUS_ALTERADO',
-          descricao: `Viagem ${viagem.protocolo}: status alterado para ${data.novoStatus}.${data.observacao ? ` ${data.observacao}` : ''}`,
-          usuarioId: session.user.id,
-          metadata: {
-            viagemId: viagem.id,
-            statusAnterior: viagem.status,
-            statusNovo: data.novoStatus,
+      // REMOVE-PROCESSO-PARTE-4: legado — viagens antigas com processo_id preenchido
+      if (viagem.processo_id) {
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagem.processo_id,
+            tipo: 'VIAGEM_STATUS_ALTERADO',
+            descricao: `Viagem ${viagem.protocolo}: status alterado para ${data.novoStatus}.${data.observacao ? ` ${data.observacao}` : ''}`,
+            usuarioId: session.user.id,
+            metadata: {
+              viagemId: viagem.id,
+              statusAnterior: viagem.status,
+              statusNovo: data.novoStatus,
+            },
           },
-        },
-        tx
-      )
+          tx
+        )
+      }
 
       return viagem
     })
@@ -534,17 +485,20 @@ export async function mudarStatusViagem(
       },
     })
 
-    await dispararNotificacao({
-      tenantId,
-      evento: NOTIFICATION_EVENTS.RETORNO_REGISTRADO,
-      modulo: MODULO_TFD,
-      processoId: resultado.processo_id,
-      context: {
-        protocolo: resultado.protocolo,
-        especialidade: 'TFD',
-        urgencia: 'BAIXA',
-      },
-    })
+    // REMOVE-PROCESSO-PARTE-4: legado — viagens antigas com processo_id preenchido
+    if (resultado.processo_id) {
+      await dispararNotificacao({
+        tenantId,
+        evento: NOTIFICATION_EVENTS.RETORNO_REGISTRADO,
+        modulo: MODULO_TFD,
+        processoId: resultado.processo_id,
+        context: {
+          protocolo: resultado.protocolo,
+          especialidade: 'TFD',
+          urgencia: 'BAIXA',
+        },
+      })
+    }
 
     revalidateViagemPaths(data.viagemId)
 
@@ -655,42 +609,45 @@ export async function registrarChegadaViagem(
         select: { id: true },
       })
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: viagem.processo_id,
-          tipo: 'VIAGEM_CONCLUIDA',
-          descricao: `Viagem ${viagem.protocolo} concluída.`,
-          usuarioId: session.user.id,
-          metadata: {
-            viagemId: viagem.id,
-            kmChegada: data.kmChegada ?? null,
-            dataChegada: data.dataChegada ?? null,
+      // REMOVE-PROCESSO-PARTE-4: legado — viagens antigas com processo_id preenchido
+      if (viagem.processo_id) {
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagem.processo_id,
+            tipo: 'VIAGEM_CONCLUIDA',
+            descricao: `Viagem ${viagem.protocolo} concluída.`,
+            usuarioId: session.user.id,
+            metadata: {
+              viagemId: viagem.id,
+              kmChegada: data.kmChegada ?? null,
+              dataChegada: data.dataChegada ?? null,
+            },
           },
-        },
-        tx
-      )
+          tx
+        )
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: viagem.processo_id,
-          tipo: 'PRESTACAO_CRIADA',
-          descricao: `Prestação de contas da viagem ${viagem.protocolo} criada. Prazo de envio: ${prazoEnvioAt.toLocaleDateString('pt-BR')}.`,
-          usuarioId: session.user.id,
-          metadata: {
-            viagemId: viagem.id,
-            prestacaoId: prestacao.id,
-            prazoEnvioAt: prazoEnvioAt.toISOString(),
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagem.processo_id,
+            tipo: 'PRESTACAO_CRIADA',
+            descricao: `Prestação de contas da viagem ${viagem.protocolo} criada. Prazo de envio: ${prazoEnvioAt.toLocaleDateString('pt-BR')}.`,
+            usuarioId: session.user.id,
+            metadata: {
+              viagemId: viagem.id,
+              prestacaoId: prestacao.id,
+              prazoEnvioAt: prazoEnvioAt.toISOString(),
+            },
           },
-        },
-        tx
-      )
+          tx
+        )
+      }
 
       return {
         viagemId: viagem.id,
         protocolo: viagem.protocolo,
-        processoId: viagem.processo_id,
+        processoId: viagem.processo_id ?? null,
         prestacaoId: prestacao.id,
         agendamentosAtualizados,
       }
@@ -815,20 +772,23 @@ export async function cancelarViagem(
         },
       })
 
-      await registrarTramitacao(
-        {
-          tenantId,
-          processoId: viagem.processo_id,
-          tipo: 'VIAGEM_CANCELADA',
-          descricao: `Viagem ${viagem.protocolo} cancelada: ${data.motivo}`,
-          usuarioId: session.user.id,
-          metadata: {
-            viagemId: viagem.id,
-            motivo: data.motivo,
+      // REMOVE-PROCESSO-PARTE-4: legado — viagens antigas com processo_id preenchido
+      if (viagem.processo_id) {
+        await registrarTramitacao(
+          {
+            tenantId,
+            processoId: viagem.processo_id,
+            tipo: 'VIAGEM_CANCELADA',
+            descricao: `Viagem ${viagem.protocolo} cancelada: ${data.motivo}`,
+            usuarioId: session.user.id,
+            metadata: {
+              viagemId: viagem.id,
+              motivo: data.motivo,
+            },
           },
-        },
-        tx
-      )
+          tx
+        )
+      }
 
       return viagem
     })

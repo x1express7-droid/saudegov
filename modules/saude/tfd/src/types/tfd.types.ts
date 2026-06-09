@@ -391,7 +391,12 @@ export interface TfdPrestacaoListItem {
   valorTotal: number
   quantidadeItens: number
   sequenciaViagem: number
+  /** Protocolo da solicitação TFD. */
   protocolo: string
+  /** Protocolo VGM da viagem. */
+  viagemProtocolo: string
+  /** ID da viagem (nova ou legado) para navegação. */
+  viagemId: string
   solicitacaoId: string
   paciente: { nome: string }
   especialidade: string

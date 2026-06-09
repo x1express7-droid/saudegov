@@ -308,7 +308,7 @@ async function main() {
 
   // 1. Redirects (no auth)
   await testRedirect('/saude/tfd/fila', '/saude/tfd/processos')
-  await testRedirect('/saude/tfd/saldos', '/saude/tfd/configuracoes/saldos')
+  await testRedirect('/saude/tfd/configuracoes/saldos', '/saude/tfd/saldos')
 
   // 1. Auth access
   await testAuthAccess('1. Autenticação e Acesso', 'Login servidor acessa /saude/tfd/processos', USERS.servidor, '/saude/tfd/processos')

@@ -166,6 +166,9 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
 
   const projecaoFinanceira = await getProjecaoFinanceiraSolicitacao(id)
 
+  const temViagensVinculadas =
+    viagens.length > 0 || viagensNovaPorAgendamento.length > 0
+
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
@@ -215,6 +218,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
             <SolicitacaoProjecaoFinanceiraSection
               session={session}
               projecao={projecaoFinanceira}
+              temViagensVinculadas={temViagensVinculadas}
             />
           ) : null}
           {dadosClinicos ? (

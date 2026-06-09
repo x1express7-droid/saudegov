@@ -504,7 +504,7 @@ export async function abrirSolicitacaoTfd(
           status: 'RASCUNHO',
           cid_principal: data.cidPrincipal ?? null,
           diagnostico: data.diagnostico.trim(),
-          tipo_transporte_recomendado: data.tipoTransporteRecomendado,
+          tipo_transporte_recomendado: data.tipoTransporteRecomendado ?? null,
           laudo_anexo_id: data.laudoAnexoIds[0] ?? null,
           acompanhante_necessario: data.acompanhanteNecessario,
           observacoes_abertura: data.observacoesAbertura?.trim() || null,

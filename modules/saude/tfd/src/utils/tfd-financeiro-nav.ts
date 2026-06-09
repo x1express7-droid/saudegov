@@ -7,7 +7,7 @@ import { TFD_PERMISSIONS, type TfdPermissionKey } from '../permissions'
 export const TFD_FINANCEIRO_NAV_ITEMS = [
   {
     label: 'Saldos',
-    href: '/saude/tfd/configuracoes/saldos',
+    href: '/saude/tfd/saldos',
     permission: TFD_PERMISSIONS.GERENCIAR_SALDO,
   },
   {
@@ -17,7 +17,7 @@ export const TFD_FINANCEIRO_NAV_ITEMS = [
   },
   {
     label: 'Relatórios',
-    href: '/saude/tfd/dashboard',
+    href: '/saude/tfd/relatorios',
     permission: TFD_PERMISSIONS.EXPORTAR_RELATORIO,
   },
 ] as const satisfies ReadonlyArray<{
@@ -41,7 +41,7 @@ export function getTfdFinanceiroVisibleNav(
 
 /** Rotas financeiras sob `/configuracoes` (ex.: saldos) — guard no layout sem aba no nav de config. */
 export function matchTfdFinanceiroConfigPath(pathname: string): TfdPermissionKey | null {
-  const saldosPath = '/saude/tfd/configuracoes/saldos'
+  const saldosPath = '/saude/tfd/saldos'
   if (pathname === saldosPath || pathname.startsWith(`${saldosPath}/`)) {
     return TFD_PERMISSIONS.GERENCIAR_SALDO
   }

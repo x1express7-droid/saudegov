@@ -27,6 +27,8 @@ function mapPaciente(row: {
   bairro: string | null
   municipio: string | null
   uf: string | null
+  email: string | null
+  telefone_celular: string | null
   telefone: string | null
   telefone_alternativo: string | null
 }): TfdPacienteAtendimentoDetalhe {
@@ -34,6 +36,8 @@ function mapPaciente(row: {
     id: row.id,
     nome: row.nome,
     cpf: row.cpf,
+    email: row.email,
+    telefoneCelular: row.telefone_celular,
     cns: row.cns,
     dataNascimento: formatDateOnly(row.data_nascimento),
     sexo: row.sexo,
@@ -67,6 +71,8 @@ const pacienteAtendimentoSelect = {
   bairro: true,
   municipio: true,
   uf: true,
+  email: true,
+  telefone_celular: true,
   telefone: true,
   telefone_alternativo: true,
 } as const

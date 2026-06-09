@@ -1,13 +1,11 @@
 'use client'
 
 import type { SegmentoViagemItem } from '@saude/mod-saude-tfd/client'
-import { MIN_VALOR_COMPROVANTE, TFD_PERMISSIONS } from '@saude/mod-saude-tfd/client'
+import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/client'
 import { registrarDespesaViagemNova } from '@saude/mod-saude-tfd/actions/financeiro'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 
-import { DespesaComprovanteUpload } from '@/app/(servidor)/saude/tfd/[id]/components/despesa-comprovante-upload'
 import {
-  Alert,
   Button,
   Dialog,
   DialogContent,
@@ -15,15 +13,17 @@ import {
   Input,
   Select,
   Spinner,
-  Textarea,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
 
-import { currencyFormatter, labelTipoSegmento } from '@/app/(servidor)/saude/tfd/processos/[id]/agendamentos/[agId]/components/transporte-constants'
+import { labelTipoSegmento } from '@/app/(servidor)/saude/tfd/processos/[id]/agendamentos/[agId]/components/transporte-constants'
 
-const SEGMENTO_NENHUM = ''
+/** Radix Select não aceita `value=""` em itens; sentinela para "nenhum segmento". */
+const SEGMENTO_NENHUM = '__segmento_nenhum__'
+
+const MAX_DESCRICAO_CHARS = 200
 
 function tipoDespesaSugeridoPorSegmento(tipoSegmento: string): string | null {
   if (
@@ -47,6 +47,16 @@ const TIPO_DESPESA_OPTIONS = [
   { value: 'OUTRO', label: 'Outro' },
 ] as const
 
+const TIPO_DESPESA_AJUDA: Record<string, string> = {
+  TRANSPORTE:
+    'Passagem terrestre, aérea ou fluvial. Canhoto ou comprovante de compra obrigatório conforme Portaria SAS/MS 55/1999.',
+  ALIMENTACAO:
+    'Ajuda de custo para alimentação durante o deslocamento. Valor conforme tabela SUS vigente.',
+  HOSPEDAGEM:
+    'Diária de pernoite quando necessário. Não aplicável para pacientes hospitalizados no destino.',
+  OUTRO: 'Outros gastos justificados. Descreva no campo observações.',
+}
+
 const RESPONSAVEL_OPTIONS = [
   { value: 'MUNICIPIO', label: 'Município' },
   { value: 'PACIENTE_REEMBOLSO', label: 'Paciente (reembolso)' },
@@ -64,7 +74,6 @@ export interface DespesaViagemDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   session: SaudeMunicSession
-  processoId: string
   viagemNovaId: string
   segmentos: SegmentoViagemItem[]
   tipoInicial?: string
@@ -74,7 +83,6 @@ export function DespesaViagemDialog({
   open,
   onOpenChange,
   session,
-  processoId,
   viagemNovaId,
   segmentos,
   tipoInicial = 'TRANSPORTE',
@@ -88,12 +96,8 @@ export function DespesaViagemDialog({
   const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState('')
   const [responsavelPagamento, setResponsavelPagamento] = useState('MUNICIPIO')
-  const [comprovanteAnexoId, setComprovanteAnexoId] = useState<string | null>(null)
-  const [uploadKey, setUploadKey] = useState(0)
 
   const valorNumerico = Number.parseFloat(valor.replace(',', '.'))
-  const exigeComprovante =
-    Number.isFinite(valorNumerico) && valorNumerico >= MIN_VALOR_COMPROVANTE
 
   useEffect(() => {
     if (open) {
@@ -112,7 +116,7 @@ export function DespesaViagemDialog({
 
   function handleSegmentoChange(value: string) {
     setSegmentoId(value)
-    if (!value) {
+    if (value === SEGMENTO_NENHUM) {
       return
     }
     const segmento = segmentos.find((item) => item.id === value)
@@ -131,8 +135,6 @@ export function DespesaViagemDialog({
     setDescricao('')
     setValor('')
     setResponsavelPagamento('MUNICIPIO')
-    setComprovanteAnexoId(null)
-    setUploadKey((key) => key + 1)
     setServerError(null)
   }
 
@@ -152,21 +154,13 @@ export function DespesaViagemDialog({
       return
     }
 
-    if (exigeComprovante && !comprovanteAnexoId) {
-      setServerError(
-        `Comprovante obrigatório para valores iguais ou superiores a R$ ${MIN_VALOR_COMPROVANTE},00.`
-      )
-      return
-    }
-
     startTransition(async () => {
       const result = await registrarDespesaViagemNova({
         viagemNovaId,
-        segmentoId: segmentoId || undefined,
+        segmentoId: segmentoId === SEGMENTO_NENHUM ? undefined : segmentoId,
         tipo: tipo as 'TRANSPORTE' | 'ALIMENTACAO' | 'HOSPEDAGEM' | 'OUTRO',
         descricao: descricao.trim() || undefined,
         valor: valorNumerico,
-        comprovanteAnexoId: comprovanteAnexoId ?? undefined,
         responsavelPagamento: responsavelPagamento as 'MUNICIPIO' | 'PACIENTE_REEMBOLSO',
       })
 
@@ -182,6 +176,8 @@ export function DespesaViagemDialog({
 
   const tipoLabel =
     TIPO_DESPESA_OPTIONS.find((option) => option.value === tipoInicial)?.label ?? 'Despesa'
+
+  const ajudaTipo = TIPO_DESPESA_AJUDA[tipo]
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -206,12 +202,21 @@ export function DespesaViagemDialog({
               disabled={isPending}
             />
 
-            <Textarea
+            {ajudaTipo ? (
+              // BLOCO-4: ajuda contextual por tipo de despesa
+              <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                {ajudaTipo}
+              </p>
+            ) : null}
+
+            {/* BLOCO-4: descrição opcional para detalhar a despesa */}
+            <Input
               label="Descrição (opcional)"
               value={descricao}
-              onChange={(event) => setDescricao(event.target.value)}
-              rows={2}
+              onChange={(event) => setDescricao(event.target.value.slice(0, MAX_DESCRICAO_CHARS))}
               disabled={isPending}
+              maxLength={MAX_DESCRICAO_CHARS}
+              placeholder="Ex.: Passagem aérea ida Campo Grande — São Paulo"
             />
 
             <Input
@@ -224,13 +229,6 @@ export function DespesaViagemDialog({
               placeholder="0,00"
             />
 
-            {exigeComprovante ? (
-              <Alert variant="warning" role="status">
-                Valores a partir de {currencyFormatter.format(MIN_VALOR_COMPROVANTE)} exigem
-                comprovante anexado (PDF, JPEG ou PNG, máx. 10 MB).
-              </Alert>
-            ) : null}
-
             <Select
               label="Responsável pelo pagamento"
               value={responsavelPagamento}
@@ -239,13 +237,7 @@ export function DespesaViagemDialog({
               disabled={isPending}
             />
 
-            <DespesaComprovanteUpload
-              key={uploadKey}
-              processoId={processoId}
-              disabled={isPending}
-              onUploadComplete={setComprovanteAnexoId}
-              onUploadClear={() => setComprovanteAnexoId(null)}
-            />
+            {/* TODO BLOCO-4: reativar comprovantes após estabilização do fluxo */}
 
             {serverError ? <ServerError message={serverError} /> : null}
 

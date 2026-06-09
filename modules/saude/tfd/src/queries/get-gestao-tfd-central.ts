@@ -194,7 +194,7 @@ function buildInboxFromGestor(alertas: GestaoTfdCentralAlertasGestor): GestaoTfd
       descricao: `${saldo.descricao} · ${percentual}% disponível`,
       protocolo: null,
       pacienteNomeParcial: null,
-      href: '/saude/tfd/configuracoes/saldos',
+      href: '/saude/tfd/saldos',
       referenciaEm: null,
     })
   }

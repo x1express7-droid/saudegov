@@ -26,7 +26,6 @@ const decimalPositivoField = z
   .optional()
 
 export const criarViagemSchema = z.object({
-  processoId: z.string().uuid('ID do processo inválido.'),
   veiculoId: z.string().uuid('ID do veículo inválido.').optional(),
   motoristaId: z.string().uuid('ID do motorista inválido.').optional(),
   dataSaida: dataField,

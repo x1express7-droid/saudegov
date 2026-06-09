@@ -9,6 +9,7 @@ import {
   formatCnhCategorias,
   type AgendamentoDisponivelViagemItem,
   type TfdMotoristaAgendamentoItem,
+  type TfdPrestadorListItem,
   type TfdVeiculoAgendamentoItem,
 } from '@saude/mod-saude-tfd/client'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
@@ -38,6 +39,10 @@ import {
   buscarAgendamentosDisponiveisViagemAction,
   buscarMotoristasViagemAction,
 } from '../actions'
+import {
+  LocalEnderecoAutocomplete,
+  type MunicipioSedeOption,
+} from './local-endereco-autocomplete'
 
 const TIPO_TRECHO_OPTIONS = [
   { value: 'IDA', label: 'Ida' },
@@ -68,6 +73,16 @@ function labelTipoViagem(tipo: string | null): string {
   return 'Não informado'
 }
 
+function formatDataSaidaLabel(iso: string): string {
+  const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
+  return new Date(parsed).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
+
 function resolveTipoTrecho(
   agendamento: AgendamentoDisponivelViagemItem,
   override?: 'IDA' | 'VOLTA' | 'IDA_VOLTA'
@@ -96,30 +111,30 @@ function isCnhVencendoEmBreve(validadeIso: string): boolean {
 export interface NovaViagemFormProps {
   session: SaudeMunicSession
   veiculos: TfdVeiculoAgendamentoItem[]
-  processos: Array<{ value: string; label: string }>
-  processoIdInicial?: string
+  prestadores: TfdPrestadorListItem[]
+  municipioSede: MunicipioSedeOption | null
   agendamentoIdPreSelecionado?: string
+  dataSaidaInicial?: string
 }
 
 export function NovaViagemForm({
   session,
   veiculos,
-  processos,
-  processoIdInicial,
+  prestadores,
+  municipioSede,
   agendamentoIdPreSelecionado,
+  dataSaidaInicial,
 }: NovaViagemFormProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [serverError, setServerError] = useState<string | null>(null)
   const [submitMode, setSubmitMode] = useState<SubmitMode>('planejada')
 
-  const [processoId, setProcessoId] = useState(processoIdInicial ?? '')
   const [origemDescricao, setOrigemDescricao] = useState('')
   const [destinoDescricao, setDestinoDescricao] = useState('')
-  const [dataSaida, setDataSaida] = useState('')
+  const [dataSaida, setDataSaida] = useState(dataSaidaInicial ?? '')
   const [horaSaida, setHoraSaida] = useState('')
   const [tempoEstimadoMin, setTempoEstimadoMin] = useState('')
-  const [custoEstimado, setCustoEstimado] = useState('')
   const [observacoes, setObservacoes] = useState('')
   const [veiculoId, setVeiculoId] = useState('')
   const [motoristaId, setMotoristaId] = useState('')
@@ -167,10 +182,13 @@ export function NovaViagemForm({
     [passageirosSelecionados]
   )
 
+  // REMOVE-PROCESSO-PARTE-3: busca por data/destino, sem processoId
   useEffect(() => {
-    if (!processoId) {
+    if (!dataSaida) {
       setAgendamentos([])
-      setPassageirosSelecionados({})
+      if (!agendamentoIdPreSelecionado) {
+        setPassageirosSelecionados({})
+      }
       return
     }
 
@@ -178,8 +196,10 @@ export function NovaViagemForm({
     setLoadingAgendamentos(true)
     setAgendamentosError(null)
 
-    void buscarAgendamentosDisponiveisViagemAction(processoId, dataSaida || undefined).then(
-      (items) => {
+    void buscarAgendamentosDisponiveisViagemAction(
+      dataSaida,
+      destinoDescricao || undefined
+    ).then((items) => {
       if (cancelled) {
         return
       }
@@ -198,13 +218,12 @@ export function NovaViagemForm({
           })
         }
       }
-    }
-    )
+    })
 
     return () => {
       cancelled = true
     }
-  }, [processoId, dataSaida, agendamentoIdPreSelecionado])
+  }, [dataSaida, destinoDescricao, agendamentoIdPreSelecionado])
 
   useEffect(() => {
     if (!dataSaida) {
@@ -258,14 +277,13 @@ export function NovaViagemForm({
     setSubmitMode(mode)
     setServerError(null)
 
-    if (!processoId) {
-      setServerError('Selecione o processo da viagem.')
+    if (!dataSaida) {
+      setServerError('Informe a data de saída da viagem.')
       return
     }
 
     startTransition(async () => {
       const payload = {
-        processoId,
         veiculoId: veiculoId || undefined,
         motoristaId: motoristaId || undefined,
         dataSaida,
@@ -273,7 +291,6 @@ export function NovaViagemForm({
         origemDescricao,
         destinoDescricao,
         tempoEstimadoMin: tempoEstimadoMin ? Number.parseInt(tempoEstimadoMin, 10) : undefined,
-        custoEstimado: custoEstimado ? Number.parseFloat(custoEstimado.replace(',', '.')) : undefined,
         observacoes: observacoes || undefined,
       }
 
@@ -307,11 +324,11 @@ export function NovaViagemForm({
 
         if (!statusResult.success) {
           setServerError(statusResult.error ?? 'Viagem criada, mas não foi possível confirmá-la.')
-          router.push(`/saude/tfd/viagens/${viagemId}?tab=segmentos`)
+          router.push(`/saude/tfd/viagens/${viagemId}`)
           return
         }
 
-        router.push(`/saude/tfd/viagens/${viagemId}?tab=segmentos`)
+        router.push(`/saude/tfd/viagens/${viagemId}`)
         return
       }
 
@@ -328,32 +345,28 @@ export function NovaViagemForm({
         bodyClassName={formFieldsStackClassName()}
       >
         <div className={formFieldsStackClassName()}>
-          <Combobox
-            id="nova-viagem-processo"
-            label="Processo"
-            placeholder="Buscar processo por protocolo ou paciente..."
-            value={processoId}
-            options={processos}
-            onChange={(value) => {
-              setProcessoId(value)
-              setPassageirosSelecionados({})
-            }}
-            required
-          />
           <div className={formFieldsGridClassName()}>
-            <Input
+            <LocalEnderecoAutocomplete
               id="nova-viagem-origem"
               label="Origem"
+              placeholder="Ex: Campo Grande/MS ou Hospital Regional"
               value={origemDescricao}
-              onChange={(event) => setOrigemDescricao(event.target.value)}
+              onChange={setOrigemDescricao}
+              prestadores={prestadores}
+              municipioSede={municipioSede}
               required
+              disabled={isPending}
             />
-            <Input
+            <LocalEnderecoAutocomplete
               id="nova-viagem-destino"
               label="Destino"
+              placeholder="Ex: São Paulo/SP ou Hospital das Clínicas"
               value={destinoDescricao}
-              onChange={(event) => setDestinoDescricao(event.target.value)}
+              onChange={setDestinoDescricao}
+              prestadores={prestadores}
+              municipioSede={municipioSede}
               required
+              disabled={isPending}
             />
           </div>
           <div className={formFieldsGridClassName()}>
@@ -373,23 +386,17 @@ export function NovaViagemForm({
               onChange={(event) => setHoraSaida(event.target.value)}
             />
           </div>
-          <div className={formFieldsGridClassName()}>
-            <Input
-              id="nova-viagem-tempo-estimado"
-              label="Tempo estimado (min)"
-              type="number"
-              min={1}
-              value={tempoEstimadoMin}
-              onChange={(event) => setTempoEstimadoMin(event.target.value)}
-            />
-            <Input
-              id="nova-viagem-custo-estimado"
-              label="Custo estimado (R$)"
-              inputMode="decimal"
-              value={custoEstimado}
-              onChange={(event) => setCustoEstimado(event.target.value)}
-            />
-          </div>
+          <Input
+            id="nova-viagem-tempo-estimado"
+            label="Tempo estimado (min)"
+            type="number"
+            min={1}
+            value={tempoEstimadoMin}
+            onChange={(event) => setTempoEstimadoMin(event.target.value)}
+          />
+          <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+            Os custos serão registrados na Prestação de Contas após a conclusão da viagem.
+          </p>
           <Textarea
             id="nova-viagem-observacoes"
             label="Observações"
@@ -405,6 +412,10 @@ export function NovaViagemForm({
         bodyClassName={formFieldsStackClassName()}
       >
         <div className={formFieldsStackClassName()}>
+          <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+            Selecione o veículo e o motorista responsáveis por esta viagem. O motorista só aparece
+            após informar a data de saída, pois a CNH é validada para aquela data.
+          </p>
           <Combobox
             id="nova-viagem-veiculo"
             label="Veículo"
@@ -452,10 +463,10 @@ export function NovaViagemForm({
 
       <Card header={<CardHeader>Passageiros</CardHeader>} bodyClassName={formFieldsStackClassName()}>
         <div className={formFieldsStackClassName()}>
-          {!processoId || !dataSaida ? (
+          {!dataSaida ? (
             <EmptyState
-              titulo="Selecione processo e data"
-              descricao="Informe o processo e a data de saída para listar agendamentos disponíveis."
+              titulo="Informe a data de saída"
+              descricao="Informe a data de saída para ver os agendamentos disponíveis para esta rota."
             />
           ) : loadingAgendamentos ? (
             <div className="flex items-center gap-[var(--space-2)] text-[var(--color-text-muted)]">
@@ -466,73 +477,84 @@ export function NovaViagemForm({
             <FormError message={agendamentosError} />
           ) : agendamentos.length === 0 ? (
             <EmptyState
-              titulo="Nenhum agendamento disponível"
-              descricao="Não há agendamentos elegíveis para esta data e processo."
+              titulo="Nenhum agendamento encontrado para esta data"
+              descricao={`Agendamentos com consulta próxima a ${formatDataSaidaLabel(dataSaida)} aparecerão aqui.`}
             />
           ) : (
-            <ul className="flex flex-col gap-[var(--space-3)]">
-              {agendamentos.map((agendamento) => {
-                const selecionado = Boolean(passageirosSelecionados[agendamento.id])
-                const precisaTrecho = agendamento.tipoViagem === 'IDA_VOLTA' || !agendamento.tipoViagem
+            <>
+              <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                Informe a data de saída para carregar os agendamentos disponíveis. Selecione os
+                pacientes que embarcarão nesta viagem. Cada passageiro ocupa 1 vaga + vagas dos
+                acompanhantes.
+              </p>
+              <ul className="flex flex-col gap-[var(--space-3)]">
+                {agendamentos.map((agendamento) => {
+                  const selecionado = Boolean(passageirosSelecionados[agendamento.id])
+                  const precisaTrecho =
+                    agendamento.tipoViagem === 'IDA_VOLTA' || !agendamento.tipoViagem
 
-                return (
-                  <li
-                    key={agendamento.id}
-                    className={cn(
-                      'rounded-[var(--radius-md)] border p-[var(--space-4)]',
-                      selecionado
-                        ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/20'
-                        : 'border-[var(--color-border)]'
-                    )}
-                  >
-                    <label className="flex cursor-pointer items-start gap-[var(--space-3)]">
-                      <input
-                        type="checkbox"
-                        className="mt-1"
-                        checked={selecionado}
-                        onChange={() => togglePassageiro(agendamento)}
-                      />
-                      <span className="flex flex-1 flex-col gap-[var(--space-1)]">
-                        <span className="font-medium text-[var(--color-text)]">
-                          {agendamento.paciente.nome}
-                        </span>
-                        <span className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                          Consulta: {agendamento.dataConsulta} · {agendamento.tipoAtendimento} ·{' '}
-                          {labelTipoViagem(agendamento.tipoViagem)} ·{' '}
-                          {agendamento.acompanhantesCount} acompanhante(s)
-                        </span>
-                      </span>
-                    </label>
-                    {selecionado && precisaTrecho ? (
-                      <div className="mt-[var(--space-3)] max-w-xs">
-                        <Select
-                          id={`trecho-${agendamento.id}`}
-                          label="Tipo de trecho"
-                          options={[...TIPO_TRECHO_OPTIONS]}
-                          value={trechoOverrides[agendamento.id] ?? 'IDA'}
-                          onValueChange={(value) => {
-                            setTrechoOverrides((current) => ({ ...current, [agendamento.id]: value }))
-                            setPassageirosSelecionados((current) => {
-                              const atual = current[agendamento.id]
-                              if (!atual) {
-                                return current
-                              }
-                              return {
-                                ...current,
-                                [agendamento.id]: {
-                                  ...atual,
-                                  tipoTrecho: value as 'IDA' | 'VOLTA' | 'IDA_VOLTA',
-                                },
-                              }
-                            })
-                          }}
+                  return (
+                    <li
+                      key={agendamento.id}
+                      className={cn(
+                        'rounded-[var(--radius-md)] border p-[var(--space-4)]',
+                        selecionado
+                          ? 'border-[var(--color-primary)] bg-[var(--color-primary-light)]/20'
+                          : 'border-[var(--color-border)]'
+                      )}
+                    >
+                      <label className="flex cursor-pointer items-start gap-[var(--space-3)]">
+                        <input
+                          type="checkbox"
+                          className="mt-1"
+                          checked={selecionado}
+                          onChange={() => togglePassageiro(agendamento)}
                         />
-                      </div>
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ul>
+                        <span className="flex flex-1 flex-col gap-[var(--space-1)]">
+                          <span className="font-medium text-[var(--color-text)]">
+                            {agendamento.paciente.nome}
+                          </span>
+                          <span className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                            Consulta: {agendamento.dataConsulta} · {agendamento.tipoAtendimento} ·{' '}
+                            {labelTipoViagem(agendamento.tipoViagem)} ·{' '}
+                            {agendamento.acompanhantesCount} acompanhante(s)
+                          </span>
+                        </span>
+                      </label>
+                      {selecionado && precisaTrecho ? (
+                        <div className="mt-[var(--space-3)] max-w-xs">
+                          <Select
+                            id={`trecho-${agendamento.id}`}
+                            label="Tipo de trecho"
+                            options={[...TIPO_TRECHO_OPTIONS]}
+                            value={trechoOverrides[agendamento.id] ?? 'IDA'}
+                            onValueChange={(value) => {
+                              setTrechoOverrides((current) => ({
+                                ...current,
+                                [agendamento.id]: value,
+                              }))
+                              setPassageirosSelecionados((current) => {
+                                const atual = current[agendamento.id]
+                                if (!atual) {
+                                  return current
+                                }
+                                return {
+                                  ...current,
+                                  [agendamento.id]: {
+                                    ...atual,
+                                    tipoTrecho: value as 'IDA' | 'VOLTA' | 'IDA_VOLTA',
+                                  },
+                                }
+                              })
+                            }}
+                          />
+                        </div>
+                      ) : null}
+                    </li>
+                  )
+                })}
+              </ul>
+            </>
           )}
 
           <ViagemOcupacaoPanel
@@ -548,6 +570,7 @@ export function NovaViagemForm({
             type="button"
             variant="outline"
             disabled={isPending}
+            title="Salva a viagem para editar depois antes de confirmar"
             onClick={() => handleSubmit('planejada')}
           >
             {isPending && submitMode === 'planejada' ? (
@@ -563,6 +586,7 @@ export function NovaViagemForm({
             type="button"
             variant="primary"
             disabled={isPending}
+            title="Confirma a viagem — veículo e motorista ficam alocados"
             onClick={() => handleSubmit('confirmada')}
           >
             {isPending && submitMode === 'confirmada' ? (

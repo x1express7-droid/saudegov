@@ -4,6 +4,7 @@ import type { TfdViagemStatusV2 } from '@prisma/client'
 
 import { TFD_PERMISSIONS } from '../permissions'
 
+// REMOVE-PROCESSO-PARTE-4: listagem sem filtro por processo_id
 const MAX_PER_PAGE = 100
 const DEFAULT_PER_PAGE = 20
 
@@ -14,7 +15,6 @@ export interface GetViagensFiltros {
   dataSaidaFim?: string
   motoristaId?: string
   veiculoId?: string
-  processoId?: string
   page?: number
   perPage?: number
 }
@@ -83,7 +83,6 @@ export async function getViagensTfd(
       : {}),
     ...(filtros.motoristaId ? { motorista_id: filtros.motoristaId } : {}),
     ...(filtros.veiculoId ? { veiculo_id: filtros.veiculoId } : {}),
-    ...(filtros.processoId ? { processo_id: filtros.processoId } : {}),
     ...(dataSaidaFilter ? { data_saida: dataSaidaFilter } : {}),
   }
 

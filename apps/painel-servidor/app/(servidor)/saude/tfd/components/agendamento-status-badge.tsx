@@ -1,7 +1,7 @@
 import { Badge, cn } from '@saude/ui'
 import type { ComponentProps } from 'react'
 
-const AGENDAMENTO_STATUS_CONFIG = {
+export const AGENDAMENTO_STATUS_CONFIG = {
   AGENDADO: { label: 'Agendado', color: 'teal' as const },
   EM_VIAGEM: { label: 'Em viagem', color: 'cyan' as const },
   REALIZADO: { label: 'Realizado', color: 'green' as const },

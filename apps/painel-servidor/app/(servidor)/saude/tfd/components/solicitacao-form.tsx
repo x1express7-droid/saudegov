@@ -1,10 +1,10 @@
+// BLOCO-CID-COMPLETO
 'use client'
 
 import { TFD_SOLICITACOES_PATH } from '@/lib/tfd/routes'
 import {
   abrirSolicitacaoSchema,
   type AbrirSolicitacaoInput,
-  type TfdCidListItem,
   type TfdEspecialidadeListItem,
   type TfdProcedimentoListItem,
   type TfdSolicitacaoOrigemRetornoItem,
@@ -35,6 +35,7 @@ import {
 } from 'react-hook-form'
 
 import { SolicitacaoAcompanhanteSection } from './solicitacao-acompanhante-section'
+import { SolicitacaoCidCombobox } from './solicitacao-cid-combobox'
 import { SolicitacaoLaudoUpload } from './solicitacao-laudo-upload'
 import { SolicitacaoRetornoPicker } from './solicitacao-retorno-picker'
 
@@ -106,7 +107,6 @@ export interface SolicitacaoFormProps {
   paciente: SolicitacaoFormPaciente
   especialidades: TfdEspecialidadeListItem[]
   procedimentos: TfdProcedimentoListItem[]
-  cids: TfdCidListItem[]
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
   /** Quando informado, vincula a solicitação a um processo TFD existente. */
   processoId?: string
@@ -187,7 +187,6 @@ export function SolicitacaoForm({
   paciente,
   especialidades,
   procedimentos,
-  cids,
   solicitacoesOrigem,
   processoId,
 }: SolicitacaoFormProps) {
@@ -263,17 +262,6 @@ export function SolicitacaoForm({
             : item.nome,
         })),
     [procedimentos, especialidadeId]
-  )
-
-  const cidOptions = useMemo(
-    () =>
-      cids
-        .filter((item) => item.ativo)
-        .map((item) => ({
-          value: item.codigo,
-          label: `${item.codigo} — ${item.descricao}`,
-        })),
-    [cids]
   )
 
   useEffect(() => {
@@ -477,11 +465,7 @@ export function SolicitacaoForm({
           name="cidPrincipal"
           control={control}
           render={({ field }) => (
-            <Combobox
-              id="cid-principal"
-              label="CID"
-              placeholder="Selecione o CID (opcional)"
-              options={cidOptions}
+            <SolicitacaoCidCombobox
               value={field.value ?? ''}
               onChange={field.onChange}
               disabled={isPending}
@@ -508,7 +492,6 @@ export function SolicitacaoForm({
             <Select
               id="tipo-transporte-recomendado"
               label="Tipo de transporte recomendado"
-              required
               placeholder="Selecione o tipo de transporte"
               options={[...TFD_TIPO_TRANSPORTE_RECOMENDADO_OPTIONS]}
               value={field.value ?? ''}

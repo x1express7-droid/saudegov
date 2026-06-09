@@ -43,6 +43,10 @@ export interface MoverFilaDialogProps {
   solicitacaoId: string
   protocolo: string
   posicaoAtual: number
+  /** BLOCO-6-SOLICITACOES: controle externo do dialog (menu de ações). */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
+  hideTrigger?: boolean
 }
 
 export function MoverFilaDialog({
@@ -50,9 +54,14 @@ export function MoverFilaDialog({
   solicitacaoId,
   protocolo,
   posicaoAtual,
+  open: openControlled,
+  onOpenChange: onOpenChangeControlled,
+  hideTrigger = false,
 }: MoverFilaDialogProps) {
   const router = useRouter()
-  const [open, setOpen] = useState(false)
+  const [openInternal, setOpenInternal] = useState(false)
+  const isControlled = openControlled !== undefined
+  const open = isControlled ? openControlled : openInternal
   const [posicaoNova, setPosicaoNova] = useState(String(posicaoAtual))
   const [tipoMovimentacao, setTipoMovimentacao] = useState<TipoMovimentacao>(
     inferTipoMovimentacao(posicaoAtual, posicaoAtual)
@@ -62,7 +71,11 @@ export function MoverFilaDialog({
   const [isPending, startTransition] = useTransition()
 
   function handleOpenChange(nextOpen: boolean) {
-    setOpen(nextOpen)
+    if (isControlled) {
+      onOpenChangeControlled?.(nextOpen)
+    } else {
+      setOpenInternal(nextOpen)
+    }
     if (!nextOpen) {
       setPosicaoNova(String(posicaoAtual))
       setTipoMovimentacao(inferTipoMovimentacao(posicaoAtual, posicaoAtual))
@@ -114,7 +127,7 @@ export function MoverFilaDialog({
         return
       }
 
-      setOpen(false)
+      handleOpenChange(false)
       setJustificativa('')
       router.refresh()
     })
@@ -122,16 +135,18 @@ export function MoverFilaDialog({
 
   return (
     <PermissionGate session={session} permission={TFD_PERMISSIONS.MOVER_FILA}>
-      <Button
-        type="button"
-        variant="ghost"
-        onClick={(event) => {
-          event.stopPropagation()
-          setOpen(true)
-        }}
-      >
-        Mover na fila
-      </Button>
+      {hideTrigger ? null : (
+        <Button
+          type="button"
+          variant="ghost"
+          onClick={(event) => {
+            event.stopPropagation()
+            handleOpenChange(true)
+          }}
+        >
+          Mover na fila
+        </Button>
+      )}
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent titulo="Mover na fila">

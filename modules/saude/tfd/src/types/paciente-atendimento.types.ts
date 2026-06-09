@@ -9,6 +9,8 @@ export interface TfdPacienteAtendimentoDetalhe {
   id: string
   nome: string
   cpf: string | null
+  email: string | null
+  telefoneCelular: string | null
   cns: string | null
   dataNascimento: string | null
   sexo: 'MASCULINO' | 'FEMININO' | 'NAO_INFORMADO' | null

@@ -1,9 +1,9 @@
 import { Badge, cn } from '@saude/ui'
 import type { ComponentProps } from 'react'
 
-const VIAGEM_STATUS_CONFIG = {
-  PLANEJADA: { label: 'Planejada', color: 'indigo' as const },
-  CONFIRMADA: { label: 'Confirmada', color: 'teal' as const },
+export const VIAGEM_STATUS_CONFIG = {
+  PLANEJADA: { label: 'Planejada', color: 'gray' as const },
+  CONFIRMADA: { label: 'Confirmada', color: 'blue' as const },
   EM_ANDAMENTO: { label: 'Em andamento', color: 'cyan' as const },
   CONCLUIDA: { label: 'Concluída', color: 'emerald' as const },
   CANCELADA: { label: 'Cancelada', color: 'slate' as const },
@@ -28,5 +28,3 @@ export function ViagemStatusBadge({ status, className, size, ...props }: ViagemS
     </Badge>
   )
 }
-
-export { VIAGEM_STATUS_CONFIG }

@@ -357,14 +357,21 @@ export function AgendamentoNovoForm({
             disabled={isPending}
             placeholder="Selecione o convênio"
           />
-          <Combobox
-            label="Tipo de viagem"
-            value={tipoViagem}
-            options={[...TIPO_VIAGEM_OPTIONS]}
-            onChange={setTipoViagem}
-            disabled={isPending}
-            placeholder="Selecione o tipo de viagem"
-          />
+          <div className="flex flex-col gap-[var(--space-1)]">
+            {/* BLOCO-1: nomenclatura distingue trecho do paciente da entidade Viagem */}
+            <Combobox
+              label="Trecho do paciente"
+              value={tipoViagem}
+              options={[...TIPO_VIAGEM_OPTIONS]}
+              onChange={setTipoViagem}
+              disabled={isPending}
+              placeholder="Selecione o trecho"
+            />
+            <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              Indique se o paciente precisará de transporte somente na ida, somente na volta ou nos
+              dois sentidos.
+            </p>
+          </div>
         </div>
       </Card>
 
@@ -669,7 +676,7 @@ export function AgendamentoNovoForm({
                 Salvando…
               </>
             ) : (
-              'Salvar e ir para alocação'
+              'Salvar e organizar deslocamento' // BLOCO-1: submit leva à organização do deslocamento
             )}
           </Button>
         </PermissionGate>

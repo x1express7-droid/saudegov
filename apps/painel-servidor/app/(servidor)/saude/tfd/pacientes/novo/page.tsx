@@ -65,7 +65,7 @@ export default async function NovoPacientePage({ searchParams }: NovoPacientePag
         subtitulo={
           modoEdicao
             ? `Atualize os dados de ${initialPaciente!.nome} na base do município.`
-            : 'Busque um paciente existente para editar ou preencha o formulário para um novo cadastro. Nome é obrigatório; CPF, CNS e demais campos são opcionais.'
+            : 'Busque um paciente existente para editar ou preencha o formulário para um novo cadastro. Nome, e-mail, telefone celular e CPF são obrigatórios.'
         }
         breadcrumbs={[
           { label: 'TFD', href: '/saude/tfd' },

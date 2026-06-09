@@ -2,7 +2,7 @@
 
 import { vincularAgendamentoNaViagem } from '@saude/mod-saude-tfd/actions/viagem-nova'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
-import type { TransporteAgendamentoItem, ViagemPorAgendamentoItem } from '@saude/mod-saude-tfd/client'
+import type { ViagemPorAgendamentoItem } from '@saude/mod-saude-tfd/client'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
   Badge,
@@ -18,7 +18,7 @@ import {
   Spinner,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
-import { ArrowRight, Bus, ChevronDown, Link2, Route } from 'lucide-react'
+import { ArrowRight, Link2, Route } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition, type ReactNode } from 'react'
@@ -28,20 +28,12 @@ import {
   buscarViagensParaVincularAgendamentoAction,
   type ViagemParaVincularItem,
 } from '../actions'
-import {
-  currencyFormatter,
-  formatDataHora,
-  labelTipoSegmento,
-  TIPO_SEGMENTO_CONFIG,
-  TRANSPORTE_STATUS_CONFIG,
-} from './transporte-constants'
 
 export interface DeslocamentoSectionProps {
   session: SaudeMunicSession
-  processoId: string
   agendamentoId: string
+  dataConsulta: string
   viagensVinculadas: ViagemPorAgendamentoItem[]
-  transportesLegado: TransporteAgendamentoItem[]
 }
 
 const TIPO_TRECHO_LABEL: Record<string, string> = {
@@ -82,65 +74,6 @@ function ServerError({ message }: { message: string }) {
     <p className="text-[length:var(--text-sm)] text-[var(--color-error)]" role="alert">
       {message}
     </p>
-  )
-}
-
-function TransporteLegadoStatusBadge({ status }: { status: string }) {
-  const config = TRANSPORTE_STATUS_CONFIG[status] ?? {
-    label: status,
-    color: 'gray' as const,
-  }
-  return (
-    <Badge variant={config.color} size="sm">
-      {config.label}
-    </Badge>
-  )
-}
-
-function SegmentoLegadoReadonly({ segmento }: { segmento: TransporteAgendamentoItem }) {
-  const config = TIPO_SEGMENTO_CONFIG[segmento.tipoSegmento] ?? TIPO_SEGMENTO_CONFIG.OUTRO!
-
-  return (
-    <article className="flex flex-col gap-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg)] p-[var(--space-4)]">
-      <div className="flex flex-wrap items-center gap-[var(--space-2)]">
-        <span className="text-[length:var(--text-sm)] font-semibold text-[var(--color-text)]">
-          Segmento {segmento.sequencia}
-        </span>
-        <Badge variant="gray" size="sm" className="gap-1">
-          <span aria-hidden="true">{config.emoji}</span>
-          {labelTipoSegmento(segmento.tipoSegmento)}
-        </Badge>
-        <TransporteLegadoStatusBadge status={segmento.status} />
-        <Badge variant="slate" size="sm">
-          Histórico
-        </Badge>
-      </div>
-
-      <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-        <span className="font-medium">{segmento.origemDescricao}</span>
-        <ArrowRight className="mx-1 inline size-4 align-text-bottom text-[var(--color-text-muted)]" />
-        <span className="font-medium">{segmento.destinoDescricao}</span>
-      </p>
-
-      <dl className="grid gap-[var(--space-2)] sm:grid-cols-2">
-        <div>
-          <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">Saída</dt>
-          <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-            {formatDataHora(segmento.dataSaida, segmento.horaSaida)}
-          </dd>
-        </div>
-        {segmento.custoEstimado !== null ? (
-          <div>
-            <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-              Custo estimado
-            </dt>
-            <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-              {currencyFormatter.format(segmento.custoEstimado)}
-            </dd>
-          </div>
-        ) : null}
-      </dl>
-    </article>
   )
 }
 
@@ -258,10 +191,9 @@ function ViagemSelecaoItem({
 
 export function DeslocamentoSection({
   session,
-  processoId,
   agendamentoId,
+  dataConsulta,
   viagensVinculadas,
-  transportesLegado,
 }: DeslocamentoSectionProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -288,7 +220,7 @@ export function DeslocamentoSection({
     setTipoTrecho('IDA')
 
     const items = await buscarViagensParaVincularAgendamentoAction(
-      processoId,
+      dataConsulta,
       viagemIdsJaVinculadas
     )
     setViagensDisponiveis(items)
@@ -327,10 +259,11 @@ export function DeslocamentoSection({
             Escolha como organizar o deslocamento deste agendamento:
           </p>
           <div className="grid gap-[var(--space-4)] md:grid-cols-2">
+            {/* BLOCO-1: descrição do card de nova viagem */}
             <CaminhoDeslocamentoCard
               icon={<Route className="size-5" aria-hidden="true" />}
               titulo="Criar nova viagem"
-              descricao="Organize um novo deslocamento para este agendamento com veículo, motorista e outros passageiros."
+              descricao="Organize o transporte para este agendamento: veículo, motorista e outros pacientes na mesma rota."
             >
               <PermissionGate session={session} permission={TFD_PERMISSIONS.GERENCIAR_VIAGEM}>
                 <Button asChild variant="primary" className="w-full sm:w-auto">
@@ -339,10 +272,11 @@ export function DeslocamentoSection({
               </PermissionGate>
             </CaminhoDeslocamentoCard>
 
+            {/* BLOCO-1: descrição do card de vínculo */}
             <CaminhoDeslocamentoCard
               icon={<Link2 className="size-5" aria-hidden="true" />}
               titulo="Vincular à viagem existente"
-              descricao="Este agendamento será adicionado como passageiro de uma viagem já planejada para este processo."
+              descricao="Este agendamento será adicionado como passageiro de uma viagem já planejada para a mesma data e rota."
             >
               <PermissionGate session={session} permission={TFD_PERMISSIONS.GERENCIAR_VIAGEM}>
                 <Button
@@ -366,36 +300,6 @@ export function DeslocamentoSection({
           ))}
         </ul>
       )}
-
-      {transportesLegado.length > 0 ? (
-        <details className="mt-[var(--space-6)] group rounded-[var(--radius-md)] border border-[var(--color-border)]">
-          <summary className="flex cursor-pointer list-none items-center justify-between gap-[var(--space-2)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] font-medium text-[var(--color-text)] [&::-webkit-details-marker]:hidden">
-            <span className="flex items-center gap-[var(--space-2)]">
-              <Bus className="size-4 text-[var(--color-text-muted)]" aria-hidden="true" />
-              Segmentos históricos (legado)
-              <Badge variant="gray" size="sm">
-                {transportesLegado.length}
-              </Badge>
-            </span>
-            <ChevronDown
-              className="size-4 shrink-0 text-[var(--color-text-muted)] transition-transform group-open:rotate-180"
-              aria-hidden="true"
-            />
-          </summary>
-          <div className="border-t border-[var(--color-border)] px-[var(--space-4)] py-[var(--space-4)]">
-            <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-              Registros do modelo anterior — somente visualização.
-            </p>
-            <ul className="flex flex-col gap-[var(--space-4)]">
-              {transportesLegado.map((segmento) => (
-                <li key={segmento.id}>
-                  <SegmentoLegadoReadonly segmento={segmento} />
-                </li>
-              ))}
-            </ul>
-          </div>
-        </details>
-      ) : null}
 
       <Dialog open={vincularOpen} onOpenChange={setVincularOpen}>
         <DialogContent titulo="Vincular à viagem existente">
