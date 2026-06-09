@@ -8,7 +8,6 @@ const dataPath = path.join(__dirname, 'tfd-cid-completo-data.ts')
 const outDir = path.join(__dirname, '..', 'migrations', '20260609140000_seed_cids_campograndems')
 const outPath = path.join(outDir, 'migration.sql')
 
-const TENANT_ID = '18ff1259-d432-40ef-a71f-7e643b93c382'
 const BATCH_SIZE = 500
 
 function escapeSql(value) {
@@ -37,8 +36,8 @@ if (items.length === 0) {
 }
 
 const header = `-- BLOCO-CID-COMPLETO
--- Seed idempotente: catálogo CID-10 completo (DATASUS 2008) para campograndems
--- Total de registros: ${items.length}
+-- Seed idempotente: catálogo CID-10 completo (DATASUS 2008) para todos os tenants
+-- Total de CIDs por tenant: ${items.length}
 
 `
 
@@ -48,15 +47,22 @@ let insertStatements = 0
 for (let offset = 0; offset < items.length; offset += BATCH_SIZE) {
   const batch = items.slice(offset, offset + BATCH_SIZE)
   const values = batch
-    .map(
-      (item) =>
-        `  (gen_random_uuid(), '${TENANT_ID}'::uuid, '${escapeSql(item.codigo)}', '${escapeSql(item.descricao)}', true, NOW(), NOW())`
-    )
+    .map((item) => `    ('${escapeSql(item.codigo)}', '${escapeSql(item.descricao)}')`)
     .join(',\n')
 
   chunks.push(`INSERT INTO saude_tfd.cids (id, tenant_id, codigo, descricao, ativo, created_at, updated_at)
-VALUES
+SELECT
+  gen_random_uuid(),
+  t.id,
+  cids.codigo,
+  cids.descricao,
+  true,
+  NOW(),
+  NOW()
+FROM public.tenants t
+CROSS JOIN (VALUES
 ${values}
+) AS cids(codigo, descricao)
 ON CONFLICT (tenant_id, codigo) DO NOTHING;
 
 `)
