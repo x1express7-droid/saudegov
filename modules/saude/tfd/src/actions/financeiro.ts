@@ -34,6 +34,8 @@ import {
   registrarDespesaAgendamentoSchema,
   registrarDespesaSchema,
   registrarDespesaTransporteSchema,
+  atualizarAdiantamentoViagemPcSchema,
+  excluirItemDespesaViagemNovaSchema,
   registrarDespesaViagemNovaSchema,
   registrarVisualizacaoComprovanteSchema,
   registrarVisualizacaoComprovanteViagemNovaSchema,
@@ -2989,9 +2991,6 @@ export async function registrarDespesaViagemNova(
   }
   const data = parsed.data
 
-  // BLOCO-4.1: TODO reativar obrigatoriedade de comprovante
-  // if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) { ... }
-
   try {
     const tenantId = session.user.tenantId!
     const db = await getPrismaForTenant(tenantId)
@@ -3068,11 +3067,6 @@ export async function registrarDespesaViagemNova(
       if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
         throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
       }
-
-      // BLOCO-4.1: TODO reativar obrigatoriedade de comprovante
-      // if (exigeComprovante(data.valor) && !data.comprovanteAnexoId) {
-      //   throw new FinanceiroBusinessError(MSG_COMPROVANTE_OBRIGATORIO)
-      // }
 
       if (data.comprovanteAnexoId) {
         await validarComprovanteAnexo(tx, tenantId, data.comprovanteAnexoId)
@@ -3991,6 +3985,261 @@ export async function decidirPrestacaoContasViagemNova(
     return {
       success: false,
       error: 'Não foi possível registrar a decisão da prestação. Tente novamente.',
+    }
+  }
+}
+
+/** PC-PARTE-3: registra ou atualiza o adiantamento entregue ao paciente. */
+export async function atualizarAdiantamentoViagemPc(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
+
+  const parsed = atualizarAdiantamentoViagemPcSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const resultado = await db.$transaction(async (tx) => {
+      const viagem = await tx.tfdViagem.findFirst({
+        where: {
+          id: data.viagemNovaId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          protocolo: true,
+          processo_id: true,
+          status: true,
+          prestacao_conta: {
+            select: {
+              id: true,
+              status: true,
+              valor_adiantamento: true,
+            },
+          },
+        },
+      })
+
+      if (!viagem) {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NAO_ENCONTRADA)
+      }
+
+      if (viagem.status !== 'CONCLUIDA') {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NOVA_NAO_CONCLUIDA)
+      }
+
+      if (!viagem.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+      }
+
+      const statusPc = viagem.prestacao_conta.status
+      if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      const valorAnterior =
+        viagem.prestacao_conta.valor_adiantamento !== null
+          ? Number(viagem.prestacao_conta.valor_adiantamento)
+          : null
+
+      await tx.tfdPrestacaoConta.update({
+        where: { id: viagem.prestacao_conta.id },
+        data: { valor_adiantamento: data.valorAdiantamento },
+      })
+
+      return {
+        prestacaoId: viagem.prestacao_conta.id,
+        viagemNovaId: viagem.id,
+        processoId: viagem.processo_id,
+        protocolo: viagem.protocolo,
+        valorAnterior,
+        valorNovo: data.valorAdiantamento,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_prestacao_conta',
+      entidadeId: resultado.prestacaoId,
+      payloadAntes: { valorAdiantamento: resultado.valorAnterior },
+      payloadDepois: {
+        valorAdiantamento: resultado.valorNovo,
+        viagemNovaId: resultado.viagemNovaId,
+        protocolo: resultado.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId ?? null,
+      },
+    })
+
+    revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[atualizarAdiantamentoViagemPc] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível salvar o adiantamento. Tente novamente.',
+    }
+  }
+}
+
+/** PC-PARTE-3: exclui item de despesa da prestação da viagem nova. */
+export async function excluirItemDespesaViagemNova(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
+
+  const parsed = excluirItemDespesaViagemNovaSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const resultado = await db.$transaction(async (tx) => {
+      const viagem = await tx.tfdViagem.findFirst({
+        where: {
+          id: data.viagemNovaId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          protocolo: true,
+          processo_id: true,
+          status: true,
+          prestacao_conta: {
+            select: {
+              id: true,
+              status: true,
+            },
+          },
+        },
+      })
+
+      if (!viagem) {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NAO_ENCONTRADA)
+      }
+
+      if (viagem.status !== 'CONCLUIDA') {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NOVA_NAO_CONCLUIDA)
+      }
+
+      if (!viagem.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+      }
+
+      const statusPc = viagem.prestacao_conta.status
+      if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      const item = await tx.tfdItemDespesa.findFirst({
+        where: {
+          id: data.itemDespesaId,
+          tenant_id: tenantId,
+          viagem_nova_id: data.viagemNovaId,
+        },
+        select: {
+          id: true,
+          tipo: true,
+          valor: true,
+          descricao: true,
+          transporte_id: true,
+          comprovante_anexo_id: true,
+        },
+      })
+
+      if (!item) {
+        throw new FinanceiroBusinessError('Item de despesa não encontrado.')
+      }
+
+      await tx.tfdItemDespesa.delete({
+        where: { id: item.id },
+      })
+
+      return {
+        itemId: item.id,
+        prestacaoId: viagem.prestacao_conta.id,
+        viagemNovaId: viagem.id,
+        processoId: viagem.processo_id,
+        protocolo: viagem.protocolo,
+        itemTipo: item.tipo,
+        itemValor: Number(item.valor),
+        itemDescricao: item.descricao,
+        transporteId: item.transporte_id,
+        possuiComprovante: Boolean(item.comprovante_anexo_id),
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'DELETE',
+      entidade: 'saude_tfd_item_despesa',
+      entidadeId: resultado.itemId,
+      payloadAntes: {
+        viagemNovaId: resultado.viagemNovaId,
+        prestacaoId: resultado.prestacaoId,
+        tipo: resultado.itemTipo,
+        valor: resultado.itemValor,
+        descricao: resultado.itemDescricao,
+        transporteId: resultado.transporteId,
+        possuiComprovante: resultado.possuiComprovante,
+        protocolo: resultado.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId ?? null,
+      },
+    })
+
+    revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[excluirItemDespesaViagemNova] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível excluir o item de despesa. Tente novamente.',
     }
   }
 }

@@ -22,16 +22,26 @@ import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useState, useTransition } from 'react'
 
+import { DespesaComprovanteUpload } from '@/app/(servidor)/saude/tfd/[id]/components/despesa-comprovante-upload'
 import { labelTipoSegmento } from '@/app/(servidor)/saude/tfd/processos/[id]/agendamentos/[agId]/components/transporte-constants'
 
 /** Radix Select não aceita `value=""` em itens; sentinela para "nenhum segmento". */
 const SEGMENTO_NENHUM = '__segmento_nenhum__'
 
 const MAX_DESCRICAO_CHARS = 200
-
 const TIPO_DESPESA_PADRAO: TfdTipoDespesaConfigKey = 'TRANSPORTE_TERRESTRE'
 
-// PC-PARTE-2: agrupamento de opções no select por grupo de despesa
+// PC-PARTE-3: dialog de lançamento — comprovante, diárias e tipos Portaria 55/1999
+// PC-PARTE-3: tabela SUS 2024 — sugestão de valor por diária
+const VALOR_DIARIA_SUS_2024 = 41
+
+const TIPOS_DIARIA = ['DIARIA_PACIENTE', 'DIARIA_ACOMPANHANTE'] as const
+const TIPOS_TRANSPORTE = [
+  'TRANSPORTE_TERRESTRE',
+  'TRANSPORTE_AEREO',
+  'TRANSPORTE_FLUVIAL',
+] as const
+
 const GRUPO_DESPESA_LABELS: Record<string, string> = {
   TRANSPORTE: '── TRANSPORTE ──',
   DIARIA: '── DIÁRIAS ──',
@@ -80,6 +90,18 @@ function labelSegmentoOption(segmento: SegmentoViagemItem): string {
   return `${labelTipoSegmento(segmento.tipoSegmento)} — ${segmento.origemDescricao} → ${segmento.destinoDescricao}`
 }
 
+function isTipoDiaria(tipo: string): boolean {
+  return TIPOS_DIARIA.includes(tipo as (typeof TIPOS_DIARIA)[number])
+}
+
+function comprovanteObrigatorio(tipo: string): boolean {
+  return isTipoDiaria(tipo)
+}
+
+function exibeComprovante(tipo: string): boolean {
+  return TFD_TIPO_DESPESA_CONFIG[tipo as TfdTipoDespesaConfigKey]?.ativo === true
+}
+
 function ServerError({ message }: { message: string }) {
   return (
     <p className="text-[length:var(--text-sm)] text-[var(--color-danger)]" role="alert">
@@ -93,6 +115,7 @@ export interface DespesaViagemDialogProps {
   onOpenChange: (open: boolean) => void
   session: SaudeMunicSession
   viagemNovaId: string
+  processoId: string | null
   segmentos: SegmentoViagemItem[]
   tipoInicial?: TfdTipoDespesaConfigKey
 }
@@ -102,6 +125,7 @@ export function DespesaViagemDialog({
   onOpenChange,
   session,
   viagemNovaId,
+  processoId,
   segmentos,
   tipoInicial = TIPO_DESPESA_PADRAO,
 }: DespesaViagemDialogProps) {
@@ -113,16 +137,36 @@ export function DespesaViagemDialog({
   const [segmentoId, setSegmentoId] = useState(SEGMENTO_NENHUM)
   const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState('')
+  const [quantidadeDias, setQuantidadeDias] = useState('1')
+  const [comprovanteAnexoId, setComprovanteAnexoId] = useState<string | null>(null)
 
   const valorNumerico = Number.parseFloat(valor.replace(',', '.'))
+  const diasNumerico = Number.parseInt(quantidadeDias, 10)
   const tipoDespesaOptions = useMemo(() => buildTipoDespesaSelectOptions(), [])
+
+  const mostraDiaria = isTipoDiaria(tipo)
+  const mostraComprovante = exibeComprovante(tipo) && processoId !== null
+  const comprovanteRequired = comprovanteObrigatorio(tipo)
+
+  const valorPorDia =
+    mostraDiaria && Number.isFinite(valorNumerico) && diasNumerico > 0
+      ? valorNumerico / diasNumerico
+      : null
 
   useEffect(() => {
     if (open) {
       setTipo(tipoInicial)
       setSegmentoId(SEGMENTO_NENHUM)
+      setComprovanteAnexoId(null)
+      setQuantidadeDias('1')
     }
   }, [open, tipoInicial])
+
+  useEffect(() => {
+    if (mostraDiaria && diasNumerico >= 1) {
+      setValor((diasNumerico * VALOR_DIARIA_SUS_2024).toFixed(2).replace('.', ','))
+    }
+  }, [mostraDiaria, diasNumerico])
 
   const segmentoOptions = [
     { value: SEGMENTO_NENHUM, label: 'Nenhum (despesa avulsa)' },
@@ -152,6 +196,8 @@ export function DespesaViagemDialog({
     setSegmentoId(SEGMENTO_NENHUM)
     setDescricao('')
     setValor('')
+    setQuantidadeDias('1')
+    setComprovanteAnexoId(null)
     setServerError(null)
   }
 
@@ -171,6 +217,21 @@ export function DespesaViagemDialog({
       return
     }
 
+    if (mostraDiaria && (!Number.isFinite(diasNumerico) || diasNumerico < 1)) {
+      setServerError('Informe a quantidade de dias (mínimo 1).')
+      return
+    }
+
+    if (comprovanteRequired && !comprovanteAnexoId) {
+      setServerError('Comprovante obrigatório para diárias de paciente e acompanhante.')
+      return
+    }
+
+    if (!processoId && comprovanteRequired) {
+      setServerError('Não foi possível anexar comprovante: processo não vinculado à viagem.')
+      return
+    }
+
     startTransition(async () => {
       const result = await registrarDespesaViagemNova({
         viagemNovaId,
@@ -178,7 +239,7 @@ export function DespesaViagemDialog({
         tipo: tipo as RegistrarDespesaViagemNovaInput['tipo'],
         descricao: descricao.trim() || undefined,
         valor: valorNumerico,
-        // PC-PARTE-1: responsável fixo no backend; não expor na UI da viagem nova
+        comprovanteAnexoId: comprovanteAnexoId ?? undefined,
         responsavelPagamento: 'MUNICIPIO',
       })
 
@@ -213,16 +274,46 @@ export function DespesaViagemDialog({
             <Select
               label="Tipo de despesa"
               value={tipo}
-              onValueChange={(value) => setTipo(value as TfdTipoDespesaConfigKey)}
+              onValueChange={(value) => {
+                setTipo(value as TfdTipoDespesaConfigKey)
+                setComprovanteAnexoId(null)
+                if (!isTipoDiaria(value)) {
+                  setValor('')
+                  setQuantidadeDias('1')
+                }
+              }}
               options={tipoDespesaOptions}
               disabled={isPending}
             />
 
             {ajudaTipo ? (
-              // PC-PARTE-2: ajuda contextual por tipo de despesa (Portaria 55/1999)
               <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
                 {ajudaTipo}
               </p>
+            ) : null}
+
+            {mostraDiaria ? (
+              <>
+                <Input
+                  label="Quantidade de dias"
+                  type="number"
+                  inputMode="numeric"
+                  min={1}
+                  value={quantidadeDias}
+                  onChange={(event) => setQuantidadeDias(event.target.value)}
+                  disabled={isPending}
+                />
+                <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                  {tipo === 'DIARIA_PACIENTE'
+                    ? `Diária paciente: R$ ${VALOR_DIARIA_SUS_2024.toFixed(2).replace('.', ',')} por dia (tabela SUS 2024).`
+                    : `Diária acompanhante: R$ ${VALOR_DIARIA_SUS_2024.toFixed(2).replace('.', ',')} por dia (tabela SUS 2024).`}
+                </p>
+                {valorPorDia !== null ? (
+                  <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                    Valor por dia: R$ {valorPorDia.toFixed(2).replace('.', ',')}
+                  </p>
+                ) : null}
+              </>
             ) : null}
 
             <Input
@@ -240,11 +331,32 @@ export function DespesaViagemDialog({
               inputMode="decimal"
               value={valor}
               onChange={(event) => setValor(event.target.value)}
-              disabled={isPending}
+              disabled={isPending || mostraDiaria}
               placeholder="0,00"
             />
 
-            {/* TODO BLOCO-4: reativar comprovantes após estabilização do fluxo */}
+            {mostraComprovante ? (
+              <DespesaComprovanteUpload
+                processoId={processoId!}
+                disabled={isPending}
+                onUploadComplete={setComprovanteAnexoId}
+                onUploadClear={() => setComprovanteAnexoId(null)}
+              />
+            ) : null}
+
+            {!processoId && comprovanteRequired ? (
+              <p className="text-[length:var(--text-sm)] text-[var(--color-warning)]">
+                Vincule um processo à viagem para anexar comprovantes obrigatórios.
+              </p>
+            ) : null}
+
+            {mostraComprovante && !comprovanteRequired ? (
+              <p className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
+                {TIPOS_TRANSPORTE.includes(tipo as (typeof TIPOS_TRANSPORTE)[number])
+                  ? 'Comprovante recomendado para despesas de transporte.'
+                  : 'Comprovante opcional para este tipo de despesa.'}
+              </p>
+            ) : null}
 
             {serverError ? <ServerError message={serverError} /> : null}
 

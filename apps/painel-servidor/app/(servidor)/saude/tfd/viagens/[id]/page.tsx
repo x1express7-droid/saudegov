@@ -81,25 +81,8 @@ export default async function ViagemDetalhePage({ params, searchParams }: Viagem
         ]
       : []
 
-  const reservasAtivas =
-    processoIds.length > 0
-      ? await db.tfdReservaSaldo.findMany({
-          where: {
-            tenant_id: session.user.tenantId!,
-            status: 'ATIVA',
-            solicitacao: {
-              processo_id:
-                processoIds.length === 1 ? processoIds[0] : { in: processoIds },
-            },
-          },
-          select: { valor_estimado: true },
-        })
-      : []
-
-  const valorReservaSaldo =
-    reservasAtivas.length > 0
-      ? reservasAtivas.reduce((total, reserva) => total + Number(reserva.valor_estimado), 0)
-      : null
+  // PC-PARTE-3: processo para upload de comprovantes na PC da viagem
+  const processoIdForUpload = processoIds[0] ?? null
 
   // BLOCO-3: aba Segmentos removida — links antigos abrem Detalhes
   const initialTab =
@@ -125,7 +108,7 @@ export default async function ViagemDetalhePage({ params, searchParams }: Viagem
         session={session}
         viagem={viagem}
         prestacao={prestacao}
-        valorReservaSaldo={valorReservaSaldo}
+        processoIdForUpload={processoIdForUpload}
         initialTab={initialTab}
       />
     </div>

@@ -92,7 +92,7 @@ export interface ViagemDetalheViewProps {
   session: SaudeMunicSession
   viagem: ViagemDetalheOutput
   prestacao: PrestacaoDetalheViagemNovaOutput | null
-  valorReservaSaldo?: number | null
+  processoIdForUpload?: string | null
   initialTab?: TabId
 }
 
@@ -100,7 +100,7 @@ export function ViagemDetalheView({
   session,
   viagem,
   prestacao,
-  valorReservaSaldo = null,
+  processoIdForUpload = null,
   initialTab,
 }: ViagemDetalheViewProps) {
   const router = useRouter()
@@ -411,8 +411,7 @@ export function ViagemDetalheView({
             viagemNovaId={viagem.id}
             viagemProtocolo={viagem.protocolo}
             viagemStatus={viagem.status}
-            dataChegadaViagem={viagem.dataChegada}
-            valorReservaSaldo={valorReservaSaldo}
+            processoId={processoIdForUpload}
             segmentos={viagem.segmentos}
             prestacao={prestacao}
           />

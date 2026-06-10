@@ -16,6 +16,7 @@ export interface PrestacaoDetalheViagemNovaOutput {
     id: string
     nome: string
   } | null
+  valorAdiantamento: number | null
   itensDespesa: Array<{
     id: string
     tipo: string
@@ -80,6 +81,7 @@ export async function getPrestacaoDetalheViagemNova(
       observacoes_gestor: true,
       comprovantes_vistos: true,
       aprovado_at: true,
+      valor_adiantamento: true,
       aprovado_por: {
         select: {
           id: true,
@@ -122,6 +124,8 @@ export async function getPrestacaoDetalheViagemNova(
           nome: prestacao.aprovado_por.name,
         }
       : null,
+    valorAdiantamento:
+      prestacao.valor_adiantamento !== null ? Number(prestacao.valor_adiantamento) : null,
     itensDespesa,
     valorTotal,
   }

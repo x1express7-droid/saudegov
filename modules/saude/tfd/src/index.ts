@@ -216,6 +216,8 @@ export {
 } from './validators/agendamento-novo.schema'
 
 export {
+  atualizarAdiantamentoViagemPcSchema,
+  excluirItemDespesaViagemNovaSchema,
   registrarDespesaAgendamentoSchema,
   registrarDespesaTransporteSchema,
   registrarDespesaViagemNovaSchema,
@@ -224,6 +226,8 @@ export {
 } from './validators/despesa.schema'
 
 export type {
+  AtualizarAdiantamentoViagemPcInput,
+  ExcluirItemDespesaViagemNovaInput,
   RegistrarDespesaAgendamentoInput,
   RegistrarDespesaTransporteInput,
   RegistrarDespesaViagemNovaInput,
@@ -395,6 +399,8 @@ export {
   decidirPrestacaoContas,
   decidirPrestacaoContasAgendamento,
   registrarDespesaViagemNova,
+  atualizarAdiantamentoViagemPc,
+  excluirItemDespesaViagemNova,
   enviarPrestacaoContasViagemNova,
   registrarVisualizacaoComprovanteViagemNova,
   decidirPrestacaoContasViagemNova,

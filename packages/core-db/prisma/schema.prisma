@@ -1445,7 +1445,8 @@ model TfdPrestacaoConta {
   comprovantes_vistos Json               @default("[]")
   aprovado_por_id     String?            @db.Uuid
   aprovado_at         DateTime?          @db.Timestamptz
-  observacoes_gestor  String?            @db.Text
+  observacoes_gestor        String?            @db.Text
+  valor_adiantamento        Decimal?           @db.Decimal(12, 2) // PC-PARTE-3
   prazo_envio_at            DateTime           @db.Timestamptz
   lembrete_48h_enviado_at   DateTime?          @db.Timestamptz
   lembrete_48h_falhou_at    DateTime?          @db.Timestamptz

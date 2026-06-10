@@ -199,24 +199,53 @@ export const registrarDespesaTransporteSchema = z
 
 export type RegistrarDespesaTransporteInput = z.infer<typeof registrarDespesaTransporteSchema>
 
-// BLOCO-4.1: comprovanteAnexoId opcional — sem mínimo de valor por despesa
-// PC-PARTE-2: viagem nova aceita apenas tipos ativos (Portaria 55/1999)
-export const registrarDespesaViagemNovaSchema = z.object({
-  viagemNovaId: viagemNovaIdField,
-  segmentoId: segmentoIdField,
-  tipo: tipoDespesaAtivoField,
-  descricao: despesaCamposComuns.descricao,
-  valor: despesaCamposComuns.valor,
-  comprovanteAnexoId: despesaCamposComuns.comprovanteAnexoId,
-  responsavelPagamento: despesaCamposComuns.responsavelPagamento,
-})
-// TODO BLOCO-4: reativar validação de comprovante após estabilização do fluxo
-// .refine(comprovanteObrigatorioRefine.refine, {
-//   message: comprovanteObrigatorioRefine.message,
-//   path: ['comprovanteAnexoId'],
-// })
+// PC-PARTE-2/3: viagem nova — tipos ativos; comprovante obrigatório para diárias
+const TIPOS_DESPESA_DIARIA = ['DIARIA_PACIENTE', 'DIARIA_ACOMPANHANTE'] as const
+
+export const registrarDespesaViagemNovaSchema = z
+  .object({
+    viagemNovaId: viagemNovaIdField,
+    segmentoId: segmentoIdField,
+    tipo: tipoDespesaAtivoField,
+    descricao: despesaCamposComuns.descricao,
+    valor: despesaCamposComuns.valor,
+    comprovanteAnexoId: despesaCamposComuns.comprovanteAnexoId,
+    responsavelPagamento: despesaCamposComuns.responsavelPagamento,
+  })
+  .superRefine((data, ctx) => {
+    if (
+      TIPOS_DESPESA_DIARIA.includes(data.tipo as (typeof TIPOS_DESPESA_DIARIA)[number]) &&
+      !data.comprovanteAnexoId
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: 'Comprovante obrigatório para diárias de paciente e acompanhante.',
+        path: ['comprovanteAnexoId'],
+      })
+    }
+  })
 
 export type RegistrarDespesaViagemNovaInput = z.infer<typeof registrarDespesaViagemNovaSchema>
+
+// PC-PARTE-3: adiantamento registrado na prestação da viagem nova
+export const atualizarAdiantamentoViagemPcSchema = z.object({
+  viagemNovaId: viagemNovaIdField,
+  valorAdiantamento: z
+    .number({ invalid_type_error: 'Valor inválido.' })
+    .min(0, 'O valor não pode ser negativo.'),
+})
+
+export type AtualizarAdiantamentoViagemPcInput = z.infer<typeof atualizarAdiantamentoViagemPcSchema>
+
+const itemDespesaIdField = z.string().uuid('ID do item de despesa inválido.')
+
+// PC-PARTE-3: exclusão de item na prestação da viagem nova
+export const excluirItemDespesaViagemNovaSchema = z.object({
+  viagemNovaId: viagemNovaIdField,
+  itemDespesaId: itemDespesaIdField,
+})
+
+export type ExcluirItemDespesaViagemNovaInput = z.infer<typeof excluirItemDespesaViagemNovaSchema>
 
 export const enviarPrestacaoContasViagemNovaSchema = z.object({
   viagemNovaId: viagemNovaIdField,
