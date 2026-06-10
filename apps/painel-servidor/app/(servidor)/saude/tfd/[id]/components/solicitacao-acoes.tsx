@@ -2,16 +2,12 @@
 
 import {
   TFD_PERMISSIONS,
-  type AgendamentoProcessoListItem,
   type TfdSolicitacaoDetalhe,
-  type TfdVeiculoAgendamentoItem,
   type TfdViagemSolicitacaoItem,
 } from '@saude/mod-saude-tfd/client'
 import { enviarComplementoTfd, iniciarAnaliseTfd, solicitarComplementoTfd } from '@saude/mod-saude-tfd/actions/regulacao'
 import { isStatusCancelavelTfd } from '@saude/mod-saude-tfd/utils/cancelamento'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
-
-import type { ViagemNovaPorAgendamentoItem } from '@/lib/queries/get-viagem-nova-por-agendamento'
 
 import {
   Button,
@@ -21,6 +17,7 @@ import {
   Textarea,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
+import { Receipt } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
@@ -28,8 +25,6 @@ import { useState, useTransition } from 'react'
 import { CancelarSolicitacaoDialog } from './cancelar-solicitacao-dialog'
 import { ReclassificarDialog } from './reclassificar-dialog'
 import { DecisaoForm } from './decisao-form'
-import { DespesaForm } from './despesa-form'
-import { PrestacaoAnalisePainel } from './prestacao-analise-painel'
 import { RetornoViagemAcao } from './retorno-viagem-acao'
 
 const MIN_TEXTO = 20
@@ -37,58 +32,9 @@ const MIN_TEXTO = 20
 export interface SolicitacaoAcoesProps {
   session: SaudeMunicSession
   solicitacao: TfdSolicitacaoDetalhe
-  veiculosAgendamento: TfdVeiculoAgendamentoItem[]
   viagens: TfdViagemSolicitacaoItem[]
-  agendamentos?: AgendamentoProcessoListItem[]
-  viagensNovaPorAgendamento?: ViagemNovaPorAgendamentoItem[]
   /** Abre o dialog de cancelamento ao carregar (ex.: `?cancelar=prazo`). */
   abrirCancelamentoInicial?: boolean
-}
-
-function agendamentosDaSolicitacao(
-  agendamentos: AgendamentoProcessoListItem[],
-  solicitacaoId: string
-): AgendamentoProcessoListItem[] {
-  return agendamentos.filter((item) => item.solicitacaoId === solicitacaoId)
-}
-
-function agendamentoRealizadoMaisRecente(
-  agendamentos: AgendamentoProcessoListItem[],
-  solicitacaoId: string
-): AgendamentoProcessoListItem | null {
-  const realizados = agendamentosDaSolicitacao(agendamentos, solicitacaoId).filter(
-    (item) => item.status === 'REALIZADO'
-  )
-
-  if (realizados.length === 0) {
-    return null
-  }
-
-  return realizados.reduce((maisRecente, atual) =>
-    atual.createdAt > maisRecente.createdAt ? atual : maisRecente
-  )
-}
-
-function agendamentoMaisRecente(
-  agendamentos: AgendamentoProcessoListItem[],
-  solicitacaoId: string
-): AgendamentoProcessoListItem | null {
-  const daSolicitacao = agendamentosDaSolicitacao(agendamentos, solicitacaoId)
-
-  if (daSolicitacao.length === 0) {
-    return null
-  }
-
-  return daSolicitacao.reduce((maisRecente, atual) =>
-    atual.createdAt > maisRecente.createdAt ? atual : maisRecente
-  )
-}
-
-function viagemNovaDoAgendamento(
-  agendamentoId: string,
-  mappings: ViagemNovaPorAgendamentoItem[]
-): ViagemNovaPorAgendamentoItem | null {
-  return mappings.find((item) => item.agendamentoId === agendamentoId) ?? null
 }
 
 function ServerError({ message }: { message: string }) {
@@ -103,8 +49,6 @@ export function SolicitacaoAcoes({
   session,
   solicitacao,
   viagens,
-  agendamentos = [],
-  viagensNovaPorAgendamento = [],
   abrirCancelamentoInicial = false,
 }: SolicitacaoAcoesProps) {
   const router = useRouter()
@@ -182,47 +126,13 @@ export function SolicitacaoAcoes({
     solicitacao.status === 'APROVADO'
 
   const showRetorno = solicitacao.status === 'EM_VIAGEM'
-  const showDespesaLegacy =
-    (solicitacao.status === 'AGUARDANDO_PC' && viagens.length > 0) ||
-    viagens.some(
-      (viagem) =>
-        viagem.prestacao?.status === 'PENDENTE' || viagem.prestacao?.status === 'REJEITADA'
-    )
-  const agendamentoRealizado = agendamentoRealizadoMaisRecente(agendamentos, solicitacao.id)
-  const agendamentoFluxoNovo = agendamentoMaisRecente(agendamentos, solicitacao.id)
-  const fluxoViagemNova = viagens.length === 0
-  const viagemNovaAguardandoPc =
-    agendamentoRealizado !== null
-      ? viagemNovaDoAgendamento(agendamentoRealizado.id, viagensNovaPorAgendamento)
-      : null
-  const viagemNovaEmAnalise =
-    agendamentoFluxoNovo !== null
-      ? viagemNovaDoAgendamento(agendamentoFluxoNovo.id, viagensNovaPorAgendamento)
-      : null
-  const showPrestacaoAgendamentoAguardandoPc =
-    solicitacao.status === 'AGUARDANDO_PC' &&
-    !fluxoViagemNova &&
-    agendamentoRealizado !== null
-  const showPrestacaoViagemNovaAguardandoPc =
-    solicitacao.status === 'AGUARDANDO_PC' &&
-    fluxoViagemNova &&
-    viagemNovaAguardandoPc !== null
-  const showPrestacaoAgendamentoEmAnalise =
-    solicitacao.status === 'PC_EM_ANALISE' &&
-    !fluxoViagemNova &&
-    agendamentoFluxoNovo !== null
-  const showPrestacaoViagemNovaEmAnalise =
-    solicitacao.status === 'PC_EM_ANALISE' &&
-    fluxoViagemNova &&
-    viagemNovaEmAnalise !== null
-  const showAnalisePrestacaoLegacy =
-    solicitacao.status === 'PC_EM_ANALISE' && viagens.length > 0
+
+  // PC-PARTE-1: PC canônica na aba da viagem nova — card informativo na solicitação
   const showPcViagemInfoCard =
-    fluxoViagemNova &&
-    (solicitacao.status === 'AGUARDANDO_PC' ||
-      solicitacao.status === 'PC_EM_ANALISE' ||
-      solicitacao.status === 'EM_VIAGEM' ||
-      solicitacao.status === 'AGENDADO')
+    solicitacao.status === 'AGUARDANDO_PC' ||
+    solicitacao.status === 'PC_EM_ANALISE' ||
+    solicitacao.status === 'CONCLUIDO'
+
   const modoCancelamentoPrazo =
     solicitacao.status === 'PENDENTE' && solicitacao.elegivelCancelamentoPrazoEsgotado
   const showCancelar =
@@ -234,12 +144,6 @@ export function SolicitacaoAcoes({
     showReclassificar ||
     showAgendamentoLink ||
     showRetorno ||
-    showDespesaLegacy ||
-    showPrestacaoAgendamentoAguardandoPc ||
-    showPrestacaoViagemNovaAguardandoPc ||
-    showPrestacaoAgendamentoEmAnalise ||
-    showPrestacaoViagemNovaEmAnalise ||
-    showAnalisePrestacaoLegacy ||
     showPcViagemInfoCard ||
     showCancelar
 
@@ -435,81 +339,26 @@ export function SolicitacaoAcoes({
         ) : null}
 
         {showPcViagemInfoCard ? (
-          <div className="rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-bg-subtle)] p-[var(--space-4)]">
-            <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-              A prestação de contas é gerenciada pela Viagem TFD vinculada ao agendamento.
-            </p>
-            <Link
-              href={`/saude/tfd/viagens?processoId=${encodeURIComponent(solicitacao.processoId)}`}
-              className="mt-[var(--space-3)] inline-block text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
-            >
-              Ver viagens do processo →
-            </Link>
-          </div>
-        ) : null}
-
-        {showDespesaLegacy ? (
-          <DespesaForm
-            session={session}
-            processoId={solicitacao.processoId}
-            viagens={viagens}
-          />
-        ) : null}
-
-        {showPrestacaoViagemNovaAguardandoPc && viagemNovaAguardandoPc ? (
-          <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
-            <Button type="button" variant="primary" asChild>
-              <Link
-                href={`/saude/tfd/viagens/${viagemNovaAguardandoPc.viagemId}?tab=prestacao`}
-              >
-                Ver prestação de contas → {viagemNovaAguardandoPc.viagemProtocolo}
-              </Link>
-            </Button>
-          </div>
-        ) : null}
-
-        {showPrestacaoAgendamentoAguardandoPc && agendamentoRealizado ? (
-          <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
-            <Button type="button" variant="primary" asChild>
-              <Link
-                href={`/saude/tfd/processos/${solicitacao.processoId}/agendamentos/${agendamentoRealizado.id}/prestacao`}
-              >
-                Ir para Prestação de Contas
-              </Link>
-            </Button>
-          </div>
-        ) : null}
-
-        {showPrestacaoViagemNovaEmAnalise && viagemNovaEmAnalise ? (
-          <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
-            <Button type="button" variant="primary" asChild>
-              <Link
-                href={`/saude/tfd/viagens/${viagemNovaEmAnalise.viagemId}?tab=prestacao`}
-              >
-                Ver prestação de contas → {viagemNovaEmAnalise.viagemProtocolo}
-              </Link>
-            </Button>
-          </div>
-        ) : null}
-
-        {showPrestacaoAgendamentoEmAnalise && agendamentoFluxoNovo ? (
-          <div className="border-t border-[var(--color-border)] pt-[var(--space-4)]">
-            <Button type="button" variant="primary" asChild>
-              <Link
-                href={`/saude/tfd/processos/${solicitacao.processoId}/agendamentos/${agendamentoFluxoNovo.id}/prestacao`}
-              >
-                Ver análise da Prestação
-              </Link>
-            </Button>
-          </div>
-        ) : null}
-
-        {showAnalisePrestacaoLegacy ? (
-          <PrestacaoAnalisePainel
-            session={session}
-            solicitacaoStatus={solicitacao.status}
-            viagens={viagens}
-          />
+          <Card className="border-[var(--color-border)] bg-[var(--color-bg-subtle)]">
+            <div className="flex gap-[var(--space-3)] p-[var(--space-4)]">
+              <Receipt
+                className="mt-0.5 size-5 shrink-0 text-[var(--color-primary)]"
+                aria-hidden="true"
+              />
+              <div className="flex min-w-0 flex-col gap-[var(--space-2)]">
+                <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
+                  As despesas e a Prestação de Contas são gerenciadas na Viagem vinculada a este
+                  processo.
+                </p>
+                <Link
+                  href={`/saude/tfd/viagens?protocolo=${encodeURIComponent(solicitacao.protocolo)}`}
+                  className="text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
+                >
+                  Ver viagens do processo →
+                </Link>
+              </div>
+            </div>
+          </Card>
         ) : null}
 
         {showCancelar ? (

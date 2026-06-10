@@ -106,6 +106,7 @@ export function AgendamentoAcoesSidebar({
   return (
     <Card header={<CardHeader>Ações</CardHeader>} className="lg:sticky lg:top-[var(--space-4)]">
       <div className="flex flex-col gap-[var(--space-3)]">
+        {/* PC-PARTE-1: PC canônica na viagem — ocultar se não houver viagem concluída */}
         {viagensConcluidas.length > 0 ? (
           <div className="flex flex-col gap-[var(--space-2)] border-b border-[var(--color-border)] pb-[var(--space-3)]">
             {viagensConcluidas.map((viagem) => (
@@ -114,7 +115,7 @@ export function AgendamentoAcoesSidebar({
                 href={`/saude/tfd/viagens/${viagem.id}?tab=prestacao`}
                 className="text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
               >
-                Ver prestação de contas → {viagem.protocolo}
+                Ver Prestação de Contas → {viagem.protocolo}
               </Link>
             ))}
           </div>

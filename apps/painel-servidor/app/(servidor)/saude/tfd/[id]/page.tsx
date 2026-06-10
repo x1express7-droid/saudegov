@@ -5,23 +5,13 @@ import {
   requireTenantRole,
 } from '@saude/core-auth/server'
 import {
-  getAgendamentosPorProcesso,
   getDadosClinicosProcesso,
-  getProjecaoFinanceiraSolicitacao,
   getSolicitacaoTfd,
-  getVeiculosAgendamentoTfd,
   getViagensSolicitacaoTfd,
   TFD_PERMISSIONS,
-  type AgendamentoProcessoListItem,
   type TfdProcessoDadosClinicosOutput,
-  type TfdVeiculoAgendamentoItem,
   type TfdViagemSolicitacaoItem,
 } from '@saude/mod-saude-tfd'
-
-import {
-  getViagensNovaPorAgendamentos,
-  type ViagemNovaPorAgendamentoItem,
-} from '@/lib/queries/get-viagem-nova-por-agendamento'
 import {
   PageHeader,
   ProtocoloBadge,
@@ -37,7 +27,6 @@ import { notFound } from 'next/navigation'
 import { DadosClinicosSection } from './components/dados-clinicos-section'
 import { SolicitacaoAcoes } from './components/solicitacao-acoes'
 import { SolicitacaoAnexosSection } from './components/solicitacao-anexos-section'
-import { SolicitacaoProjecaoFinanceiraSection } from './components/solicitacao-projecao-financeira-section'
 import { SolicitacaoDetalhe } from './components/solicitacao-detalhe'
 import { SolicitacaoTimeline } from './components/solicitacao-timeline'
 
@@ -100,48 +89,18 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
     notFound()
   }
 
-  const statusAgendavel =
-    solicitacao.status === 'APROVADO' || solicitacao.status === 'AGENDADO'
-
   const statusComViagens =
-    statusAgendavel ||
+    solicitacao.status === 'APROVADO' ||
+    solicitacao.status === 'AGENDADO' ||
     solicitacao.status === 'EM_VIAGEM' ||
     solicitacao.status === 'AGUARDANDO_PC' ||
     solicitacao.status === 'PC_EM_ANALISE' ||
     solicitacao.status === 'CONCLUIDO'
 
   let viagens: TfdViagemSolicitacaoItem[] = []
-  let veiculosAgendamento: TfdVeiculoAgendamentoItem[] = []
-  let agendamentos: AgendamentoProcessoListItem[] = []
-  let viagensNovaPorAgendamento: ViagemNovaPorAgendamentoItem[] = []
 
   if (statusComViagens) {
-    const acompanhanteNecessario = solicitacao.acompanhante !== null
-    const viagensPromise = getViagensSolicitacaoTfd(id)
-    const veiculosPromise = statusAgendavel
-      ? getVeiculosAgendamentoTfd(acompanhanteNecessario)
-      : Promise.resolve([] as TfdVeiculoAgendamentoItem[])
-    const agendamentosPromise =
-      solicitacao.status === 'AGUARDANDO_PC' || solicitacao.status === 'PC_EM_ANALISE'
-        ? getAgendamentosPorProcesso(solicitacao.processoId)
-        : Promise.resolve([] as AgendamentoProcessoListItem[])
-
-    ;[viagens, veiculosAgendamento, agendamentos] = await Promise.all([
-      viagensPromise,
-      veiculosPromise,
-      agendamentosPromise,
-    ])
-
-    if (
-      viagens.length === 0 &&
-      agendamentos.length > 0 &&
-      (solicitacao.status === 'AGUARDANDO_PC' || solicitacao.status === 'PC_EM_ANALISE')
-    ) {
-      const agendamentoIds = agendamentos
-        .filter((item) => item.solicitacaoId === id)
-        .map((item) => item.id)
-      viagensNovaPorAgendamento = await getViagensNovaPorAgendamentos(agendamentoIds)
-    }
+    viagens = await getViagensSolicitacaoTfd(id)
   }
 
   const statusEncerrados = new Set(['CONCLUIDO', 'NEGADO', 'CANCELADO'])
@@ -164,10 +123,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
     }
   }
 
-  const projecaoFinanceira = await getProjecaoFinanceiraSolicitacao(id)
-
-  const temViagensVinculadas =
-    viagens.length > 0 || viagensNovaPorAgendamento.length > 0
+  // PC-PARTE-1.1: projeção financeira removida da UI — dados/actions preservados no backend
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -214,13 +170,6 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
             podeAnexar={podeAnexarDocumentos}
             anexos={solicitacao.anexos}
           />
-          {projecaoFinanceira ? (
-            <SolicitacaoProjecaoFinanceiraSection
-              session={session}
-              projecao={projecaoFinanceira}
-              temViagensVinculadas={temViagensVinculadas}
-            />
-          ) : null}
           {dadosClinicos ? (
             <DadosClinicosSection
               session={session}
@@ -235,10 +184,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
           <SolicitacaoAcoes
             session={session}
             solicitacao={solicitacao}
-            veiculosAgendamento={veiculosAgendamento}
             viagens={viagens}
-            agendamentos={agendamentos}
-            viagensNovaPorAgendamento={viagensNovaPorAgendamento}
             abrirCancelamentoInicial={abrirCancelamentoInicial}
           />
         </aside>

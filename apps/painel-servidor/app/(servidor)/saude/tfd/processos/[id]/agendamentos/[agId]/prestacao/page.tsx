@@ -42,7 +42,7 @@ export default async function PrestacaoAgendamentoPage({ params }: PrestacaoAgen
   }
 
   await assertModuleActive('saude', 'tfd')
-  const session = await requireTenantRole('SERVIDOR')
+  await requireTenantRole('SERVIDOR')
 
   const { id: processoId, agId } = await params
 
@@ -125,12 +125,8 @@ export default async function PrestacaoAgendamentoPage({ params }: PrestacaoAgen
         ]}
       />
 
+      {/* PC-PARTE-1: PC do agendamento — visualização histórica apenas */}
       <PrestacaoAgendamentoConteudo
-        session={session}
-        processoId={processoId}
-        agendamentoId={agId}
-        agendamentoStatus={agendamento.status}
-        solicitacaoStatus={solicitacao.status}
         prestacao={prestacao}
         extrato={extrato}
         transportes={transportes}
