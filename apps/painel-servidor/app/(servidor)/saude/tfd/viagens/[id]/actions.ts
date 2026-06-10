@@ -1,7 +1,10 @@
 'use server'
 
 import { requireTenantRole } from '@saude/core-auth/server'
-import { getAgendamentosDisponiveisParaViagem } from '@saude/mod-saude-tfd'
+import {
+  getAgendamentosDisponiveisParaViagem,
+  getProcessoIdParaUploadViagem,
+} from '@saude/mod-saude-tfd'
 import type { AgendamentoDisponivelViagemItem } from '@saude/mod-saude-tfd/client'
 
 // REMOVE-PROCESSO-PARTE-4: busca por data/destino da viagem
@@ -18,4 +21,12 @@ export async function buscarAgendamentosDisponiveisViagemDetalheAction(
     destinoDescricao,
     viagemId,
   })
+}
+
+// PC-UPLOAD-FIX: resolve processo para upload de comprovante na PC da viagem
+export async function getProcessoIdParaUploadViagemAction(
+  viagemId: string
+): Promise<string | null> {
+  await requireTenantRole('SERVIDOR')
+  return getProcessoIdParaUploadViagem(viagemId)
 }

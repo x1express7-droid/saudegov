@@ -150,7 +150,8 @@ export function DespesaViagemDialog({
   const tipoDespesaOptions = useMemo(() => buildTipoDespesaSelectOptions(), [])
 
   const mostraDiaria = isTipoDiaria(tipo)
-  const mostraComprovante = exibeComprovante(tipo) && processoId !== null
+  // PC-UPLOAD-FIX: upload visível para tipos ativos, independente de processoId
+  const mostraComprovante = exibeComprovante(tipo)
   const comprovanteRequired = comprovanteObrigatorio(tipo)
   const mostraAlertaObito = tipo === 'OBITO'
 
@@ -249,11 +250,6 @@ export function DespesaViagemDialog({
           ? 'Comprovante obrigatório para despesas com óbito.'
           : 'Comprovante obrigatório para diárias de paciente e acompanhante.'
       )
-      return
-    }
-
-    if (!processoId && comprovanteRequired) {
-      setServerError('Não foi possível anexar comprovante: processo não vinculado à viagem.')
       return
     }
 
@@ -379,17 +375,12 @@ export function DespesaViagemDialog({
 
             {mostraComprovante ? (
               <DespesaComprovanteUpload
-                processoId={processoId!}
+                processoId={processoId}
+                viagemId={viagemNovaId}
                 disabled={isPending}
                 onUploadComplete={setComprovanteAnexoId}
                 onUploadClear={() => setComprovanteAnexoId(null)}
               />
-            ) : null}
-
-            {!processoId && comprovanteRequired ? (
-              <p className="text-[length:var(--text-sm)] text-[var(--color-warning)]">
-                Vincule um processo à viagem para anexar comprovantes obrigatórios.
-              </p>
             ) : null}
 
             {mostraComprovante && !comprovanteRequired ? (

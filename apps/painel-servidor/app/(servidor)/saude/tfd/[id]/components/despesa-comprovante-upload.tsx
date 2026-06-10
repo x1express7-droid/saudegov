@@ -1,5 +1,6 @@
 'use client'
 
+import { getProcessoIdParaUploadViagemAction } from '@/app/(servidor)/saude/tfd/viagens/[id]/actions'
 import {
   confirmarUploadAction,
   solicitarUrlUploadAction,
@@ -70,8 +71,10 @@ const STATE_LABEL: Record<UploadState, string> = {
   erro: '',
 }
 
+// PC-UPLOAD-FIX: processoId opcional; viagemId resolve processo dos passageiros
 export interface DespesaComprovanteUploadProps {
-  processoId: string
+  processoId?: string | null
+  viagemId?: string
   disabled?: boolean
   onUploadComplete: (anexoId: string) => void
   onUploadClear?: () => void
@@ -79,6 +82,7 @@ export interface DespesaComprovanteUploadProps {
 
 export function DespesaComprovanteUpload({
   processoId,
+  viagemId,
   disabled = false,
   onUploadComplete,
   onUploadClear,
@@ -109,8 +113,15 @@ export function DespesaComprovanteUpload({
 
       try {
         setState('solicitando_url')
+
+        // PC-UPLOAD-FIX: usa processo explícito ou resolve via passageiros da viagem
+        let processoIdUpload = processoId ?? null
+        if (!processoIdUpload && viagemId) {
+          processoIdUpload = await getProcessoIdParaUploadViagemAction(viagemId)
+        }
+
         const urlResponse = await solicitarUrlUploadAction({
-          processoId,
+          processoId: processoIdUpload,
           mimeType,
           tamanhoBytes: file.size,
           nomeArquivo: file.name,
@@ -143,7 +154,7 @@ export function DespesaComprovanteUpload({
         setErrorMessage('Não foi possível enviar o comprovante. Tente novamente.')
       }
     },
-    [onUploadClear, onUploadComplete, processoId]
+    [onUploadClear, onUploadComplete, processoId, viagemId]
   )
 
   const isBusy = state === 'solicitando_url' || state === 'enviando' || state === 'confirmando'

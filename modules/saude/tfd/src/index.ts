@@ -558,6 +558,8 @@ export { getViagensTfd } from './queries/get-viagens-tfd'
 export type { GetViagensFiltros, ViagemTfdListItem } from './queries/get-viagens-tfd'
 export { getViagemDetalhe } from './queries/get-viagem-detalhe'
 export type { ViagemDetalheOutput } from './queries/get-viagem-detalhe'
+// PC-UPLOAD-FIX
+export { getProcessoIdParaUploadViagem } from './queries/get-processo-id-para-upload-viagem'
 export { getSegmentosViagem } from './queries/get-segmentos-viagem'
 export type { SegmentoViagemItem } from './queries/get-segmentos-viagem'
 export { getVeiculoDetalhe } from './queries/get-veiculo-detalhe'
