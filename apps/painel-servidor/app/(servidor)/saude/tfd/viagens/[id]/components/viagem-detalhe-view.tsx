@@ -409,10 +409,15 @@ export function ViagemDetalheView({
           <PrestacaoViagemView
             session={session}
             viagemNovaId={viagem.id}
-            viagemProtocolo={viagem.protocolo}
             viagemStatus={viagem.status}
             processoId={processoIdForUpload}
-            segmentos={viagem.segmentos}
+            viagem={{
+              veiculo: viagem.veiculo,
+              dataSaida: viagem.dataSaida,
+              dataChegada: viagem.dataChegada,
+              segmentos: viagem.segmentos,
+              passageiros: viagem.passageiros,
+            }}
             prestacao={prestacao}
           />
         ) : null}

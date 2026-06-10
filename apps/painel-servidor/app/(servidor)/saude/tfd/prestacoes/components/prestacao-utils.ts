@@ -103,6 +103,46 @@ export function labelDespesas(quantidadeItens: number): string {
   return quantidadeItens === 1 ? '1 despesa' : `${quantidadeItens} despesas`
 }
 
+// PC-PARTE-4: colunas de adiantamento e situação financeira na listagem
+export function labelAdiantamento(item: TfdPrestacaoListItem): string {
+  if (item.valorAdiantamento === null) {
+    return '—'
+  }
+  return formatValorBrl(item.valorAdiantamento)
+}
+
+export type SituacaoFinanceiraVariant = 'success' | 'error' | 'warning' | 'muted'
+
+export function labelSituacaoFinanceira(
+  item: TfdPrestacaoListItem
+): { label: string; variant: SituacaoFinanceiraVariant } | null {
+  if (item.status !== 'PENDENTE' && item.status !== 'ENVIADA') {
+    return null
+  }
+
+  if (item.valorAdiantamento === null || item.quantidadeItens === 0) {
+    return { label: '—', variant: 'muted' }
+  }
+
+  const diferenca = item.valorTotal - item.valorAdiantamento
+
+  if (Math.abs(diferenca) < 0.005) {
+    return { label: 'Conferido ✓', variant: 'success' }
+  }
+
+  if (diferenca > 0) {
+    return {
+      label: `Diferença ${formatValorBrl(diferenca)}`,
+      variant: 'error',
+    }
+  }
+
+  return {
+    label: `Devolução ${formatValorBrl(Math.abs(diferenca))}`,
+    variant: 'warning',
+  }
+}
+
 export function labelValorTotal(item: TfdPrestacaoListItem): string | null {
   if (item.valorTotal > 0) {
     return formatValorBrl(item.valorTotal)

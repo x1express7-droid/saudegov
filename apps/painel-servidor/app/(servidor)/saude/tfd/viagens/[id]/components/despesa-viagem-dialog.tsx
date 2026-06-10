@@ -31,8 +31,7 @@ const SEGMENTO_NENHUM = '__segmento_nenhum__'
 const MAX_DESCRICAO_CHARS = 200
 const TIPO_DESPESA_PADRAO: TfdTipoDespesaConfigKey = 'TRANSPORTE_TERRESTRE'
 
-// PC-PARTE-3: dialog de lançamento — comprovante, diárias e tipos Portaria 55/1999
-// PC-PARTE-3: tabela SUS 2024 — sugestão de valor por diária
+// PC-PARTE-3/4: dialog de lançamento — comprovante, diárias, óbito e devolução
 const VALOR_DIARIA_SUS_2024 = 41
 
 const TIPOS_DIARIA = ['DIARIA_PACIENTE', 'DIARIA_ACOMPANHANTE'] as const
@@ -95,7 +94,7 @@ function isTipoDiaria(tipo: string): boolean {
 }
 
 function comprovanteObrigatorio(tipo: string): boolean {
-  return isTipoDiaria(tipo)
+  return isTipoDiaria(tipo) || tipo === 'OBITO'
 }
 
 function exibeComprovante(tipo: string): boolean {
@@ -118,6 +117,10 @@ export interface DespesaViagemDialogProps {
   processoId: string | null
   segmentos: SegmentoViagemItem[]
   tipoInicial?: TfdTipoDespesaConfigKey
+  /** PC-PARTE-4: valor pré-preenchido (ex.: devolução ao erário). */
+  valorInicial?: string
+  /** PC-PARTE-4: dias pré-calculados (ex.: sugestão de diária). */
+  quantidadeDiasInicial?: number
 }
 
 export function DespesaViagemDialog({
@@ -128,6 +131,8 @@ export function DespesaViagemDialog({
   processoId,
   segmentos,
   tipoInicial = TIPO_DESPESA_PADRAO,
+  valorInicial,
+  quantidadeDiasInicial,
 }: DespesaViagemDialogProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
@@ -147,6 +152,7 @@ export function DespesaViagemDialog({
   const mostraDiaria = isTipoDiaria(tipo)
   const mostraComprovante = exibeComprovante(tipo) && processoId !== null
   const comprovanteRequired = comprovanteObrigatorio(tipo)
+  const mostraAlertaObito = tipo === 'OBITO'
 
   const valorPorDia =
     mostraDiaria && Number.isFinite(valorNumerico) && diasNumerico > 0
@@ -154,19 +160,34 @@ export function DespesaViagemDialog({
       : null
 
   useEffect(() => {
-    if (open) {
-      setTipo(tipoInicial)
-      setSegmentoId(SEGMENTO_NENHUM)
-      setComprovanteAnexoId(null)
-      setQuantidadeDias('1')
+    if (!open) {
+      return
     }
-  }, [open, tipoInicial])
+
+    setTipo(tipoInicial)
+    setSegmentoId(SEGMENTO_NENHUM)
+    setComprovanteAnexoId(null)
+    setDescricao('')
+    setQuantidadeDias(String(quantidadeDiasInicial ?? 1))
+
+    if (valorInicial) {
+      setValor(valorInicial)
+    } else if (isTipoDiaria(tipoInicial) && quantidadeDiasInicial) {
+      setValor((quantidadeDiasInicial * VALOR_DIARIA_SUS_2024).toFixed(2).replace('.', ','))
+    } else {
+      setValor('')
+    }
+  }, [open, tipoInicial, valorInicial, quantidadeDiasInicial])
 
   useEffect(() => {
+    if (!open || valorInicial || tipo === 'DEVOLUCAO') {
+      return
+    }
+
     if (mostraDiaria && diasNumerico >= 1) {
       setValor((diasNumerico * VALOR_DIARIA_SUS_2024).toFixed(2).replace('.', ','))
     }
-  }, [mostraDiaria, diasNumerico])
+  }, [open, mostraDiaria, diasNumerico, valorInicial, tipo])
 
   const segmentoOptions = [
     { value: SEGMENTO_NENHUM, label: 'Nenhum (despesa avulsa)' },
@@ -195,8 +216,8 @@ export function DespesaViagemDialog({
     setTipo(tipoInicial)
     setSegmentoId(SEGMENTO_NENHUM)
     setDescricao('')
-    setValor('')
-    setQuantidadeDias('1')
+    setValor(valorInicial ?? '')
+    setQuantidadeDias(String(quantidadeDiasInicial ?? 1))
     setComprovanteAnexoId(null)
     setServerError(null)
   }
@@ -223,7 +244,11 @@ export function DespesaViagemDialog({
     }
 
     if (comprovanteRequired && !comprovanteAnexoId) {
-      setServerError('Comprovante obrigatório para diárias de paciente e acompanhante.')
+      setServerError(
+        tipo === 'OBITO'
+          ? 'Comprovante obrigatório para despesas com óbito.'
+          : 'Comprovante obrigatório para diárias de paciente e acompanhante.'
+      )
       return
     }
 
@@ -278,7 +303,9 @@ export function DespesaViagemDialog({
                 setTipo(value as TfdTipoDespesaConfigKey)
                 setComprovanteAnexoId(null)
                 if (!isTipoDiaria(value)) {
-                  setValor('')
+                  if (value !== 'DEVOLUCAO') {
+                    setValor('')
+                  }
                   setQuantidadeDias('1')
                 }
               }}
@@ -286,7 +313,22 @@ export function DespesaViagemDialog({
               disabled={isPending}
             />
 
-            {ajudaTipo ? (
+            {mostraAlertaObito ? (
+              <div
+                className="rounded-[var(--radius)] border border-[var(--color-error)] bg-[var(--color-error-light)] p-[var(--space-3)]"
+                role="alert"
+              >
+                <p className="text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
+                  ⚠ Despesas com óbito (Art. 6º, Portaria 55/1999)
+                </p>
+                <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)]">
+                  Documente: número da certidão de óbito, nota fiscal da funerária e autorização do
+                  gestor municipal. Estes documentos são obrigatórios para aprovação.
+                </p>
+              </div>
+            ) : null}
+
+            {ajudaTipo && !mostraAlertaObito ? (
               <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
                 {ajudaTipo}
               </p>

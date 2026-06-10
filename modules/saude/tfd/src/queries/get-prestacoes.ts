@@ -17,6 +17,7 @@ type PrestacaoLegadoRow = {
   id: string
   status: TfdPrestacaoStatus
   prazo_envio_at: Date
+  valor_adiantamento: { toString(): string } | number | null
   viagem: {
     id: string
     sequencia: number
@@ -35,6 +36,7 @@ type PrestacaoViagemNovaRow = {
   id: string
   status: TfdPrestacaoStatus
   prazo_envio_at: Date
+  valor_adiantamento: { toString(): string } | number | null
   viagem_nova: {
     id: string
     protocolo: string
@@ -59,6 +61,8 @@ function mapLegadoToListItem(row: PrestacaoLegadoRow): TfdPrestacaoListItem {
     status: row.status,
     prazoEnvioAt: row.prazo_envio_at.toISOString().slice(0, 10),
     valorTotal,
+    valorAdiantamento:
+      row.valor_adiantamento !== null ? Number(row.valor_adiantamento) : null,
     quantidadeItens: row.viagem.itens_despesa.length,
     sequenciaViagem: row.viagem.sequencia,
     protocolo: row.viagem.solicitacao.protocolo,
@@ -84,6 +88,8 @@ function mapViagemNovaToListItem(row: PrestacaoViagemNovaRow): TfdPrestacaoListI
     status: row.status,
     prazoEnvioAt: row.prazo_envio_at.toISOString().slice(0, 10),
     valorTotal,
+    valorAdiantamento:
+      row.valor_adiantamento !== null ? Number(row.valor_adiantamento) : null,
     quantidadeItens: row.viagem_nova.itens_despesa.length,
     sequenciaViagem: 1,
     protocolo: solicitacao?.protocolo ?? processo?.protocolo ?? row.viagem_nova.protocolo,
@@ -99,6 +105,7 @@ const prestacaoLegadoSelect = {
   id: true,
   status: true,
   prazo_envio_at: true,
+  valor_adiantamento: true,
   viagem: {
     select: {
       id: true,
@@ -123,6 +130,7 @@ const prestacaoViagemNovaSelect = {
   id: true,
   status: true,
   prazo_envio_at: true,
+  valor_adiantamento: true,
   viagem_nova: {
     select: {
       id: true,

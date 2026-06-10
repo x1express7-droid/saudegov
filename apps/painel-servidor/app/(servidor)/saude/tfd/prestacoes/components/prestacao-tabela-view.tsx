@@ -10,7 +10,9 @@ import {
   diasAtePrazo,
   formatDataPrazo,
   getPrazoDestaque,
+  labelAdiantamento,
   labelDespesas,
+  labelSituacaoFinanceira,
   labelValorTotal,
   prestacaoDetalheHref,
   prazoBadgeVariant,
@@ -26,7 +28,7 @@ export interface PrestacaoTabelaViewProps {
 export function PrestacaoTabelaView({ items }: PrestacaoTabelaViewProps) {
   return (
     <div className="overflow-x-auto rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)]">
-      <table className="w-full min-w-[56rem] border-collapse text-left">
+      <table className="w-full min-w-[72rem] border-collapse text-left">
         <thead>
           <tr className="border-b border-[var(--color-border)] bg-[var(--color-bg)]">
             {[
@@ -36,6 +38,8 @@ export function PrestacaoTabelaView({ items }: PrestacaoTabelaViewProps) {
               'Prazo',
               'Despesas',
               'Valor total',
+              'Adiantamento',
+              'Situação financeira',
               'Status',
               'Ação',
             ].map((header) => (
@@ -54,6 +58,7 @@ export function PrestacaoTabelaView({ items }: PrestacaoTabelaViewProps) {
             const destaque = getPrazoDestaque(item)
             const dias = diasAtePrazo(item.prazoEnvioAt)
             const valorLabel = labelValorTotal(item)
+            const situacaoFinanceira = labelSituacaoFinanceira(item)
 
             return (
               <tr
@@ -103,6 +108,32 @@ export function PrestacaoTabelaView({ items }: PrestacaoTabelaViewProps) {
                   ) : (
                     <span className="font-mono text-[length:var(--text-sm)] font-bold tabular-nums text-[var(--color-text)]">
                       {valorLabel}
+                    </span>
+                  )}
+                </td>
+                <td className="px-[var(--space-4)] py-[var(--space-3)]">
+                  <span className="font-mono text-[length:var(--text-sm)] tabular-nums text-[var(--color-text)]">
+                    {labelAdiantamento(item)}
+                  </span>
+                </td>
+                <td className="px-[var(--space-4)] py-[var(--space-3)]">
+                  {situacaoFinanceira ? (
+                    <span
+                      className={
+                        situacaoFinanceira.variant === 'success'
+                          ? 'text-[length:var(--text-sm)] font-medium text-[var(--color-success)]'
+                          : situacaoFinanceira.variant === 'error'
+                            ? 'text-[length:var(--text-sm)] font-medium text-[var(--color-error)]'
+                            : situacaoFinanceira.variant === 'warning'
+                              ? 'text-[length:var(--text-sm)] font-medium text-[var(--color-warning)]'
+                              : 'text-[length:var(--text-sm)] text-[var(--color-text-muted)]'
+                      }
+                    >
+                      {situacaoFinanceira.label}
+                    </span>
+                  ) : (
+                    <span className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+                      —
                     </span>
                   )}
                 </td>

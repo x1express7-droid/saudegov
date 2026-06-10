@@ -199,8 +199,12 @@ export const registrarDespesaTransporteSchema = z
 
 export type RegistrarDespesaTransporteInput = z.infer<typeof registrarDespesaTransporteSchema>
 
-// PC-PARTE-2/3: viagem nova — tipos ativos; comprovante obrigatório para diárias
+// PC-PARTE-2/3/4: viagem nova — comprovante obrigatório para diárias e óbito
 const TIPOS_DESPESA_DIARIA = ['DIARIA_PACIENTE', 'DIARIA_ACOMPANHANTE'] as const
+const TIPOS_DESPESA_COMPROVANTE_OBRIGATORIO = [
+  ...TIPOS_DESPESA_DIARIA,
+  'OBITO',
+] as const
 
 export const registrarDespesaViagemNovaSchema = z
   .object({
@@ -214,12 +218,19 @@ export const registrarDespesaViagemNovaSchema = z
   })
   .superRefine((data, ctx) => {
     if (
-      TIPOS_DESPESA_DIARIA.includes(data.tipo as (typeof TIPOS_DESPESA_DIARIA)[number]) &&
+      TIPOS_DESPESA_COMPROVANTE_OBRIGATORIO.includes(
+        data.tipo as (typeof TIPOS_DESPESA_COMPROVANTE_OBRIGATORIO)[number]
+      ) &&
       !data.comprovanteAnexoId
     ) {
+      const mensagem =
+        data.tipo === 'OBITO'
+          ? 'Comprovante obrigatório para despesas com óbito.'
+          : 'Comprovante obrigatório para diárias de paciente e acompanhante.'
+
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: 'Comprovante obrigatório para diárias de paciente e acompanhante.',
+        message: mensagem,
         path: ['comprovanteAnexoId'],
       })
     }

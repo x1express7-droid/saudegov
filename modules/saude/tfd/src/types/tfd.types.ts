@@ -389,6 +389,8 @@ export interface TfdPrestacaoListItem {
   status: string
   prazoEnvioAt: string
   valorTotal: number
+  /** PC-PARTE-4: adiantamento registrado na prestação (viagem nova). */
+  valorAdiantamento: number | null
   quantidadeItens: number
   sequenciaViagem: number
   /** Protocolo da solicitação TFD. */

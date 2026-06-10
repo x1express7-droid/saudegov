@@ -1,6 +1,10 @@
 'use client'
 
-import type { PrestacaoDetalheViagemNovaOutput, SegmentoViagemItem } from '@saude/mod-saude-tfd'
+import type {
+  PrestacaoDetalheViagemNovaOutput,
+  SegmentoViagemItem,
+  ViagemDetalheOutput,
+} from '@saude/mod-saude-tfd'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/client'
 import {
   atualizarAdiantamentoViagemPc,
@@ -53,10 +57,18 @@ import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
 
 import { DespesaViagemDialog } from './despesa-viagem-dialog'
+import { calcularSugestoesPcViagem } from './pc-sugestoes'
 
 const MIN_OBSERVACAO = 20
 
-// PC-PARTE-3: aba PC da viagem — 4 seções (status, adiantamento, despesas, ações)
+interface DespesaDialogState {
+  open: boolean
+  tipoInicial: TfdTipoDespesaConfigKey
+  valorInicial?: string
+  quantidadeDiasInicial?: number
+}
+
+// PC-PARTE-3/4: aba PC da viagem — sugestões automáticas e instruções de devolução
 // PC-PARTE-3: ícones por tipo de despesa (TFD_TIPO_DESPESA_CONFIG.icone)
 const ICONE_DESPESA: Record<string, LucideIcon> = {
   Bus,
@@ -165,26 +177,30 @@ function labelSegmento(segmentos: SegmentoViagemItem[], transporteId: string | n
 export interface PrestacaoViagemViewProps {
   session: SaudeMunicSession
   viagemNovaId: string
-  viagemProtocolo: string
   viagemStatus: string
   processoId: string | null
-  segmentos: SegmentoViagemItem[]
+  viagem: Pick<
+    ViagemDetalheOutput,
+    'veiculo' | 'dataSaida' | 'dataChegada' | 'segmentos' | 'passageiros'
+  >
   prestacao: PrestacaoDetalheViagemNovaOutput | null
 }
 
 export function PrestacaoViagemView({
   session,
   viagemNovaId,
-  viagemProtocolo,
   viagemStatus,
   processoId,
-  segmentos,
+  viagem,
   prestacao,
 }: PrestacaoViagemViewProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [serverError, setServerError] = useState<string | null>(null)
-  const [despesaDialogOpen, setDespesaDialogOpen] = useState(false)
+  const [despesaDialog, setDespesaDialog] = useState<DespesaDialogState>({
+    open: false,
+    tipoInicial: 'TRANSPORTE_TERRESTRE',
+  })
   const [enviarConfirmOpen, setEnviarConfirmOpen] = useState(false)
   const [rejeitarOpen, setRejeitarOpen] = useState(false)
   const [observacoesGestor, setObservacoesGestor] = useState('')
@@ -217,6 +233,24 @@ export function PrestacaoViagemView({
 
   const diferencaAdiantamento =
     valorAdiantamento !== null ? valorTotalDespesas - valorAdiantamento : null
+
+  const segmentos = viagem.segmentos
+
+  const sugestoesDespesa = useMemo(() => calcularSugestoesPcViagem(viagem), [viagem])
+
+  const temItemDevolucao = useMemo(
+    () => prestacao?.itensDespesa.some((item) => item.tipo === 'DEVOLUCAO') ?? false,
+    [prestacao]
+  )
+
+  function abrirDespesaDialog(config: Partial<DespesaDialogState> = {}) {
+    setDespesaDialog({
+      open: true,
+      tipoInicial: config.tipoInicial ?? 'TRANSPORTE_TERRESTRE',
+      valorInicial: config.valorInicial,
+      quantidadeDiasInicial: config.quantidadeDiasInicial,
+    })
+  }
 
   function handleSalvarAdiantamento() {
     const valor = Number.parseFloat(valorAdiantamentoInput.replace(',', '.'))
@@ -331,6 +365,21 @@ export function PrestacaoViagemView({
   const mostrarFormAdiantamento =
     podeEditarPc && (valorAdiantamento === null || editandoAdiantamento)
 
+  const mostrarSugestoes =
+    prestacao.status === 'PENDENTE' && !temDespesas && sugestoesDespesa.length > 0
+
+  const mostrarBannerDevolucao =
+    podeEditarPc &&
+    valorAdiantamento !== null &&
+    diferencaAdiantamento !== null &&
+    diferencaAdiantamento < 0 &&
+    !temItemDevolucao
+
+  const valorDevolucaoSugerido =
+    diferencaAdiantamento !== null && diferencaAdiantamento < 0
+      ? Math.abs(diferencaAdiantamento)
+      : null
+
   return (
     <>
       <div className="flex flex-col gap-[var(--space-6)]">
@@ -436,6 +485,47 @@ export function PrestacaoViagemView({
           </Card>
         ) : null}
 
+        {/* PC-PARTE-4: sugestões automáticas ao abrir PC sem itens */}
+        {mostrarSugestoes ? (
+          <div className="rounded-[var(--radius)] border border-[var(--color-info)] bg-[var(--color-info-light)] p-[var(--space-4)]">
+            <p className="text-[length:var(--text-sm)] font-semibold text-[var(--color-text)]">
+              💡 Itens sugeridos para esta viagem
+            </p>
+            <p className="mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              Com base nos dados da viagem, sugerimos os seguintes tipos de despesa. Clique para
+              adicionar.
+            </p>
+            <div className="mt-[var(--space-3)] flex flex-wrap gap-[var(--space-2)]">
+              {sugestoesDespesa.map((sugestao) => {
+                const Icon = ICONE_DESPESA[sugestao.icone] ?? MoreHorizontal
+                const labelComDias =
+                  sugestao.dias !== undefined
+                    ? `${sugestao.label} (${sugestao.dias} dia${sugestao.dias === 1 ? '' : 's'})`
+                    : sugestao.label
+
+                return (
+                  <Button
+                    key={sugestao.tipo}
+                    type="button"
+                    variant="secondary"
+                    className="rounded-full"
+                    disabled={isPending}
+                    onClick={() =>
+                      abrirDespesaDialog({
+                        tipoInicial: sugestao.tipo,
+                        quantidadeDiasInicial: sugestao.dias,
+                      })
+                    }
+                  >
+                    <Icon className="size-4" aria-hidden="true" />
+                    {labelComDias}
+                  </Button>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
+
         {/* SEÇÃO 3 — DESPESAS LANÇADAS */}
         <Card
           header={
@@ -447,7 +537,7 @@ export function PrestacaoViagemView({
                     type="button"
                     variant="primary"
                     disabled={isPending}
-                    onClick={() => setDespesaDialogOpen(true)}
+                    onClick={() => abrirDespesaDialog()}
                   >
                     <Plus className="size-4" aria-hidden="true" />
                     Lançar despesa
@@ -571,6 +661,35 @@ export function PrestacaoViagemView({
               </div>
             ) : null}
           </div>
+
+          {/* PC-PARTE-4: banner de devolução ao erário */}
+          {mostrarBannerDevolucao && valorDevolucaoSugerido !== null ? (
+            <div className="mt-[var(--space-4)] rounded-[var(--radius)] border border-[var(--color-warning)] bg-[var(--color-warning-light)] p-[var(--space-4)]">
+              <p className="text-[length:var(--text-sm)] text-[var(--color-text)]">
+                ⚠ Você recebeu {currencyFormatter.format(valorAdiantamento!)} de adiantamento mas
+                lançou apenas {currencyFormatter.format(valorTotalDespesas)}. Adicione um item
+                &quot;Devolução ao erário&quot; de{' '}
+                {currencyFormatter.format(valorDevolucaoSugerido)} para regularizar a prestação.
+              </p>
+              <PermissionGate session={session} permission={TFD_PERMISSIONS.REGISTRAR_DESPESA}>
+                <Button
+                  type="button"
+                  variant="primary"
+                  className="mt-[var(--space-3)]"
+                  disabled={isPending}
+                  onClick={() =>
+                    abrirDespesaDialog({
+                      tipoInicial: 'DEVOLUCAO',
+                      valorInicial: valorDevolucaoSugerido.toFixed(2).replace('.', ','),
+                    })
+                  }
+                >
+                  <Plus className="size-4" aria-hidden="true" />
+                  Adicionar devolução
+                </Button>
+              </PermissionGate>
+            </div>
+          ) : null}
         </Card>
 
         {/* SEÇÃO 4 — AÇÕES */}
@@ -624,12 +743,15 @@ export function PrestacaoViagemView({
       </div>
 
       <DespesaViagemDialog
-        open={despesaDialogOpen}
-        onOpenChange={setDespesaDialogOpen}
+        open={despesaDialog.open}
+        onOpenChange={(open) => setDespesaDialog((prev) => ({ ...prev, open }))}
         session={session}
         viagemNovaId={viagemNovaId}
         processoId={processoId}
         segmentos={segmentos}
+        tipoInicial={despesaDialog.tipoInicial}
+        valorInicial={despesaDialog.valorInicial}
+        quantidadeDiasInicial={despesaDialog.quantidadeDiasInicial}
       />
 
       <Dialog open={enviarConfirmOpen} onOpenChange={setEnviarConfirmOpen}>
