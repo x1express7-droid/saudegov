@@ -6,6 +6,7 @@ import {
 } from '@saude/core-auth/server'
 import {
   getDadosClinicosProcesso,
+  getProjecaoFinanceiraSolicitacao,
   getSolicitacaoTfd,
   getViagensSolicitacaoTfd,
   TFD_PERMISSIONS,
@@ -24,9 +25,11 @@ import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 
+import { SolicitacaoFluxoAjudaDialog } from '../components/solicitacao-fluxo-ajuda-dialog'
 import { DadosClinicosSection } from './components/dados-clinicos-section'
 import { SolicitacaoAcoes } from './components/solicitacao-acoes'
 import { SolicitacaoAnexosSection } from './components/solicitacao-anexos-section'
+import { SolicitacaoDespesasLancadasSection } from './components/solicitacao-despesas-lancadas-section'
 import { SolicitacaoDetalhe } from './components/solicitacao-detalhe'
 import { SolicitacaoTimeline } from './components/solicitacao-timeline'
 
@@ -123,7 +126,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
     }
   }
 
-  // PC-PARTE-1.1: projeção financeira removida da UI — dados/actions preservados no backend
+  const projecao = await getProjecaoFinanceiraSolicitacao(id)
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -136,6 +139,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
         ]}
         acoes={
           <div className="flex flex-wrap items-center gap-[var(--space-2)]">
+            <SolicitacaoFluxoAjudaDialog />
             <ProtocoloBadge protocolo={solicitacao.protocolo} />
             {isTfdStatus(solicitacao.status) ? (
               <StatusBadge status={solicitacao.status} />
@@ -164,6 +168,9 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
       <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
           <SolicitacaoDetalhe solicitacao={solicitacao} />
+          {projecao ? (
+            <SolicitacaoDespesasLancadasSection session={session} projecao={projecao} />
+          ) : null}
           <SolicitacaoAnexosSection
             solicitacaoId={solicitacao.id}
             processoId={solicitacao.processoId}
@@ -185,6 +192,7 @@ export default async function TfdDetalhePage({ params, searchParams }: TfdDetalh
             session={session}
             solicitacao={solicitacao}
             viagens={viagens}
+            projecao={projecao}
             abrirCancelamentoInicial={abrirCancelamentoInicial}
           />
         </aside>

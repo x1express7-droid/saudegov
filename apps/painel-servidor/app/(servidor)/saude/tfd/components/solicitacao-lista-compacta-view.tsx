@@ -5,6 +5,7 @@ import {
   Button,
   Card,
   EmptyState,
+  formatDateTimeBr,
   StatusBadge,
   TFD_STATUS_CONFIG,
   TFD_URGENCIA_CONFIG,
@@ -26,13 +27,6 @@ const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
   CIRURGIA: 'Cirurgia',
 }
 
-function formatDataAbertura(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
 
 function labelTipoAtendimento(tipo: string): string {
   return TIPO_ATENDIMENTO_LABEL[tipo] ?? tipo
@@ -97,7 +91,7 @@ export function SolicitacaoListaCompactaView({ items }: SolicitacaoListaCompacta
                   {item.especialidade}
                 </p>
                 <p className="truncate text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  {labelTipoAtendimento(item.tipoAtendimento)} · {formatDataAbertura(item.criadoEm)}
+                  {labelTipoAtendimento(item.tipoAtendimento)} · {formatDateTimeBr(item.criadoEm)}
                 </p>
               </div>
 

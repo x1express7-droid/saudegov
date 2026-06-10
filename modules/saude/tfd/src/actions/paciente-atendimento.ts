@@ -40,7 +40,7 @@ function normalizeOptionalString(value: string | undefined): string | null {
 function buildPacienteData(data: {
   nome: string
   cpf: string
-  email: string
+  email?: string
   telefoneCelular: string
   cns?: string
   dataNascimento?: string
@@ -63,7 +63,7 @@ function buildPacienteData(data: {
   return {
     nome: data.nome.trim(),
     cpf,
-    email: data.email.trim(),
+    email: data.email?.trim() || null,
     telefone_celular: data.telefoneCelular,
     cns,
     data_nascimento: parseDataNascimento(data.dataNascimento),

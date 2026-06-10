@@ -9,6 +9,7 @@ import {
   Button,
   Combobox,
   DataTable,
+  formatDateTimeBr,
   Select,
   type ColumnDef,
   type SelectOption,
@@ -34,11 +35,7 @@ type DialogState =
   | null
 
 function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return formatDateTimeBr(iso)
 }
 
 function statusBadge(ativo: boolean) {

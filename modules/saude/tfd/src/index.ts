@@ -86,6 +86,8 @@ export type {
   AgendamentoProcessoListItem,
   AgendamentoDetalheOutput,
   AgendamentoNovoOutput,
+  TfdCustoPlanejadoItem,
+  TfdProjecaoFinanceiraOutput,
 } from './types/tfd.types'
 
 export {
@@ -105,6 +107,14 @@ export {
   relatorioMotoristaSchema,
   relatorioProducaoMensalSchema,
 } from './validators/relatorio.schema'
+
+export {
+  TFD_COMPLEMENTO_AREA_CONFIG,
+  TFD_COMPLEMENTO_AREA_VALUES,
+  labelComplementoArea,
+  parseAreaComplementoSolicitado,
+  type TfdComplementoArea,
+} from './constants/complemento-area'
 
 export {
   iniciarAnaliseSchema,
@@ -134,6 +144,7 @@ export type {
 } from './validators/regulacao.schema'
 
 export type { DecidirSolicitacaoInput } from './validators/decisao.schema'
+export type { RegistrarCustoComposicaoSolicitacaoInput } from './validators/composicao-custo.schema'
 
 export type { CriarAgendamentoInput, RegistrarRetornoInput } from './validators/agendamento.schema'
 
@@ -315,7 +326,15 @@ export {
 } from './actions/configuracao'
 
 export { buscarPacientePorCns, vincularPaciente, atualizarPacienteCompletoTfd } from './actions/paciente'
-export { salvarDadosClinicosTfd } from './actions/processo'
+export {
+  salvarDadosClinicosTfd,
+  verificarProcessoAbertoPacienteTfd,
+} from './actions/processo'
+export {
+  getProcessoAbertoPacienteTfd,
+  type ProcessoAbertoPacienteItem,
+  type ProcessoAbertoPacienteOutput,
+} from './queries/get-processo-aberto-paciente-tfd'
 export { moverPacienteNaFila } from './actions/fila'
 export {
   criarAgendamentoNovo,
@@ -387,6 +406,7 @@ export {
   atualizarCustoPlanejadoSolicitacaoTfd,
   excluirCustoPlanejadoSolicitacaoTfd,
   confirmarProjecaoFinanceiraSolicitacaoTfd,
+  registrarCustoComposicaoSolicitacaoTfd,
 } from './actions/projecao-financeira'
 export {
   registrarDespesa,
@@ -399,6 +419,7 @@ export {
   decidirPrestacaoContas,
   decidirPrestacaoContasAgendamento,
   registrarDespesaViagemNova,
+  importarCustosPlanejadosViagemPc,
   atualizarAdiantamentoViagemPc,
   excluirItemDespesaViagemNova,
   enviarPrestacaoContasViagemNova,
@@ -535,6 +556,11 @@ export { getPrestacaoDetalheAgendamento } from './queries/get-prestacao-detalhe-
 export type { PrestacaoDetalheAgendamentoOutput } from './queries/get-prestacao-detalhe-agendamento'
 export { getPrestacaoDetalheViagemNova } from './queries/get-prestacao-detalhe-viagem-nova'
 export type { PrestacaoDetalheViagemNovaOutput } from './queries/get-prestacao-detalhe-viagem-nova'
+export { getViagemFinanceiroPc } from './queries/get-viagem-financeiro-pc'
+export type {
+  ViagemFinanceiroPcOutput,
+  ViagemFinanceiroPcPassageiroItem,
+} from './queries/get-viagem-financeiro-pc'
 export { getExtratoAgendamento } from './queries/get-extrato-agendamento'
 export type { ExtratoAgendamentoOutput } from './queries/get-extrato-agendamento'
 export type { GetPacientesFiltros } from './queries/get-pacientes'
@@ -583,6 +609,7 @@ export { getDashboardFinanceiroTfd } from './queries/get-dashboard-financeiro-tf
 export { getDashboardTfdOperacional } from './queries/get-dashboard-tfd-operacional'
 export { getGestaoTfdCentral } from './queries/get-gestao-tfd-central'
 export { getProjecaoFinanceiraSolicitacao } from './queries/get-projecao-financeira-solicitacao'
+export { getProcessoFinanceiroTfd } from './queries/get-processo-financeiro-tfd'
 export { getAlertasUrgentesTfd } from './queries/get-alertas-urgentes'
 export { getAlertasPendente30Dias } from './queries/get-alertas-regulacao'
 export { getAlertasPendente60Dias } from './queries/get-alertas-pendente-60-dias'

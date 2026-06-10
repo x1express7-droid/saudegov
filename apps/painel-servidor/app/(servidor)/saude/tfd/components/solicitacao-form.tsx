@@ -376,7 +376,7 @@ export function SolicitacaoForm({
       }
 
       const { protocolo } = abrirResponse.data
-      setSuccessToast(`Solicitação ${protocolo} enviada para regulação.`)
+      setSuccessToast(`Processo ${protocolo} enviado para regulação.`)
 
       window.setTimeout(() => {
         router.push(
@@ -406,7 +406,7 @@ export function SolicitacaoForm({
       ) : null}
 
       <Card
-        header={<CardHeader>Dados da solicitação</CardHeader>}
+        header={<CardHeader>Dados do processo</CardHeader>}
         bodyClassName={formFieldsStackClassName()}
       >
         <Controller
@@ -569,6 +569,7 @@ export function SolicitacaoForm({
         <SolicitacaoLaudoUpload
           processoId={processoId}
           disabled={isPending}
+          mensagemConcluido="Laudo enviado. Será vinculado ao processo ao salvar ou enviar."
           onUploadComplete={(anexoIds) => {
             setLaudoAnexoIds(anexoIds)
             setLaudoError(null)
@@ -621,7 +622,7 @@ export function SolicitacaoForm({
               Enviando…
             </>
           ) : (
-            'Enviar solicitação'
+            'Enviar processo'
           )}
         </Button>
       </div>

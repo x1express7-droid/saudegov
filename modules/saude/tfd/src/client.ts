@@ -86,11 +86,21 @@ export type {
   ProcessoTfdListItem,
   TfdAgendamentoConsultaListItem,
   ProcessoTfdDetalheOutput,
+  ProcessoFinanceiroOutput,
+  ProcessoFinanceiroSolicitacaoItem,
   PerfilServidorOutput,
 } from './types/tfd.types'
 
+export type {
+  ProcessoAbertoPacienteItem,
+  ProcessoAbertoPacienteOutput,
+} from './queries/get-processo-aberto-paciente-tfd'
 export type { ViagemTfdListItem } from './queries/get-viagens-tfd'
 export type { ViagemDetalheOutput, ViagemPassageiroDetalhe } from './queries/get-viagem-detalhe'
+export type {
+  ViagemFinanceiroPcOutput,
+  ViagemFinanceiroPcPassageiroItem,
+} from './queries/get-viagem-financeiro-pc'
 export type { SegmentoViagemItem } from './queries/get-segmentos-viagem'
 export type { VeiculoDetalheOutput } from './queries/get-veiculo-detalhe'
 export type { MotoristaDetalheOutput } from './queries/get-motorista-detalhe'
@@ -109,6 +119,7 @@ export type { TfdCidListItem } from './queries/get-cids'
 export { MIN_JUSTIFICATIVA_FILA_CHARS } from './validators/fila-movimentacao.schema'
 
 export { formatExtratoOrigemLabel, labelTipoMovimentacao } from './utils/extrato-labels'
+export { resolverTipoDespesaParaPc } from './utils/map-tipo-despesa-pc'
 
 export {
   abrirSolicitacaoSchema,
@@ -118,6 +129,14 @@ export {
   TEXTO_MOTIVO_CANCELAMENTO_PRAZO_ESGOTADO,
   resolveMotivoCancelamentoTexto,
 } from './validators/solicitacao.schema'
+
+export {
+  TFD_COMPLEMENTO_AREA_CONFIG,
+  TFD_COMPLEMENTO_AREA_VALUES,
+  labelComplementoArea,
+  parseAreaComplementoSolicitado,
+  type TfdComplementoArea,
+} from './constants/complemento-area'
 
 export {
   iniciarAnaliseSchema,

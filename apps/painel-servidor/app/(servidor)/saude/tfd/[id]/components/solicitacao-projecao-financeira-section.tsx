@@ -150,7 +150,7 @@ export function SolicitacaoProjecaoFinanceiraSection({
 
   function iniciarEdicao(custo: TfdProjecaoFinanceiraOutput['custos'][number]) {
     setEditandoId(custo.id)
-    setEditDescricao(custo.descricao)
+    setEditDescricao(custo.descricao ?? '')
     setEditValor(custo.valor.toFixed(2).replace('.', ','))
     setServerError(null)
     setSuccessMessage(null)

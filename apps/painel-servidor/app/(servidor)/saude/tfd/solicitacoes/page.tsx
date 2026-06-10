@@ -1,14 +1,13 @@
 import { assertModuleActive, getTenantContext, requireTenantRole } from '@saude/core-auth/server'
-import { getSolicitacoesTfd, TFD_PERMISSIONS } from '@saude/mod-saude-tfd'
+import { getSolicitacoesTfd } from '@saude/mod-saude-tfd'
 import type { TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
-import { Alert, Button, PageHeader } from '@saude/ui'
-import { PermissionGate } from '@saude/ui/permission-gate'
+import { Alert, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { Suspense } from 'react'
 
 // BLOCO-6-SOLICITACOES
+import { SolicitacaoFluxoAjudaDialog } from '../components/solicitacao-fluxo-ajuda-dialog'
 import { SolicitacaoListagem } from '../components/solicitacao-listagem'
 
 export const metadata: Metadata = {
@@ -97,16 +96,7 @@ export default async function TfdSolicitacoesPage({ searchParams }: TfdSolicitac
       <PageHeader
         titulo="Solicitações TFD"
         subtitulo="Todas as solicitações de Tratamento Fora de Domicílio — regulação, fila e acompanhamento."
-        acoes={
-          <PermissionGate
-            session={session}
-            permission={TFD_PERMISSIONS.ABRIR_SOLICITACAO}
-          >
-            <Button variant="primary" asChild>
-              <Link href="/saude/tfd/nova">Nova solicitação</Link>
-            </Button>
-          </PermissionGate>
-        }
+        acoes={<SolicitacaoFluxoAjudaDialog />}
       />
 
       {protocoloEnviado ? (

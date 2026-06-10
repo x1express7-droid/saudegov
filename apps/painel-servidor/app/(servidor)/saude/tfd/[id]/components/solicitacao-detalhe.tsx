@@ -3,40 +3,16 @@
 import { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd/client'
 import type { ReactNode } from 'react'
 
-import { Card, CardHeader, TFD_URGENCIA_CONFIG } from '@saude/ui'
+import { formatDateOnlyBr, formatDateTimeBr, TFD_URGENCIA_CONFIG } from '@saude/ui'
 import Link from 'next/link'
+
+import { SolicitacaoSecaoAccordion } from './solicitacao-secao-accordion'
 
 const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
   CONSULTA: 'Consulta',
   RETORNO: 'Retorno',
   EXAME: 'Exame',
   CIRURGIA: 'Cirurgia',
-}
-
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-})
-
-const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-function formatDate(iso: string | null): string {
-  if (!iso) {
-    return '—'
-  }
-  const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
-  return dateFormatter.format(new Date(parsed))
-}
-
-function formatDateTime(iso: string): string {
-  return dateTimeFormatter.format(new Date(iso))
 }
 
 function labelTipoAtendimento(tipo: string): string {
@@ -69,14 +45,11 @@ export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
   const temDadosClinicos = solicitacao.cidPrincipal !== undefined
 
   return (
-    <Card
-      header={<CardHeader>Dados da solicitação</CardHeader>}
-      className="min-w-0"
-    >
+    <SolicitacaoSecaoAccordion titulo="Dados da solicitação" className="min-w-0">
       <dl className="grid gap-[var(--space-4)] sm:grid-cols-2">
         <DetalheCampo label="Paciente">{solicitacao.paciente.nome}</DetalheCampo>
         <DetalheCampo label="Data de nascimento">
-          {formatDate(solicitacao.paciente.dataNascimento)}
+          {formatDateOnlyBr(solicitacao.paciente.dataNascimento)}
         </DetalheCampo>
         <DetalheCampo label="CNS">{solicitacao.paciente.cns ?? '—'}</DetalheCampo>
         <DetalheCampo label="Tipo de atendimento">
@@ -104,7 +77,7 @@ export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
         <DetalheCampo label="Urgência">{labelUrgencia(solicitacao.urgencia)}</DetalheCampo>
         <DetalheCampo label="Solicitante">{solicitacao.solicitante.nome}</DetalheCampo>
         <DetalheCampo label="Data de abertura">
-          {formatDateTime(solicitacao.createdAt)}
+          {formatDateTimeBr(solicitacao.createdAt)}
         </DetalheCampo>
         {solicitacao.acompanhante ? (
           <DetalheCampo label="Acompanhante">{solicitacao.acompanhante.nome}</DetalheCampo>
@@ -143,6 +116,6 @@ export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
           </dl>
         </section>
       ) : null}
-    </Card>
+    </SolicitacaoSecaoAccordion>
   )
 }

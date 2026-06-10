@@ -32,9 +32,14 @@ function buildDropdownItems(
 export interface ProcessoAcoesCelulaProps {
   item: ProcessoTfdListItem
   podeNovaSolicitacao: boolean
+  dense?: boolean
 }
 
-export function ProcessoAcoesCelula({ item, podeNovaSolicitacao }: ProcessoAcoesCelulaProps) {
+export function ProcessoAcoesCelula({
+  item,
+  podeNovaSolicitacao,
+  dense = false,
+}: ProcessoAcoesCelulaProps) {
   const [menuOpen, setMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
   const processoHref = `${PROCESSOS_BASE}/${item.processoId}`
@@ -61,7 +66,15 @@ export function ProcessoAcoesCelula({ item, podeNovaSolicitacao }: ProcessoAcoes
       onClick={(event) => event.stopPropagation()}
       onKeyDown={(event) => event.stopPropagation()}
     >
-      <Button variant="outline" asChild className="min-h-[36px] px-[var(--space-3)] text-[length:var(--text-xs)]">
+      <Button
+        variant="outline"
+        asChild
+        className={
+          dense
+            ? 'h-8 min-h-8 px-2.5 text-[length:var(--text-xs)]'
+            : 'min-h-[36px] px-[var(--space-3)] text-[length:var(--text-xs)]'
+        }
+      >
         <Link href={processoHref}>Ver</Link>
       </Button>
 
@@ -69,7 +82,11 @@ export function ProcessoAcoesCelula({ item, podeNovaSolicitacao }: ProcessoAcoes
         <Button
           type="button"
           variant="ghost"
-          className="min-h-[36px] min-w-[36px] px-[var(--space-2)]"
+          className={
+            dense
+              ? 'h-8 min-h-8 min-w-8 px-1.5'
+              : 'min-h-[36px] min-w-[36px] px-[var(--space-2)]'
+          }
           aria-label="Mais ações"
           aria-expanded={menuOpen}
           aria-haspopup="menu"

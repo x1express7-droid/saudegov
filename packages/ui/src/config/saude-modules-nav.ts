@@ -93,7 +93,7 @@ export const SAUDE_MODULES_NAV: readonly SaudeModuleNavConfig[] = [
       { label: 'Central de Gestão', href: '/saude/tfd/gestao', icon: 'LayoutDashboard' },
       { label: 'Dashboard', href: '/saude/tfd/dashboard', icon: 'BarChart3' },
       { label: 'Pacientes', href: '/saude/tfd/pacientes', icon: 'UserSearch' },
-      { label: 'Nova Solicitação', href: '/saude/tfd/nova', icon: 'PlusCircle' },
+      { label: 'Novo Processo', href: '/saude/tfd/nova', icon: 'PlusCircle' },
       { label: 'Solicitações', href: '/saude/tfd/solicitacoes', icon: 'FileText' },
       { label: 'Processos TFD', href: '/saude/tfd/processos', icon: 'List' },
       { label: 'Agendamentos', href: '/saude/tfd/agendamentos', icon: 'CalendarDays' },

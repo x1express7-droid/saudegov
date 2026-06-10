@@ -39,13 +39,6 @@ export async function decidirSolicitacaoTfd(rawInput: unknown): Promise<ActionRe
   }
   const data = parsed.data
 
-  if (data.fundamentacao.length < 20) {
-    return {
-      success: false,
-      error: 'A fundamentação deve ter pelo menos 20 caracteres.',
-    }
-  }
-
   try {
     const tenantId = session.user.tenantId!
     const db = await getPrismaForTenant(tenantId)

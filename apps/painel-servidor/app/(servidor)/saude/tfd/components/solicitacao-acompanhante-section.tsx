@@ -147,7 +147,7 @@ export function SolicitacaoAcompanhanteSection({
     <div className="flex flex-col gap-[var(--space-4)] rounded-[var(--radius)] border border-[var(--color-border)] p-[var(--space-4)]">
       <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
         O acompanhante deve ser um paciente já cadastrado na base do município. Informe também o
-        parentesco com o paciente da solicitação.
+        parentesco com o paciente do processo.
       </p>
 
       {acompanhantePacienteId ? (

@@ -40,6 +40,14 @@ export const TFD_TIPO_DESPESA_CONFIG = {
     grupo: 'DIARIA',
     ativo: true,
   },
+  DIARIA_LIVRE: {
+    label: 'Diária (valor livre)',
+    descricao:
+      'Diária com valor informado manualmente. Use quando o custo não seguir a tabela SUS padrão.',
+    icone: 'Bed',
+    grupo: 'DIARIA',
+    ativo: true,
+  },
   OBITO: {
     label: 'Despesas com óbito',
     descricao:

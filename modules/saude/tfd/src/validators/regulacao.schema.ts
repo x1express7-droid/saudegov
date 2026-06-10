@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { TFD_COMPLEMENTO_AREA_VALUES } from '../constants/complemento-area'
+
 const solicitacaoIdField = z.string().uuid('ID da solicitação inválido.')
 
 const textoMinimo20 = z
@@ -13,6 +15,9 @@ export const iniciarAnaliseSchema = z.object({
 
 export const solicitarComplementoSchema = z.object({
   solicitacaoId: solicitacaoIdField,
+  area: z.enum(TFD_COMPLEMENTO_AREA_VALUES, {
+    errorMap: () => ({ message: 'Selecione onde o complemento deve ser feito.' }),
+  }),
   mensagem: textoMinimo20,
 })
 

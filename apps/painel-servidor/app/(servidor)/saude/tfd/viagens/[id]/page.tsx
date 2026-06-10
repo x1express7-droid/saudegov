@@ -7,24 +7,14 @@ import { getPrismaForTenant } from '@saude/core-db'
 import {
   getPrestacaoDetalheViagemNova,
   getViagemDetalhe,
+  getViagemFinanceiroPc,
 } from '@saude/mod-saude-tfd'
-import { PageHeader } from '@saude/ui'
+import { formatDateHoraBr, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { ViagemStatusBadge } from '../../components/viagem-status-badge'
 import { ViagemDetalheView } from './components/viagem-detalhe-view'
-
-function formatDataSaida(data: string, hora: string | null): string {
-  const parsed = data.length === 10 ? `${data}T12:00:00` : data
-  const label = new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-  return hora ? `${label} às ${hora}` : label
-}
 
 interface ViagemDetalhePageProps {
   params: Promise<{ id: string }>
@@ -56,10 +46,10 @@ export default async function ViagemDetalhePage({ params, searchParams }: Viagem
     notFound()
   }
 
-  const prestacao =
-    viagem.status === 'CONCLUIDA'
-      ? await getPrestacaoDetalheViagemNova(id)
-      : null
+  const [prestacao, financeiro] = await Promise.all([
+    viagem.status === 'CONCLUIDA' ? getPrestacaoDetalheViagemNova(id) : Promise.resolve(null),
+    getViagemFinanceiroPc(id),
+  ])
 
   // REMOVE-PROCESSO-PARTE-4: reserva via processos dos passageiros (agendamentos vinculados)
   const db = await getPrismaForTenant(session.user.tenantId!)
@@ -86,13 +76,19 @@ export default async function ViagemDetalhePage({ params, searchParams }: Viagem
 
   // BLOCO-3: aba Segmentos removida — links antigos abrem Detalhes
   const initialTab =
-    tab === 'prestacao' ? 'prestacao' : tab === 'segmentos' ? 'detalhes' : undefined
+    tab === 'prestacao'
+      ? 'prestacao'
+      : tab === 'financeiro'
+        ? 'financeiro'
+        : tab === 'segmentos'
+          ? 'detalhes'
+          : undefined
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <PageHeader
         titulo={viagem.protocolo}
-        subtitulo={`Saída: ${formatDataSaida(viagem.dataSaida, viagem.horaSaida)} · ${viagem.origemDescricao} → ${viagem.destinoDescricao}`}
+        subtitulo={`Saída: ${formatDateHoraBr(viagem.dataSaida, viagem.horaSaida)} · ${viagem.origemDescricao} → ${viagem.destinoDescricao}`}
         breadcrumbs={[
           { label: 'Viagens', href: '/saude/tfd/viagens' },
           { label: viagem.protocolo },
@@ -108,6 +104,7 @@ export default async function ViagemDetalhePage({ params, searchParams }: Viagem
         session={session}
         viagem={viagem}
         prestacao={prestacao}
+        financeiro={financeiro}
         processoIdForUpload={processoIdForUpload}
         initialTab={initialTab}
       />

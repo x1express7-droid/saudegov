@@ -1,7 +1,12 @@
 'use client'
 
 import {
+  parseAreaComplementoSolicitado,
+  TFD_COMPLEMENTO_AREA_CONFIG,
+  TFD_COMPLEMENTO_AREA_VALUES,
   TFD_PERMISSIONS,
+  type TfdComplementoArea,
+  type TfdProjecaoFinanceiraOutput,
   type TfdSolicitacaoDetalhe,
   type TfdViagemSolicitacaoItem,
 } from '@saude/mod-saude-tfd/client'
@@ -10,9 +15,10 @@ import { isStatusCancelavelTfd } from '@saude/mod-saude-tfd/utils/cancelamento'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 
 import {
+  Alert,
   Button,
   Card,
-  CardHeader,
+  Select,
   Spinner,
   Textarea,
 } from '@saude/ui'
@@ -20,19 +26,27 @@ import { PermissionGate } from '@saude/ui/permission-gate'
 import { Receipt } from 'lucide-react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState, useTransition } from 'react'
+import { useMemo, useState, useTransition } from 'react'
 
 import { CancelarSolicitacaoDialog } from './cancelar-solicitacao-dialog'
 import { ReclassificarDialog } from './reclassificar-dialog'
 import { DecisaoForm } from './decisao-form'
 import { RetornoViagemAcao } from './retorno-viagem-acao'
+import { SolicitacaoAcoesResumoFinanceiro } from './solicitacao-acoes-resumo-financeiro'
+import { SolicitacaoSecaoAccordion } from './solicitacao-secao-accordion'
 
 const MIN_TEXTO = 20
+
+const complementoAreaOptions = TFD_COMPLEMENTO_AREA_VALUES.map((value) => ({
+  value,
+  label: TFD_COMPLEMENTO_AREA_CONFIG[value].label,
+}))
 
 export interface SolicitacaoAcoesProps {
   session: SaudeMunicSession
   solicitacao: TfdSolicitacaoDetalhe
   viagens: TfdViagemSolicitacaoItem[]
+  projecao?: TfdProjecaoFinanceiraOutput | null
   /** Abre o dialog de cancelamento ao carregar (ex.: `?cancelar=prazo`). */
   abrirCancelamentoInicial?: boolean
 }
@@ -49,6 +63,7 @@ export function SolicitacaoAcoes({
   session,
   solicitacao,
   viagens,
+  projecao = null,
   abrirCancelamentoInicial = false,
 }: SolicitacaoAcoesProps) {
   const router = useRouter()
@@ -56,6 +71,7 @@ export function SolicitacaoAcoes({
   const [serverError, setServerError] = useState<string | null>(null)
 
   const [showComplemento, setShowComplemento] = useState(false)
+  const [areaComplemento, setAreaComplemento] = useState<TfdComplementoArea>('DADOS_SOLICITACAO')
   const [mensagemComplemento, setMensagemComplemento] = useState('')
 
   const [showEnviarComplemento, setShowEnviarComplemento] = useState(false)
@@ -76,6 +92,7 @@ export function SolicitacaoAcoes({
       setShowEnviarComplemento(false)
       setShowDecidir(false)
       setMensagemComplemento('')
+      setAreaComplemento('DADOS_SOLICITACAO')
       setTextoComplemento('')
       router.refresh()
     })
@@ -93,10 +110,27 @@ export function SolicitacaoAcoes({
     runAction(() =>
       solicitarComplementoTfd({
         solicitacaoId: solicitacao.id,
+        area: areaComplemento,
         mensagem: mensagemComplemento.trim(),
       })
     )
   }
+
+  const areaComplementoPendente = useMemo(() => {
+    if (solicitacao.status !== 'PENDENTE') {
+      return null
+    }
+
+    const ultimoComplementoSolicitado = [...solicitacao.tramitacoes]
+      .reverse()
+      .find((item) => item.tipo === 'COMPLEMENTO_SOLICITADO')
+
+    if (!ultimoComplementoSolicitado) {
+      return null
+    }
+
+    return parseAreaComplementoSolicitado(ultimoComplementoSolicitado.observacao)
+  }, [solicitacao.status, solicitacao.tramitacoes])
 
   function handleEnviarComplemento() {
     if (textoComplemento.trim().length < MIN_TEXTO) {
@@ -148,14 +182,24 @@ export function SolicitacaoAcoes({
     showCancelar
 
   return (
-    <Card header={<CardHeader>Ações</CardHeader>} className="lg:sticky lg:top-[var(--space-4)]">
+    <SolicitacaoSecaoAccordion titulo="Ações" sticky bodyClassName="flex flex-col gap-[var(--space-4)]">
+      {projecao ? (
+        <SolicitacaoAcoesResumoFinanceiro session={session} projecao={projecao} />
+      ) : null}
+
+      <div
+        className={
+          projecao
+            ? 'flex flex-col gap-[var(--space-4)] border-t border-[var(--color-border)] pt-[var(--space-4)]'
+            : 'flex flex-col gap-[var(--space-4)]'
+        }
+      >
       {!hasAnyAction ? (
         <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
           Nenhuma ação disponível para o status atual.
         </p>
       ) : null}
 
-      <div className="flex flex-col gap-[var(--space-4)]">
         {solicitacao.status === 'ENVIADO' ? (
           <PermissionGate session={session} permission={TFD_PERMISSIONS.ANALISAR_LAUDO}>
             <div className="flex flex-col gap-[var(--space-2)]">
@@ -196,13 +240,21 @@ export function SolicitacaoAcoes({
                   </Button>
                 ) : (
                   <>
+                    <Select
+                      label="Onde o complemento deve ser feito?"
+                      value={areaComplemento}
+                      onValueChange={(value) => setAreaComplemento(value as TfdComplementoArea)}
+                      options={complementoAreaOptions}
+                      disabled={isPending}
+                      hint={TFD_COMPLEMENTO_AREA_CONFIG[areaComplemento].descricao}
+                    />
                     <Textarea
                       label="Mensagem ao solicitante"
                       value={mensagemComplemento}
                       onChange={(event) => setMensagemComplemento(event.target.value)}
                       rows={4}
                       disabled={isPending}
-                      hint={`Mínimo de ${MIN_TEXTO} caracteres.`}
+                      hint={`Mínimo de ${MIN_TEXTO} caracteres. Explique o que precisa ser corrigido ou enviado.`}
                     />
                     <div className="flex flex-wrap gap-[var(--space-2)]">
                       <Button
@@ -260,6 +312,12 @@ export function SolicitacaoAcoes({
 
         {solicitacao.status === 'PENDENTE' ? (
           <div className="flex flex-col gap-[var(--space-2)]">
+            {areaComplementoPendente ? (
+              <Alert variant="info" role="status">
+                Complemento solicitado em: <strong>{areaComplementoPendente}</strong>. Ajuste essa
+                parte da solicitação e envie a resposta abaixo.
+              </Alert>
+            ) : null}
             {!showEnviarComplemento ? (
               <Button
                 type="button"
@@ -376,6 +434,6 @@ export function SolicitacaoAcoes({
 
         {serverError ? <ServerError message={serverError} /> : null}
       </div>
-    </Card>
+    </SolicitacaoSecaoAccordion>
   )
 }

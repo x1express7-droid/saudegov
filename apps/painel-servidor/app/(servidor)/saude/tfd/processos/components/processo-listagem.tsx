@@ -13,6 +13,7 @@ export interface ProcessoListagemProps {
   perPage: number
   session: SaudeMunicSession
   podeNovaSolicitacao: boolean
+  mostrarEncerrados?: boolean
 }
 
 export function ProcessoListagem({
@@ -22,6 +23,7 @@ export function ProcessoListagem({
   perPage,
   session,
   podeNovaSolicitacao,
+  mostrarEncerrados = false,
 }: ProcessoListagemProps) {
   return (
     <>
@@ -33,6 +35,7 @@ export function ProcessoListagem({
         perPage={perPage}
         session={session}
         podeNovaSolicitacao={podeNovaSolicitacao}
+        mostrarEncerradosInicial={mostrarEncerrados}
       />
     </>
   )

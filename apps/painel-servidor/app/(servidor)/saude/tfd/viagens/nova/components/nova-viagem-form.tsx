@@ -22,6 +22,7 @@ import {
   CardHeader,
   Combobox,
   EmptyState,
+  formatDateOnlyBr,
   Input,
   Select,
   Spinner,
@@ -73,15 +74,6 @@ function labelTipoViagem(tipo: string | null): string {
   return 'Não informado'
 }
 
-function formatDataSaidaLabel(iso: string): string {
-  const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
-  return new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 function resolveTipoTrecho(
   agendamento: AgendamentoDisponivelViagemItem,
@@ -478,7 +470,7 @@ export function NovaViagemForm({
           ) : agendamentos.length === 0 ? (
             <EmptyState
               titulo="Nenhum agendamento encontrado para esta data"
-              descricao={`Agendamentos com consulta próxima a ${formatDataSaidaLabel(dataSaida)} aparecerão aqui.`}
+              descricao={`Agendamentos com consulta próxima a ${formatDateOnlyBr(dataSaida)} aparecerão aqui.`}
             />
           ) : (
             <>
@@ -515,7 +507,8 @@ export function NovaViagemForm({
                             {agendamento.paciente.nome}
                           </span>
                           <span className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                            Consulta: {agendamento.dataConsulta} · {agendamento.tipoAtendimento} ·{' '}
+                            Consulta: {formatDateOnlyBr(agendamento.dataConsulta)} ·{' '}
+                            {agendamento.tipoAtendimento} ·{' '}
                             {labelTipoViagem(agendamento.tipoViagem)} ·{' '}
                             {agendamento.acompanhantesCount} acompanhante(s)
                           </span>

@@ -8,7 +8,7 @@ import {
   requireTenantRole,
 } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
-import { createAuditLog, registrarTramitacao } from '@saude/core-documents'
+import { createAuditLog, formatDateBrFromDate, registrarTramitacao } from '@saude/core-documents'
 import { dispararNotificacao, NOTIFICATION_EVENTS } from '@saude/core-notifications'
 import type { ActionResponse } from '@saude/validators'
 
@@ -510,14 +510,15 @@ export async function registrarRetornoTfd(
         statusSolicitacaoNovo = 'AGUARDANDO_PC'
       }
 
-      const dataViagemLabel = viagemLocked.data_viagem.toISOString().slice(0, 10)
+      const dataViagemLabel = formatDateBrFromDate(viagemLocked.data_viagem)
+      const prazoEnvioLabel = formatDateBrFromDate(prazoEnvioAt)
 
       await registrarTramitacao(
         {
           tenantId,
           processoId: viagemLocked.solicitacao.processo_id,
           tipo: 'RETORNO_REGISTRADO',
-          descricao: `Retorno da viagem ${viagemLocked.sequencia} registrado (${dataViagemLabel}). Prestação de contas com prazo até ${prazoEnvioAt.toISOString().slice(0, 10)}.`,
+          descricao: `Retorno da viagem ${viagemLocked.sequencia} registrado (${dataViagemLabel}). Prestação de contas com prazo até ${prazoEnvioLabel}.`,
           usuarioId: session.user.id,
           metadata: {
             viagemId: viagemLocked.id,

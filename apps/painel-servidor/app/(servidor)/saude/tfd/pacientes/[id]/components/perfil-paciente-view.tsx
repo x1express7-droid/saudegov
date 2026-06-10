@@ -22,6 +22,8 @@ import {
   formFieldsStackClassName,
   Input,
   Select,
+  formatDateOnlyBr,
+  formatDateTimeBr,
   type ColumnDef,
   type TfdStatus,
 } from '@saude/ui'
@@ -68,20 +70,6 @@ const SEXO_LABEL: Record<string, string> = {
   NAO_INFORMADO: 'Não informado',
 }
 
-const dateFormatter = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-})
-
-const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
 function isTfdStatus(value: string): value is TfdStatus {
   const statuses: Record<string, true> = {
     RASCUNHO: true,
@@ -101,22 +89,11 @@ function isTfdStatus(value: string): value is TfdStatus {
 }
 
 function formatDate(iso: string | null): string {
-  if (!iso) {
-    return '—'
-  }
-  try {
-    return dateFormatter.format(new Date(iso))
-  } catch {
-    return '—'
-  }
+  return formatDateOnlyBr(iso)
 }
 
 function formatDateTime(iso: string): string {
-  try {
-    return dateTimeFormatter.format(new Date(iso))
-  } catch {
-    return iso
-  }
+  return formatDateTimeBr(iso, iso)
 }
 
 function formatPrestador(row: TfdPacienteProcessoListItem): string {

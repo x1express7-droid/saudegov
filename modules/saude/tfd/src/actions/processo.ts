@@ -8,14 +8,57 @@ import { createAuditLog } from '@saude/core-documents'
 import type { ActionResponse } from '@saude/validators'
 
 import { TFD_PERMISSIONS } from '../permissions'
+import {
+  getProcessoAbertoPacienteTfd,
+  type ProcessoAbertoPacienteOutput,
+} from '../queries/get-processo-aberto-paciente-tfd'
 import { salvarDadosClinicosSchema } from '../validators/processo-dados-clinicos.schema'
+import { z } from 'zod'
 
 const MODULO_TFD = 'saude.tfd'
+
+const verificarProcessoAbertoPacienteSchema = z.object({
+  pacienteId: z.string().uuid('ID de paciente inválido.'),
+  excludeProcessoId: z.string().uuid('ID de processo inválido.').optional(),
+})
 
 class ProcessoBusinessError extends Error {
   constructor(message: string) {
     super(message)
     this.name = 'ProcessoBusinessError'
+  }
+}
+
+export async function verificarProcessoAbertoPacienteTfd(
+  rawInput: unknown
+): Promise<ActionResponse<ProcessoAbertoPacienteOutput | null>> {
+  await assertModuleActive('saude', 'tfd')
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.ABRIR_SOLICITACAO)
+
+  const parsed = verificarProcessoAbertoPacienteSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  try {
+    const resultado = await getProcessoAbertoPacienteTfd(
+      parsed.data.pacienteId,
+      parsed.data.excludeProcessoId
+    )
+    return { success: true, data: resultado }
+  } catch (error) {
+    console.error('[verificarProcessoAbertoPacienteTfd] Erro:', {
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível verificar processos em andamento. Tente novamente.',
+    }
   }
 }
 

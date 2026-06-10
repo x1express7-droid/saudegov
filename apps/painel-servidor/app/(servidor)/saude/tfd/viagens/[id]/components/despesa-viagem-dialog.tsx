@@ -116,6 +116,7 @@ export interface DespesaViagemDialogProps {
   viagemNovaId: string
   processoId: string | null
   segmentos: SegmentoViagemItem[]
+  agendamentoId?: string
   tipoInicial?: TfdTipoDespesaConfigKey
   /** PC-PARTE-4: valor pré-preenchido (ex.: devolução ao erário). */
   valorInicial?: string
@@ -130,6 +131,7 @@ export function DespesaViagemDialog({
   viagemNovaId,
   processoId,
   segmentos,
+  agendamentoId,
   tipoInicial = TIPO_DESPESA_PADRAO,
   valorInicial,
   quantidadeDiasInicial,
@@ -256,6 +258,7 @@ export function DespesaViagemDialog({
     startTransition(async () => {
       const result = await registrarDespesaViagemNova({
         viagemNovaId,
+        agendamentoId,
         segmentoId: segmentoId === SEGMENTO_NENHUM ? undefined : segmentoId,
         tipo: tipo as RegistrarDespesaViagemNovaInput['tipo'],
         descricao: descricao.trim() || undefined,

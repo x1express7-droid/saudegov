@@ -13,6 +13,7 @@ import { buildSaldoListItems } from './get-saldos'
 const STATUS_PERMITE_PLANEJAMENTO: TfdStatusSolicitacao[] = [
   'ENVIADO',
   'EM_ANALISE',
+  'PENDENTE',
   'APROVADO',
 ]
 
@@ -60,7 +61,9 @@ export async function getProjecaoFinanceiraSolicitacao(
         orderBy: { created_at: 'asc' },
         select: {
           id: true,
+          tipo: true,
           descricao: true,
+          quantidade_dias: true,
           valor: true,
           created_at: true,
           updated_at: true,
@@ -73,7 +76,8 @@ export async function getProjecaoFinanceiraSolicitacao(
     return null
   }
 
-  const podeGerenciar = hasPermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO)
+  const podeGerenciarSaldo = hasPermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO)
+  const podeRegistrarDespesa = hasPermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
   const reservaAtiva = solicitacao.reservas[0] ?? null
   const projecaoConfirmada = reservaAtiva !== null
 
@@ -81,10 +85,14 @@ export async function getProjecaoFinanceiraSolicitacao(
   const statusPermitePlanejamento = STATUS_PERMITE_PLANEJAMENTO.includes(statusAtual)
   const statusPermiteConfirmacao = STATUS_PERMITE_CONFIRMACAO.includes(statusAtual)
 
-  const podeEditar = podeGerenciar && statusPermitePlanejamento && !projecaoConfirmada
+  const podeEditar = podeGerenciarSaldo && statusPermitePlanejamento && !projecaoConfirmada
+  const podeRegistrarComposicao =
+    podeRegistrarDespesa && statusPermitePlanejamento && !projecaoConfirmada
   const custos = solicitacao.custos_planejados.map((item) => ({
     id: item.id,
+    tipo: item.tipo,
     descricao: item.descricao,
+    quantidadeDias: item.quantidade_dias,
     valor: Number(item.valor),
     createdAt: item.created_at.toISOString(),
     updatedAt: item.updated_at.toISOString(),
@@ -95,15 +103,17 @@ export async function getProjecaoFinanceiraSolicitacao(
   let saldosDisponiveis: TfdProjecaoFinanceiraOutput['saldosDisponiveis'] = []
 
   const podeConfirmar =
-    podeGerenciar && statusPermiteConfirmacao && !projecaoConfirmada && custos.length > 0
+    podeGerenciarSaldo && statusPermiteConfirmacao && !projecaoConfirmada && custos.length > 0
 
   const aguardandoAprovacaoParaConfirmar =
-    podeGerenciar &&
+    podeGerenciarSaldo &&
     !projecaoConfirmada &&
     custos.length > 0 &&
     !statusPermiteConfirmacao
 
-  if (podeEditar || podeConfirmar) {
+  const deveCarregarSaldos = statusPermitePlanejamento && !projecaoConfirmada
+
+  if (deveCarregarSaldos) {
     const saldoRows = await db.tfdSaldo.findMany({
       where: { tenant_id: tenantId, ativo: true },
       select: {
@@ -127,6 +137,7 @@ export async function getProjecaoFinanceiraSolicitacao(
     status: solicitacao.status,
     custos,
     valorTotal,
+    podeRegistrarComposicao,
     reservaAtiva: reservaAtiva
       ? {
           id: reservaAtiva.id,

@@ -12,6 +12,10 @@ import { createAuditLog, registrarTramitacao } from '@saude/core-documents'
 import { dispararNotificacao, NOTIFICATION_EVENTS } from '@saude/core-notifications'
 import type { ActionResponse } from '@saude/validators'
 
+import {
+  formatDescricaoComplementoSolicitado,
+  type TfdComplementoArea,
+} from '../constants/complemento-area'
 import { TFD_PERMISSIONS } from '../permissions'
 import {
   enviarComplementoSchema,
@@ -234,8 +238,12 @@ export async function solicitarComplementoTfd(
           tenantId,
           processoId: solicitacao.processo_id,
           tipo: 'COMPLEMENTO_SOLICITADO',
-          descricao: data.mensagem,
+          descricao: formatDescricaoComplementoSolicitado(
+            data.area as TfdComplementoArea,
+            data.mensagem
+          ),
           usuarioId: session.user.id,
+          metadata: { area: data.area },
         },
         tx
       )
@@ -258,6 +266,7 @@ export async function solicitarComplementoTfd(
       payloadDepois: {
         status: 'PENDENTE',
         processoStatus: 'AGUARDANDO_COMPLEMENTO',
+        areaComplemento: data.area,
         protocolo,
         modulo: MODULO_TFD,
         processoId: resultado.processoId,

@@ -9,12 +9,14 @@ const cpfRequired = z
   .refine((v) => v.length === 11, 'CPF é obrigatório.')
   .refine((v) => validateCpf(v), 'CPF inválido.')
 
-const emailRequired = z
+const emailOptional = z
   .string()
   .trim()
-  .min(1, 'E-mail é obrigatório.')
   .email('E-mail inválido.')
   .max(255)
+  .optional()
+  .or(z.literal(''))
+  .transform((value) => (value === '' ? undefined : value))
 
 const telefoneCelularRequired = z
   .string()
@@ -52,7 +54,7 @@ export const salvarPacienteAtendimentoSchema = z
       .min(3, 'Nome deve ter pelo menos 3 caracteres.')
       .max(200, 'Nome deve ter no máximo 200 caracteres.'),
     cpf: cpfRequired,
-    email: emailRequired,
+    email: emailOptional,
     telefoneCelular: telefoneCelularRequired,
     cns: cnsOptional,
     dataNascimento: z

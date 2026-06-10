@@ -1,8 +1,10 @@
 'use client'
 
 import { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd/client'
-import { TramitacaoTimeline, type TramitacaoItem } from '@saude/ui'
+import { Badge, TramitacaoTimeline, type TramitacaoItem } from '@saude/ui'
 import { useMemo } from 'react'
+
+import { SolicitacaoSecaoAccordion } from './solicitacao-secao-accordion'
 
 export interface SolicitacaoTimelineProps {
   tramitacoes: TfdSolicitacaoDetalhe['tramitacoes']
@@ -21,5 +23,19 @@ export function SolicitacaoTimeline({ tramitacoes }: SolicitacaoTimelineProps) {
     [tramitacoes]
   )
 
-  return <TramitacaoTimeline tramitacoes={items} />
+  return (
+    <SolicitacaoSecaoAccordion
+      titulo="Histórico de tramitações"
+      badge={
+        items.length > 0 ? (
+          <Badge variant="gray" size="sm">
+            {items.length}
+          </Badge>
+        ) : undefined
+      }
+      defaultOpen={items.length > 0}
+    >
+      <TramitacaoTimeline tramitacoes={items} ocultarTitulo />
+    </SolicitacaoSecaoAccordion>
+  )
 }

@@ -60,10 +60,10 @@ export function validarCpfObrigatorio(value: string): string | null {
   return null
 }
 
-export function validarEmailObrigatorio(value: string): string | null {
+export function validarEmailOpcional(value: string): string | null {
   const trimmed = value.trim()
   if (!trimmed) {
-    return 'E-mail é obrigatório.'
+    return null
   }
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
     return 'E-mail inválido.'

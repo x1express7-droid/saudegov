@@ -36,12 +36,18 @@ import {
   registrarDespesaTransporteSchema,
   atualizarAdiantamentoViagemPcSchema,
   excluirItemDespesaViagemNovaSchema,
+  importarCustosPlanejadosViagemPcSchema,
   registrarDespesaViagemNovaSchema,
   registrarVisualizacaoComprovanteSchema,
   registrarVisualizacaoComprovanteViagemNovaSchema,
 } from '../validators/despesa.schema'
 import { buscarItensDespesaDoAgendamento } from '../utils/itens-despesa-agendamento'
 import { buscarItensDespesaDaViagemNova } from '../utils/itens-despesa-viagem-nova'
+import {
+  buildDescricaoComRefCustoPlanejado,
+  extrairCustoPlanejadoIdDaDescricao,
+  resolverTipoDespesaParaPc,
+} from '../utils/map-tipo-despesa-pc'
 import { estornarMovimentacaoSaldoSchema } from '../validators/financeiro.schema'
 import { isTipoMovimentacaoEstornavel } from '../utils/saldo-movimentacao'
 
@@ -53,6 +59,10 @@ const DASHBOARD_TFD_PATH = '/saude/tfd/dashboard'
 const MSG_VIAGEM_NAO_ENCONTRADA = 'Viagem não encontrada.'
 const MSG_SEGMENTO_NAO_ENCONTRADO =
   'Segmento de deslocamento não encontrado ou não pertence a esta viagem.'
+const MSG_AGENDAMENTO_NAO_VINCULADO_VIAGEM =
+  'Agendamento não vinculado a esta viagem.'
+const MSG_NENHUM_CUSTO_IMPORTAR =
+  'Não há custos planejados pendentes de importação para esta viagem.'
 const MSG_VIAGEM_NAO_REALIZADA =
   'Registre o retorno da viagem antes de lançar despesas.'
 const MSG_PRESTACAO_NAO_ENCONTRADA =
@@ -3091,12 +3101,31 @@ export async function registrarDespesaViagemNova(
         transporteIdLocked = segmento.id
       }
 
+      let agendamentoIdLocked: string | null = null
+
+      if (data.agendamentoId) {
+        const passageiro = await tx.tfdViagemPassageiro.findFirst({
+          where: {
+            tenant_id: tenantId,
+            viagem_id: data.viagemNovaId,
+            agendamento_id: data.agendamentoId,
+          },
+          select: { agendamento_id: true },
+        })
+
+        if (!passageiro) {
+          throw new FinanceiroBusinessError(MSG_AGENDAMENTO_NAO_VINCULADO_VIAGEM)
+        }
+
+        agendamentoIdLocked = passageiro.agendamento_id
+      }
+
       const item = await tx.tfdItemDespesa.create({
         data: {
           tenant_id: tenantId,
           viagem_nova_id: viagemLocked.id,
           viagem_id: null,
-          agendamento_id: null,
+          agendamento_id: agendamentoIdLocked,
           transporte_id: transporteIdLocked,
           tipo: data.tipo,
           descricao: data.descricao?.trim() || null,
@@ -4240,6 +4269,183 @@ export async function excluirItemDespesaViagemNova(
     return {
       success: false,
       error: 'Não foi possível excluir o item de despesa. Tente novamente.',
+    }
+  }
+}
+
+/** Importa custos planejados das solicitações dos passageiros para a PC da viagem. */
+export async function importarCustosPlanejadosViagemPc(
+  rawInput: unknown
+): Promise<ActionResponse<{ importados: number }>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
+
+  const parsed = importarCustosPlanejadosViagemPcSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const resultado = await db.$transaction(async (tx) => {
+      const viagem = await tx.tfdViagem.findFirst({
+        where: {
+          id: data.viagemNovaId,
+          tenant_id: tenantId,
+        },
+        select: {
+          id: true,
+          status: true,
+          protocolo: true,
+          processo_id: true,
+          prestacao_conta: { select: { id: true, status: true } },
+          passageiros: {
+            where: data.agendamentoId
+              ? { agendamento_id: data.agendamentoId }
+              : undefined,
+            select: {
+              agendamento_id: true,
+              agendamento: {
+                select: {
+                  solicitacao: {
+                    select: {
+                      custos_planejados: {
+                        select: {
+                          id: true,
+                          tipo: true,
+                          descricao: true,
+                          valor: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      })
+
+      if (!viagem) {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NAO_ENCONTRADA)
+      }
+
+      if (viagem.status !== 'CONCLUIDA') {
+        throw new FinanceiroBusinessError(MSG_VIAGEM_NOVA_NAO_CONCLUIDA)
+      }
+
+      if (!viagem.prestacao_conta) {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_VIAGEM_NOVA_NAO_ENCONTRADA)
+      }
+
+      const statusPc = viagem.prestacao_conta.status
+      if (statusPc !== 'PENDENTE' && statusPc !== 'REJEITADA') {
+        throw new FinanceiroBusinessError(MSG_PRESTACAO_STATUS_INVALIDO)
+      }
+
+      const itensExistentes = await tx.tfdItemDespesa.findMany({
+        where: {
+          tenant_id: tenantId,
+          viagem_nova_id: viagem.id,
+        },
+        select: { descricao: true },
+      })
+
+      const refsImportados = new Set(
+        itensExistentes
+          .map((item) => extrairCustoPlanejadoIdDaDescricao(item.descricao))
+          .filter((id): id is string => Boolean(id))
+      )
+
+      let importados = 0
+
+      for (const passageiro of viagem.passageiros) {
+        for (const custo of passageiro.agendamento.solicitacao.custos_planejados) {
+          if (refsImportados.has(custo.id)) {
+            continue
+          }
+
+          const tipoPc = resolverTipoDespesaParaPc(custo.tipo)
+          if (!tipoPc) {
+            continue
+          }
+
+          await tx.tfdItemDespesa.create({
+            data: {
+              tenant_id: tenantId,
+              viagem_nova_id: viagem.id,
+              viagem_id: null,
+              agendamento_id: passageiro.agendamento_id,
+              transporte_id: null,
+              tipo: tipoPc,
+              descricao: buildDescricaoComRefCustoPlanejado(custo.id, custo.descricao),
+              valor: custo.valor,
+              comprovante_anexo_id: null,
+              responsavel_pagamento: 'MUNICIPIO',
+            },
+          })
+
+          refsImportados.add(custo.id)
+          importados += 1
+        }
+      }
+
+      if (importados === 0) {
+        throw new FinanceiroBusinessError(MSG_NENHUM_CUSTO_IMPORTAR)
+      }
+
+      return {
+        importados,
+        viagemNovaId: viagem.id,
+        processoId: viagem.processo_id,
+        protocolo: viagem.protocolo,
+      }
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_item_despesa',
+      entidadeId: null,
+      payloadDepois: {
+        viagemNovaId: resultado.viagemNovaId,
+        importados: resultado.importados,
+        agendamentoId: data.agendamentoId ?? null,
+        protocolo: resultado.protocolo,
+        modulo: MODULO_TFD,
+        processoId: resultado.processoId ?? null,
+        origem: 'importar_custos_planejados',
+      },
+    })
+
+    revalidateViagemNovaFinanceiroPaths(resultado.processoId, resultado.viagemNovaId)
+
+    return {
+      success: true,
+      data: { importados: resultado.importados },
+    }
+  } catch (error) {
+    if (error instanceof FinanceiroBusinessError) {
+      return { success: false, error: error.message }
+    }
+
+    console.error('[importarCustosPlanejadosViagemPc] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível importar os custos planejados. Tente novamente.',
     }
   }
 }

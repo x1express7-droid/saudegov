@@ -4,8 +4,6 @@ import { decidirSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/decisao'
 import { Button, Select, Spinner, Textarea } from '@saude/ui'
 import { useState, useTransition } from 'react'
 
-const MIN_TEXTO = 20
-
 interface DecisaoFormProps {
   solicitacaoId: string
   onSuccess: () => void
@@ -24,11 +22,6 @@ export function DecisaoForm({
   const [fundamentacao, setFundamentacao] = useState('')
 
   function handleSubmit() {
-    if (fundamentacao.trim().length < MIN_TEXTO) {
-      onError('A fundamentação deve ter pelo menos 20 caracteres.')
-      return
-    }
-
     onError('')
 
     startTransition(async () => {
@@ -66,7 +59,6 @@ export function DecisaoForm({
         onChange={(event) => setFundamentacao(event.target.value)}
         rows={4}
         disabled={isPending}
-        hint={`Mínimo de ${MIN_TEXTO} caracteres.`}
       />
 
       <div className="flex flex-wrap gap-[var(--space-2)]">

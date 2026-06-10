@@ -4,13 +4,22 @@ import {
   buscarPacientesAtendimentoTfd,
   carregarPacienteAtendimentoTfd,
 } from '@saude/mod-saude-tfd/actions/paciente-atendimento'
-import type { TfdPacienteAtendimentoDetalhe } from '@saude/mod-saude-tfd/client'
-import { Button, Card, CardHeader, formFieldsStackClassName, Input, Select } from '@saude/ui'
+import { verificarProcessoAbertoPacienteTfd } from '@saude/mod-saude-tfd/actions/processo'
+import type {
+  ProcessoAbertoPacienteOutput,
+  TfdPacienteAtendimentoDetalhe,
+} from '@saude/mod-saude-tfd/client'
+import { Alert, Button, Card, CardHeader, formFieldsStackClassName, Input, Select } from '@saude/ui'
 import { format, parseISO } from 'date-fns'
 import { ptBR } from 'date-fns/locale'
 import { Loader2 } from 'lucide-react'
 import Link from 'next/link'
-import { useEffect, useRef, useState, useTransition } from 'react'
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
+
+import {
+  PROCESSO_STATUS_CONFIG,
+  type ProcessoStatusValue,
+} from '../../components/processo-status-badge'
 
 const MODO_BUSCA_OPTIONS = [
   { value: 'nome', label: 'Nome' },
@@ -106,18 +115,31 @@ function hintTermoBusca(modo: 'nome' | 'cpf' | 'cns', termo: string, buscando: b
 
 export interface PacienteBuscaSolicitacaoSectionProps {
   initialPaciente?: TfdPacienteAtendimentoDetalhe | null
+  processoIdAtual?: string
+  processoAbertoInicial?: ProcessoAbertoPacienteOutput | null
   onPacienteSelecionado: (paciente: TfdPacienteAtendimentoDetalhe) => void
   onPacienteRemovido?: () => void
   disabled?: boolean
 }
 
+function labelStatusProcesso(status: string): string {
+  return status in PROCESSO_STATUS_CONFIG
+    ? PROCESSO_STATUS_CONFIG[status as ProcessoStatusValue].label
+    : status
+}
+
 export function PacienteBuscaSolicitacaoSection({
   initialPaciente = null,
+  processoIdAtual,
+  processoAbertoInicial = null,
   onPacienteSelecionado,
   onPacienteRemovido,
   disabled = false,
 }: PacienteBuscaSolicitacaoSectionProps) {
   const [paciente, setPaciente] = useState<TfdPacienteAtendimentoDetalhe | null>(initialPaciente)
+  const [processoAberto, setProcessoAberto] = useState<ProcessoAbertoPacienteOutput | null>(
+    processoAbertoInicial
+  )
   const [modoBusca, setModoBusca] = useState<'nome' | 'cpf' | 'cns'>('nome')
   const [termoBusca, setTermoBusca] = useState('')
   const [resultados, setResultados] = useState<ResultadoBusca[]>([])
@@ -127,6 +149,42 @@ export function PacienteBuscaSolicitacaoSection({
   const [buscaSemResultado, setBuscaSemResultado] = useState(false)
   const [isPending, startTransition] = useTransition()
   const buscaRequestId = useRef(0)
+
+  const carregarProcessoAberto = useCallback(async (pacienteId: string) => {
+    const response = await verificarProcessoAbertoPacienteTfd({
+      pacienteId,
+      excludeProcessoId: processoIdAtual,
+    })
+    if (response.success) {
+      setProcessoAberto(response.data)
+    }
+  }, [processoIdAtual])
+
+  useEffect(() => {
+    if (initialPaciente) {
+      setPaciente(initialPaciente)
+    }
+  }, [initialPaciente])
+
+  useEffect(() => {
+    if (processoAbertoInicial != null) {
+      setProcessoAberto(processoAbertoInicial)
+    }
+  }, [processoAbertoInicial])
+
+  useEffect(() => {
+    if (!paciente?.id) {
+      setProcessoAberto(null)
+      return
+    }
+    if (
+      processoAbertoInicial != null &&
+      initialPaciente?.id === paciente.id
+    ) {
+      return
+    }
+    void carregarProcessoAberto(paciente.id)
+  }, [paciente?.id, carregarProcessoAberto, processoAbertoInicial, initialPaciente?.id])
 
   useEffect(() => {
     if (!listaAberta || paciente) {
@@ -215,12 +273,14 @@ export function PacienteBuscaSolicitacaoSection({
       setResultados([])
       setTermoBusca('')
       setBuscaSemResultado(false)
+      await carregarProcessoAberto(response.data.id)
       onPacienteSelecionado(response.data)
     })
   }
 
   function handleTrocarPaciente() {
     setPaciente(null)
+    setProcessoAberto(null)
     setResultados([])
     setTermoBusca('')
     setErro(null)
@@ -236,9 +296,52 @@ export function PacienteBuscaSolicitacaoSection({
     (buscando || resultados.length > 0 || buscaSemResultado || Boolean(erro))
 
   return (
+    <div className="flex flex-col gap-[var(--space-4)]">
+      {paciente && processoAberto && processoAberto.processos.length > 0 ? (
+        <Alert
+          variant="warning"
+          titulo={
+            processoAberto.totalAbertos > 1 ? 'Processos em andamento' : 'Processo em andamento'
+          }
+          role="status"
+        >
+          <div className="flex flex-col gap-[var(--space-3)]">
+            <p>
+              {processoAberto.totalAbertos > 1 ? (
+                <>
+                  Há <strong>{processoAberto.totalAbertos}</strong> processos em aberto/andamento
+                  para <strong>{paciente.nome}</strong>.
+                </>
+              ) : (
+                <>
+                  Já existe um processo em aberto/andamento para{' '}
+                  <strong>{paciente.nome}</strong>.
+                </>
+              )}
+            </p>
+            <ul className="flex flex-col gap-[var(--space-2)]">
+              {processoAberto.processos.map((processo) => (
+                <li
+                  key={processo.processoId}
+                  className="flex flex-col gap-[var(--space-2)] sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <span>
+                    Protocolo <strong>{processo.protocolo}</strong> — status{' '}
+                    <strong>{labelStatusProcesso(processo.statusProcesso)}</strong>
+                  </span>
+                  <Button variant="outline" asChild className="w-fit shrink-0">
+                    <Link href={`/saude/tfd/processos/${processo.processoId}`}>Ver processo</Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </Alert>
+      ) : null}
+
     <Card header={<CardHeader>Identificação do paciente</CardHeader>} bodyClassName={formFieldsStackClassName()}>
       <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-        Busque um paciente já cadastrado na base do município para vincular à solicitação TFD. As
+        Busque um paciente já cadastrado na base do município para vincular ao processo TFD. As
         opções aparecem automaticamente conforme você digita. O cadastro e a edição de pacientes são
         feitos na área de Pacientes.
       </p>
@@ -325,6 +428,7 @@ export function PacienteBuscaSolicitacaoSection({
             </Link>
             .
           </p>
+
         </div>
       ) : (
         <>
@@ -416,7 +520,7 @@ export function PacienteBuscaSolicitacaoSection({
                 </p>
               ) : null}
               <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                O paciente precisa estar cadastrado na base do município antes de abrir a solicitação.{' '}
+                O paciente precisa estar cadastrado na base do município antes de abrir o processo.{' '}
                 <Link
                   href="/saude/tfd/pacientes/novo"
                   className="font-medium text-[var(--color-primary)] hover:underline"
@@ -429,5 +533,6 @@ export function PacienteBuscaSolicitacaoSection({
         </>
       )}
     </Card>
+    </div>
   )
 }

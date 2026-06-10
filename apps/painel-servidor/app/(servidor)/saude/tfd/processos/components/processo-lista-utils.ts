@@ -1,4 +1,22 @@
 // BLOCO-8-PROCESSOS
+import { formatDateOnlyBr, formatDateTimeBr } from '@saude/ui'
+
+import { formatCpfDisplay, formatTelefoneBr } from '../../components/paciente-form-utils'
+
+export function formatPacienteCpf(cpf: string | null | undefined): string {
+  if (!cpf || cpf.length !== 11) {
+    return '—'
+  }
+  return formatCpfDisplay(cpf)
+}
+
+export function formatPacienteTelefone(telefone: string | null | undefined): string {
+  if (!telefone) {
+    return '—'
+  }
+  return formatTelefoneBr(telefone)
+}
+
 export function formatRelativeTime(iso: string): string {
   const date = new Date(iso)
   const diffMs = Date.now() - date.getTime()
@@ -21,21 +39,23 @@ export function formatRelativeTime(iso: string): string {
     return `há ${diffDays} dia${diffDays === 1 ? '' : 's'}`
   }
 
-  return date.toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return formatDateOnlyBr(iso)
 }
 
 export function formatDateTimeFull(iso: string): string {
-  return new Date(iso).toLocaleString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  })
+  return formatDateTimeBr(iso)
+}
+
+export const currencyFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+})
+
+export function formatValorEstimadoProcesso(valor: number): string {
+  if (!Number.isFinite(valor) || valor <= 0) {
+    return '—'
+  }
+  return currencyFormatter.format(valor)
 }
 
 export function labelSolicitacoes(count: number): string {

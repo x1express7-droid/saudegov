@@ -3,6 +3,7 @@
 
 import type { TfdPacienteAtendimentoDetalhe } from '@saude/mod-saude-tfd/client'
 import type {
+  ProcessoAbertoPacienteOutput,
   TfdEspecialidadeListItem,
   TfdProcedimentoListItem,
   TfdSolicitacaoOrigemRetornoItem,
@@ -17,6 +18,7 @@ import { PacienteBuscaSolicitacaoSection } from './paciente-busca-solicitacao-se
 export interface AtendimentoTfdFormProps {
   initialPaciente?: TfdPacienteAtendimentoDetalhe | null
   processoId?: string
+  processoAbertoInicial?: ProcessoAbertoPacienteOutput | null
   especialidades: TfdEspecialidadeListItem[]
   procedimentos: TfdProcedimentoListItem[]
   solicitacoesOrigem: TfdSolicitacaoOrigemRetornoItem[]
@@ -25,6 +27,7 @@ export interface AtendimentoTfdFormProps {
 export function AtendimentoTfdForm({
   initialPaciente,
   processoId,
+  processoAbertoInicial = null,
   especialidades,
   procedimentos,
   solicitacoesOrigem: solicitacoesOrigemInitial,
@@ -41,7 +44,6 @@ export function AtendimentoTfdForm({
 
     if (paciente.id !== initialPaciente?.id) {
       router.replace(`/saude/tfd/nova?pacienteId=${paciente.id}`)
-      router.refresh()
     }
   }
 
@@ -50,13 +52,14 @@ export function AtendimentoTfdForm({
     setPacienteNome('')
     setPacienteCpf('')
     router.replace('/saude/tfd/nova')
-    router.refresh()
   }
 
   return (
     <div className="flex flex-col gap-8">
       <PacienteBuscaSolicitacaoSection
         initialPaciente={initialPaciente}
+        processoIdAtual={processoId}
+        processoAbertoInicial={processoAbertoInicial}
         onPacienteSelecionado={handlePacienteSelecionado}
         onPacienteRemovido={handlePacienteRemovido}
       />
@@ -76,7 +79,7 @@ export function AtendimentoTfdForm({
         />
       ) : (
         <Alert variant="info">
-          Selecione um paciente cadastrado acima para habilitar o preenchimento da solicitação TFD.
+          Selecione um paciente cadastrado acima para habilitar o preenchimento do processo TFD.
         </Alert>
       )}
     </div>

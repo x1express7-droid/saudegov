@@ -1,15 +1,11 @@
 import type { TfdPrestacaoListItem } from '@saude/mod-saude-tfd/client'
+import { formatDateOnlyBr } from '@saude/ui'
 
 // BLOCO-14-PRESTACOES
 export const VIAGEM_DETAIL_BASE = '/saude/tfd/viagens'
 
 export function formatDataPrazo(iso: string): string {
-  const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
-  return new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  return formatDateOnlyBr(iso)
 }
 
 export function formatValorBrl(valor: number): string {

@@ -6,6 +6,7 @@ import {
 } from '@saude/core-auth/server'
 import {
   getAgendamentosPorProcesso,
+  getProcessoFinanceiroTfd,
   getProcessoTfdDetalhe,
   TFD_PERMISSIONS,
   type TfdProcessoDadosClinicosOutput,
@@ -85,7 +86,10 @@ export default async function ProcessoTfdDetalhePage({ params }: ProcessoTfdDeta
     notFound()
   }
 
-  const agendamentos = await getAgendamentosPorProcesso(id)
+  const [agendamentos, financeiro] = await Promise.all([
+    getAgendamentosPorProcesso(id),
+    getProcessoFinanceiroTfd(id),
+  ])
 
   const podeVerDadosClinicos =
     hasPermission(session, TFD_PERMISSIONS.REGISTRAR_DADOS_CLINICOS) ||
@@ -137,6 +141,7 @@ export default async function ProcessoTfdDetalhePage({ params }: ProcessoTfdDeta
         session={session}
         processo={processo}
         agendamentos={agendamentos}
+        financeiro={financeiro}
         dadosClinicos={dadosClinicos}
         podeVerDadosClinicos={podeVerDadosClinicos}
       />

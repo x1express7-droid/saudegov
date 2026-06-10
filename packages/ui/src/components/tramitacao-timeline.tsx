@@ -12,6 +12,7 @@ export interface TramitacaoTimelineProps {
   tramitacoes: TramitacaoItem[]
   className?: string
   titulo?: string
+  ocultarTitulo?: boolean
 }
 
 const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
@@ -30,6 +31,7 @@ export function TramitacaoTimeline({
   tramitacoes,
   className,
   titulo = 'Histórico de tramitações',
+  ocultarTitulo = false,
 }: TramitacaoTimelineProps) {
   const ordered = sortReverseChronologically(tramitacoes)
 
@@ -51,9 +53,11 @@ export function TramitacaoTimeline({
 
   return (
     <section className={cn('w-full', className)} aria-label={titulo}>
-      <h2 className="mb-[var(--space-4)] text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]">
-        {titulo}
-      </h2>
+      {!ocultarTitulo ? (
+        <h2 className="mb-[var(--space-4)] text-[length:var(--text-lg)] font-semibold text-[var(--color-text)]">
+          {titulo}
+        </h2>
+      ) : null}
       <ol className="relative space-y-0">
         {ordered.map((item, index) => {
           const isLatest = index === 0

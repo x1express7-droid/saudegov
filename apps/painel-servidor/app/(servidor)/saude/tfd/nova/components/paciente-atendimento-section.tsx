@@ -31,7 +31,7 @@ import {
   onlyDigits,
   termoProntoParaBuscaPaciente,
   validarCpfObrigatorio,
-  validarEmailObrigatorio,
+  validarEmailOpcional,
   validarTelefoneCelularObrigatorio,
 } from '../../components/paciente-form-utils'
 import { buscarEnderecoPorCep } from '../../../../../../lib/viacep'
@@ -374,7 +374,7 @@ export function PacienteAtendimentoSection({
   }
 
   function handleEmailBlur() {
-    setEmailErro(validarEmailObrigatorio(form.email))
+    setEmailErro(validarEmailOpcional(form.email))
   }
 
   function handleCelularBlur() {
@@ -385,7 +385,7 @@ export function PacienteAtendimentoSection({
     setErro(null)
 
     const cpfValidacao = validarCpfObrigatorio(form.cpf)
-    const emailValidacao = validarEmailObrigatorio(form.email)
+    const emailValidacao = validarEmailOpcional(form.email)
     const celularValidacao = validarTelefoneCelularObrigatorio(form.telefoneCelular)
 
     setCpfErro(cpfValidacao)
@@ -453,12 +453,12 @@ export function PacienteAtendimentoSection({
     variant === 'cadastro' ? 'Dados do paciente' : 'Identificação do paciente'
   const descricaoCard =
     variant === 'cadastro'
-      ? `Busque um paciente já cadastrado para editar ou preencha os campos para um novo cadastro na base do município. Nome, e-mail, telefone celular e CPF são obrigatórios.${
+      ? `Busque um paciente já cadastrado para editar ou preencha os campos para um novo cadastro na base do município. Nome, telefone celular e CPF são obrigatórios.${
           cadsusEnabled
             ? ' Com a integração CADSUS ativa, você também pode importar dados pelo CNS.'
             : ''
         }`
-      : `Busque por nome, CPF ou CNS na base do município ou cadastre um novo paciente preenchendo os campos abaixo. Nome, e-mail, telefone celular e CPF são obrigatórios.${
+      : `Busque por nome, CPF ou CNS na base do município ou cadastre um novo paciente preenchendo os campos abaixo. Nome, telefone celular e CPF são obrigatórios.${
           cadsusEnabled
             ? ' Com a integração CADSUS ativa, você também pode importar dados pelo CNS.'
             : ''
@@ -473,7 +473,7 @@ export function PacienteAtendimentoSection({
   const formularioPronto =
     form.nome.trim().length >= 3 &&
     !validarCpfObrigatorio(form.cpf) &&
-    !validarEmailObrigatorio(form.email) &&
+    !validarEmailOpcional(form.email) &&
     !validarTelefoneCelularObrigatorio(form.telefoneCelular)
 
   const exibirLista =
@@ -590,7 +590,7 @@ export function PacienteAtendimentoSection({
           />
           <Input
             id="paciente-email"
-            label="E-mail"
+            label="E-mail (opcional)"
             type="email"
             value={form.email}
             onChange={(event) => {
@@ -601,7 +601,6 @@ export function PacienteAtendimentoSection({
             }}
             onBlur={handleEmailBlur}
             disabled={disabled || isPending}
-            required
             error={emailErro ?? undefined}
           />
           <Input

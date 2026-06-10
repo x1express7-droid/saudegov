@@ -1,28 +1,18 @@
 'use client'
 
 import type { ProcessoTfdListItem } from '@saude/mod-saude-tfd/client'
-import {
-  Button,
-  Card,
-  EmptyState,
-  UrgenciaBadge,
-  cn,
-  type TfdUrgencia,
-  TFD_URGENCIA_CONFIG,
-} from '@saude/ui'
+import { Button, EmptyState, cn } from '@saude/ui'
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { useRouter } from 'next/navigation'
 
 import {
   PROCESSO_STATUS_CONFIG,
   type ProcessoStatusValue,
 } from '../../components/processo-status-badge'
-import { formatDateTimeFull, formatRelativeTime, labelSolicitacoes } from './processo-lista-utils'
+import { ProcessoKanbanPacienteCard } from './processo-kanban-paciente-card'
+import { agruparProcessosPorPaciente } from './processo-paciente-grupo'
 
 // BLOCO-8-PROCESSOS
-const PROCESSOS_BASE = '/saude/tfd/processos'
-
 const KANBAN_STATUS_ORDER = [
   'ABERTO',
   'EM_ANDAMENTO',
@@ -48,17 +38,6 @@ const STATUS_COUNT_CLASSES: Record<ProcessoBadgeColor, string> = {
   indigo: 'bg-[var(--color-indigo-light)] text-[var(--color-indigo)]',
 }
 
-function asTfdUrgencia(value: string | null): TfdUrgencia | null {
-  if (!value || !(value in TFD_URGENCIA_CONFIG)) {
-    return null
-  }
-  return value as TfdUrgencia
-}
-
-function muitoUrgenteClassName(urgencia: string | null): string {
-  return urgencia === 'MUITO_URGENTE' ? 'border-l-4 border-l-[var(--color-error)]' : ''
-}
-
 function statusCountClassName(color: ProcessoBadgeColor, count: number): string {
   if (count === 0) {
     return 'bg-[var(--color-bg)] text-[var(--color-text-muted)]'
@@ -72,18 +51,33 @@ export interface ProcessoKanbanViewProps {
 }
 
 export function ProcessoKanbanView({ items, mostrarEncerrados }: ProcessoKanbanViewProps) {
-  const router = useRouter()
+  const grupos = useMemo(() => agruparProcessosPorPaciente(items), [items])
 
   const colunas = useMemo(() => {
     const statusList = mostrarEncerrados
       ? [...KANBAN_STATUS_ORDER, ...KANBAN_ENCERRADAS]
       : [...KANBAN_STATUS_ORDER]
 
-    return statusList.map((status) => ({
-      status,
-      items: items.filter((item) => item.statusProcesso === status),
-    }))
-  }, [items, mostrarEncerrados])
+    return statusList.map((status) => {
+      const gruposNaColuna = grupos
+        .map((grupo) => ({
+          grupo,
+          processosNoStatus: [
+            ...grupo.processosAtivos.filter((processo) => processo.statusProcesso === status),
+            ...(mostrarEncerrados
+              ? grupo.processosEncerrados.filter((processo) => processo.statusProcesso === status)
+              : []),
+          ],
+        }))
+        .filter((entry) => entry.processosNoStatus.length > 0)
+
+      return {
+        status,
+        grupos: gruposNaColuna.map((entry) => entry.grupo),
+        count: gruposNaColuna.reduce((acc, entry) => acc + entry.processosNoStatus.length, 0),
+      }
+    })
+  }, [grupos, mostrarEncerrados])
 
   if (items.length === 0) {
     return (
@@ -104,7 +98,6 @@ export function ProcessoKanbanView({ items, mostrarEncerrados }: ProcessoKanbanV
       <div className="flex min-w-max gap-[var(--space-4)]">
         {colunas.map((coluna) => {
           const statusConfig = PROCESSO_STATUS_CONFIG[coluna.status]
-          const count = coluna.items.length
 
           return (
             <div
@@ -118,69 +111,28 @@ export function ProcessoKanbanView({ items, mostrarEncerrados }: ProcessoKanbanV
                 <span
                   className={cn(
                     'rounded-full px-2 py-0.5 text-[length:var(--text-xs)] font-bold',
-                    statusCountClassName(statusConfig.color, count)
+                    statusCountClassName(statusConfig.color, coluna.count)
                   )}
                 >
-                  {count}
+                  {coluna.count}
                 </span>
               </div>
 
               <div className="min-h-64 rounded-[var(--radius-lg)] bg-[var(--color-bg)] p-[var(--space-2)]">
-                {count === 0 ? (
+                {coluna.count === 0 ? (
                   <p className="flex min-h-64 items-center justify-center text-center text-[length:var(--text-xs)] text-[var(--color-text-subtle)]">
                     Nenhum processo
                   </p>
                 ) : (
                   <div className="flex flex-col gap-[var(--space-2)]">
-                    {coluna.items.map((item) => {
-                      const processoHref = `${PROCESSOS_BASE}/${item.processoId}`
-                      const urgencia = asTfdUrgencia(item.urgenciaMaisCritica)
-
-                      return (
-                        <Card
-                          key={item.processoId}
-                          bodyClassName="p-[var(--space-3)]"
-                          className={cn(
-                            'cursor-pointer transition-shadow hover:shadow-md',
-                            muitoUrgenteClassName(item.urgenciaMaisCritica)
-                          )}
-                          onClick={() => router.push(processoHref)}
-                          onKeyDown={(event) => {
-                            if (event.key === 'Enter' || event.key === ' ') {
-                              event.preventDefault()
-                              router.push(processoHref)
-                            }
-                          }}
-                          role="button"
-                          tabIndex={0}
-                        >
-                          <p className="truncate font-mono text-[length:var(--text-xs)] font-bold text-[var(--color-text)]">
-                            {item.protocolo}
-                          </p>
-                          <p className="truncate text-[length:var(--text-sm)] font-medium text-[var(--color-text)]">
-                            {item.paciente?.nome ?? '—'}
-                          </p>
-                          <p className="mt-1 text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                            {labelSolicitacoes(item.solicitacoes.length)}
-                          </p>
-                          <div className="mt-[var(--space-2)] flex items-center justify-between gap-[var(--space-2)]">
-                            {urgencia ? (
-                              <UrgenciaBadge urgencia={urgencia} size="sm" />
-                            ) : (
-                              <span className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                                —
-                              </span>
-                            )}
-                            <span
-                              className="shrink-0 text-[length:var(--text-xs)] text-[var(--color-text-subtle)]"
-                              title={formatDateTimeFull(item.ultimaMovimentacaoEm)}
-                            >
-                              {formatRelativeTime(item.ultimaMovimentacaoEm)}
-                            </span>
-                          </div>
-                        </Card>
-                      )
-                    })}
+                    {coluna.grupos.map((grupo) => (
+                      <ProcessoKanbanPacienteCard
+                        key={`${coluna.status}-${grupo.grupoId}`}
+                        grupo={grupo}
+                        statusColuna={coluna.status}
+                        mostrarEncerrados={mostrarEncerrados}
+                      />
+                    ))}
                   </div>
                 )}
               </div>

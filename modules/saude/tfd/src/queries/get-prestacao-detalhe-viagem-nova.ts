@@ -3,6 +3,7 @@ import { getPrismaForTenant } from '@saude/core-db'
 
 import type { TfdComprovanteVistoItem } from '../types/tfd.types'
 import { buscarItensDespesaDaViagemNova } from '../utils/itens-despesa-viagem-nova'
+import { limparDescricaoItemPc } from '../utils/map-tipo-despesa-pc'
 
 export interface PrestacaoDetalheViagemNovaOutput {
   id: string
@@ -24,6 +25,7 @@ export interface PrestacaoDetalheViagemNovaOutput {
     descricao: string | null
     comprovanteAnexoId: string | null
     responsavelPagamento: string
+    agendamentoId: string | null
     transporteId: string | null
     createdAt: string
   }>
@@ -101,9 +103,10 @@ export async function getPrestacaoDetalheViagemNova(
     id: item.id,
     tipo: item.tipo,
     valor: Number(item.valor),
-    descricao: item.descricao,
+    descricao: limparDescricaoItemPc(item.descricao),
     comprovanteAnexoId: item.comprovante_anexo_id,
     responsavelPagamento: item.responsavel_pagamento,
+    agendamentoId: item.agendamento_id,
     transporteId: item.transporte_id,
     createdAt: item.created_at.toISOString(),
   }))

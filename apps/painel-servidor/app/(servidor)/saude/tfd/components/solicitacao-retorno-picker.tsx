@@ -59,8 +59,8 @@ export function SolicitacaoRetornoPicker({
           error={errors.solicitacaoOrigemId?.message}
           hint={
             semOpcoes
-              ? `Nenhuma solicitação concluída encontrada para este paciente (ID ${pacienteId.slice(0, 8)}…).`
-              : 'Vincule a uma solicitação TFD concluída do mesmo paciente.'
+              ? `Nenhum processo concluído encontrado para este paciente (ID ${pacienteId.slice(0, 8)}…).`
+              : 'Vincule a um processo TFD concluído do mesmo paciente.'
           }
         />
       )}

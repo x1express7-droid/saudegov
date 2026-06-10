@@ -3,30 +3,17 @@
 import type { ProcessoTfdListItem } from '@saude/mod-saude-tfd/client'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
-import {
-  Button,
-  DataTable,
-  EmptyState,
-  ProtocoloBadge,
-  StatusBadge,
-  TFD_STATUS_CONFIG,
-  TFD_URGENCIA_CONFIG,
-  UrgenciaBadge,
-  type ColumnDef,
-  type TfdStatus,
-  type TfdUrgencia,
-} from '@saude/ui'
+import { Button, EmptyState } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
-import { ProcessoAcoesCelula } from './processo-acoes-celula'
 import { ProcessoKanbanView } from './processo-kanban-view'
 import { ProcessoListaCompactaView } from './processo-lista-compacta-view'
 import { ProcessoListaPaginacao } from './processo-lista-paginacao'
-import { ProcessoSolicitacoesCelula } from './processo-solicitacoes-celula'
-import { formatDateTimeFull, formatRelativeTime } from './processo-lista-utils'
+import { agruparProcessosPorPaciente } from './processo-paciente-grupo'
+import { ProcessoTabelaAgrupadaView } from './processo-tabela-agrupada-view'
 import {
   ProcessoViewToggle,
   TFD_PROCESSOS_VIEW_STORAGE_KEY,
@@ -34,25 +21,6 @@ import {
 } from './processo-view-toggle'
 
 // BLOCO-8-PROCESSOS
-const PROCESSOS_BASE = '/saude/tfd/processos'
-const PACIENTE_BASE = '/saude/tfd/pacientes'
-
-type ProcessoTableRow = ProcessoTfdListItem & { urgencia?: string }
-
-function asTfdStatus(value: string | null): TfdStatus | null {
-  if (!value || !(value in TFD_STATUS_CONFIG)) {
-    return null
-  }
-  return value as TfdStatus
-}
-
-function asTfdUrgencia(value: string | null): TfdUrgencia | null {
-  if (!value || !(value in TFD_URGENCIA_CONFIG)) {
-    return null
-  }
-  return value as TfdUrgencia
-}
-
 function buildQueryString(
   currentSearch: string,
   patch: Record<string, string | undefined>
@@ -95,6 +63,7 @@ export interface ProcessoListaProps {
   perPage: number
   session: SaudeMunicSession
   podeNovaSolicitacao: boolean
+  mostrarEncerradosInicial?: boolean
 }
 
 export function ProcessoLista({
@@ -104,15 +73,15 @@ export function ProcessoLista({
   perPage,
   session,
   podeNovaSolicitacao,
+  mostrarEncerradosInicial = false,
 }: ProcessoListaProps) {
   const router = useRouter()
   const pathname = usePathname()
 
   const isMobile = useMediaQuery('(max-width: 767px)')
-  const isTablet = useMediaQuery('(min-width: 768px) and (max-width: 1023px)')
 
   const [viewMode, setViewMode] = useState<ProcessoViewMode>('table')
-  const [mostrarEncerrados, setMostrarEncerrados] = useState(false)
+  const [mostrarEncerrados, setMostrarEncerrados] = useState(mostrarEncerradosInicial)
 
   useEffect(() => {
     const stored = window.localStorage.getItem(TFD_PROCESSOS_VIEW_STORAGE_KEY)
@@ -121,6 +90,10 @@ export function ProcessoLista({
     }
   }, [])
 
+  useEffect(() => {
+    setMostrarEncerrados(mostrarEncerradosInicial)
+  }, [mostrarEncerradosInicial])
+
   const handleViewModeChange = useCallback((nextView: ProcessoViewMode) => {
     setViewMode(nextView)
     window.localStorage.setItem(TFD_PROCESSOS_VIEW_STORAGE_KEY, nextView)
@@ -128,13 +101,11 @@ export function ProcessoLista({
 
   const effectiveViewMode: ProcessoViewMode = isMobile ? 'list' : viewMode
 
-  const tableData = useMemo<ProcessoTableRow[]>(
-    () =>
-      items.map((item) => ({
-        ...item,
-        urgencia: item.urgenciaMaisCritica ?? undefined,
-      })),
-    [items]
+  const grupos = useMemo(() => agruparProcessosPorPaciente(items), [items])
+  const totalPacientesPagina = grupos.length
+  const totalProcessosAtivosPagina = grupos.reduce(
+    (acc, grupo) => acc + grupo.processosAtivos.length,
+    0
   )
 
   const handlePaginationChange = useCallback(
@@ -150,105 +121,20 @@ export function ProcessoLista({
     [pathname, router]
   )
 
-  const handleRowClick = useCallback(
-    (row: ProcessoTfdListItem) => {
-      router.push(`${PROCESSOS_BASE}/${row.processoId}`)
-    },
-    [router]
-  )
-
-  const columns = useMemo<ColumnDef<ProcessoTableRow>[]>(() => {
-    const baseColumns: ColumnDef<ProcessoTableRow>[] = [
-      {
-        id: 'protocolo',
-        header: 'Processo',
-        cell: ({ row }) => (
-          <div
-            className="min-w-0"
-            onClick={(event) => event.stopPropagation()}
-            onKeyDown={(event) => event.stopPropagation()}
-          >
-            <ProtocoloBadge
-              protocolo={row.original.protocolo}
-              className="max-w-full [&_.protocolo]:font-mono [&_.protocolo]:text-xs [&_.protocolo]:font-bold [&_.protocolo]:whitespace-nowrap"
-            />
-          </div>
-        ),
-      },
-      {
-        id: 'paciente',
-        header: 'Paciente',
-        cell: ({ row }) =>
-          row.original.paciente ? (
-            <Link
-              href={`${PACIENTE_BASE}/${row.original.paciente.id}`}
-              className="text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] hover:underline"
-              onClick={(event) => event.stopPropagation()}
-            >
-              {row.original.paciente.nome}
-            </Link>
-          ) : (
-            <span className="text-[var(--color-text-muted)]">—</span>
-          ),
-      },
-      {
-        id: 'status',
-        header: 'Status',
-        cell: ({ row }) => {
-          const status = asTfdStatus(row.original.statusSolicitacaoMaisRecente)
-          if (!status) {
-            return <span className="text-[var(--color-text-muted)]">—</span>
-          }
-          return <StatusBadge status={status} size="sm" />
-        },
-      },
-      {
-        id: 'urgencia',
-        header: 'Urgência',
-        cell: ({ row }) => {
-          const urgencia = asTfdUrgencia(row.original.urgenciaMaisCritica)
-          if (!urgencia) {
-            return <span className="text-[var(--color-text-muted)]">—</span>
-          }
-          return <UrgenciaBadge urgencia={urgencia} size="sm" />
-        },
-      },
-    ]
-
-    if (!isTablet) {
-      baseColumns.push({
-        id: 'solicitacoes',
-        header: 'Solicitações',
-        cell: ({ row }) => (
-          <ProcessoSolicitacoesCelula solicitacoes={row.original.solicitacoes} />
-        ),
+  const handleMostrarEncerradosChange = useCallback(
+    (checked: boolean) => {
+      setMostrarEncerrados(checked)
+      const currentSearch =
+        typeof window !== 'undefined' ? window.location.search.replace(/^\?/, '') : ''
+      const query = buildQueryString(currentSearch, {
+        mostrarEncerrados: checked ? 'true' : undefined,
+        page: undefined,
       })
-    }
-
-    baseColumns.push(
-      {
-        id: 'movimentacao',
-        header: 'Última movimentação',
-        cell: ({ row }) => (
-          <span
-            className="whitespace-nowrap text-[length:var(--text-xs)] text-[var(--color-text-muted)]"
-            title={formatDateTimeFull(row.original.ultimaMovimentacaoEm)}
-          >
-            {formatRelativeTime(row.original.ultimaMovimentacaoEm)}
-          </span>
-        ),
-      },
-      {
-        id: 'acoes',
-        header: 'Ações',
-        cell: ({ row }) => (
-          <ProcessoAcoesCelula item={row.original} podeNovaSolicitacao={podeNovaSolicitacao} />
-        ),
-      }
-    )
-
-    return baseColumns
-  }, [isTablet, podeNovaSolicitacao])
+      const href = query ? `${pathname}?${query}` : pathname
+      router.push(href)
+    },
+    [pathname, router]
+  )
 
   const paginationProps = { page, perPage, total, onPaginationChange: handlePaginationChange }
 
@@ -260,24 +146,26 @@ export function ProcessoLista({
     </PermissionGate>
   )
 
+  const resumoRegistros = mostrarEncerrados
+    ? `${totalPacientesPagina} paciente${totalPacientesPagina === 1 ? '' : 's'} nesta página · ${items.length} processo${items.length === 1 ? '' : 's'}`
+    : `${totalPacientesPagina} paciente${totalPacientesPagina === 1 ? '' : 's'} nesta página · ${totalProcessosAtivosPagina} em andamento · ${total} no total`
+
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
       <div className="flex flex-col gap-[var(--space-3)] md:flex-row md:items-center md:justify-between">
         <div className="flex flex-wrap items-center gap-[var(--space-3)]">
           <ProcessoViewToggle value={viewMode} onChange={handleViewModeChange} />
-          {effectiveViewMode === 'kanban' ? (
-            <label className="hidden cursor-pointer items-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)] md:inline-flex">
-              <input
-                type="checkbox"
-                className="size-4 rounded border-[var(--color-border)]"
-                checked={mostrarEncerrados}
-                onChange={(event) => setMostrarEncerrados(event.target.checked)}
-              />
-              Mostrar encerrados
-            </label>
-          ) : null}
+          <label className="inline-flex cursor-pointer items-center gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)]">
+            <input
+              type="checkbox"
+              className="size-4 rounded border-[var(--color-border)]"
+              checked={mostrarEncerrados}
+              onChange={(event) => handleMostrarEncerradosChange(event.target.checked)}
+            />
+            Mostrar encerrados
+          </label>
           <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            {total} registros
+            {resumoRegistros}
           </p>
         </div>
         <PermissionGate session={session} permission={TFD_PERMISSIONS.ABRIR_SOLICITACAO}>
@@ -288,16 +176,15 @@ export function ProcessoLista({
       </div>
 
       {effectiveViewMode === 'table' ? (
-        <DataTable
-          data={tableData}
-          columns={columns}
-          pagination={{ page, perPage, total }}
-          onPaginationChange={handlePaginationChange}
-          onRowClick={handleRowClick}
-          emptyMessage="Nenhum processo encontrado"
-          emptyDescription="Ajuste os filtros ou abra um novo processo para iniciar o fluxo TFD."
-          emptyCta={emptyCta}
-        />
+        <>
+          <ProcessoTabelaAgrupadaView
+            items={items}
+            podeNovaSolicitacao={podeNovaSolicitacao}
+            mostrarEncerrados={mostrarEncerrados}
+            emptyCta={emptyCta}
+          />
+          {items.length > 0 ? <ProcessoListaPaginacao {...paginationProps} /> : null}
+        </>
       ) : null}
 
       {effectiveViewMode === 'kanban' ? (
@@ -324,7 +211,11 @@ export function ProcessoLista({
           />
         ) : (
           <>
-            <ProcessoListaCompactaView items={items} />
+            <ProcessoListaCompactaView
+              items={items}
+              podeNovaSolicitacao={podeNovaSolicitacao}
+              mostrarEncerrados={mostrarEncerrados}
+            />
             <ProcessoListaPaginacao {...paginationProps} />
           </>
         )

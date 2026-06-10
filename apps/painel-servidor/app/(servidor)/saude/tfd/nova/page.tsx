@@ -8,6 +8,7 @@ import {
 import {
   getEspecialidadesTfd,
   getPacienteAtendimentoTfd,
+  getProcessoAbertoPacienteTfd,
   getProcessoTfdDetalhe,
   getProcedimentosTfd,
   getSolicitacoesOrigemRetornoTfd,
@@ -21,7 +22,7 @@ import { notFound } from 'next/navigation'
 import { AtendimentoTfdForm } from './components/atendimento-tfd-form'
 
 export const metadata: Metadata = {
-  title: 'Atendimento da Solicitação TFD',
+  title: 'Atendimento do Processo TFD',
 }
 
 const CATALOGO_PER_PAGE = TFD_CATALOGO_OPCOES_PER_PAGE
@@ -76,31 +77,36 @@ export default async function NovaSolicitacaoPage({ searchParams }: NovaSolicita
 
   const pacienteIdForOrigem = initialPaciente?.id
 
-  const [especialidadesResult, procedimentosResult, solicitacoesOrigem] = await Promise.all([
-    getEspecialidadesTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
-    getProcedimentosTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
-    pacienteIdForOrigem
-      ? getSolicitacoesOrigemRetornoTfd({ pacienteId: pacienteIdForOrigem })
-      : Promise.resolve([]),
-  ])
+  const [especialidadesResult, procedimentosResult, solicitacoesOrigem, processoAbertoInicial] =
+    await Promise.all([
+      getEspecialidadesTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
+      getProcedimentosTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
+      pacienteIdForOrigem
+        ? getSolicitacoesOrigemRetornoTfd({ pacienteId: pacienteIdForOrigem })
+        : Promise.resolve([]),
+      pacienteIdForOrigem
+        ? getProcessoAbertoPacienteTfd(pacienteIdForOrigem, processoId)
+        : Promise.resolve(null),
+    ])
 
   return (
     <div className="flex flex-col gap-8">
       <PageHeader
-        titulo="Atendimento da Solicitação TFD"
-        subtitulo="Busque o paciente cadastrado na base do município e registre a solicitação de Tratamento Fora de Domicílio."
+        titulo="Atendimento do Processo TFD"
+        subtitulo="Busque o paciente cadastrado na base do município e registre o processo de Tratamento Fora de Domicílio."
         breadcrumbs={[
           { label: 'Processos TFD', href: '/saude/tfd/processos' },
           ...(processoId
             ? [{ label: 'Processo', href: `/saude/tfd/processos/${processoId}` }]
             : []),
-          { label: 'Nova solicitação' },
+          { label: 'Novo processo' },
         ]}
       />
 
       <AtendimentoTfdForm
         initialPaciente={initialPaciente}
         processoId={processoId}
+        processoAbertoInicial={processoAbertoInicial}
         especialidades={especialidadesResult.items}
         procedimentos={procedimentosResult.items}
         solicitacoesOrigem={solicitacoesOrigem}

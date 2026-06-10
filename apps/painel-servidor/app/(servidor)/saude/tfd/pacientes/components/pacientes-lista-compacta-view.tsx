@@ -1,20 +1,12 @@
 'use client'
 
 import type { TfdPacienteVinculadoItem } from '@saude/mod-saude-tfd/client'
-import { Badge, Button, Card } from '@saude/ui'
+import { Badge, Button, Card, formatDateTimeBr } from '@saude/ui'
 import { ChevronRight } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 // BLOCO-7-PACIENTES
 const PACIENTE_BASE = '/saude/tfd/pacientes'
-
-function formatDataVinculo(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
 
 function labelCns(cnsMascarado: string | null): string {
   return cnsMascarado ?? 'Sem CNS'
@@ -50,7 +42,7 @@ export function PacientesListaCompactaView({
 
               <div className="min-w-0 flex-1">
                 <p className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  Vinculado em {formatDataVinculo(item.vinculadoEm)}
+                  Vinculado em {formatDateTimeBr(item.vinculadoEm)}
                 </p>
               </div>
 

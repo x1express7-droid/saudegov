@@ -21,6 +21,7 @@ import {
   DialogContent,
   DialogFooter,
   EmptyState,
+  formatDateOnlyBr,
   Select,
   Spinner,
   TramitacaoTimeline,
@@ -32,18 +33,22 @@ import { useMemo, useState, useTransition } from 'react'
 
 import { ViagemOcupacaoPanel } from '../../components/viagem-ocupacao-panel'
 import { buscarAgendamentosDisponiveisViagemDetalheAction } from '../actions'
-import { PrestacaoViagemView } from './prestacao-viagem-view'
-import { ViagemAcoesSidebar } from './viagem-acoes-sidebar'
+import { PrestacaoWorkflowView } from './prestacao-workflow-view'
 import { SegmentosViagemSection } from './segmentos-viagem-section'
+import {
+  ViagemContextoBar,
+  type ViagemDetalheTabId,
+} from './viagem-contexto-bar'
+import { ViagemFinanceiroSection } from './viagem-financeiro-section'
+import type { ViagemFinanceiroPcOutput } from '@saude/mod-saude-tfd/client'
 
-const TABS = [
+const TABS: Array<{ id: ViagemDetalheTabId; label: string }> = [
   { id: 'detalhes', label: 'Detalhes' },
   { id: 'passageiros', label: 'Passageiros' },
-  { id: 'historico', label: 'Histórico' },
+  { id: 'financeiro', label: 'Financeiro' },
   { id: 'prestacao', label: 'Prestação de Contas' },
-] as const
-
-type TabId = (typeof TABS)[number]['id']
+  { id: 'historico', label: 'Histórico' },
+]
 
 const TIPO_TRECHO_LABEL: Record<string, string> = {
   IDA: 'Ida',
@@ -92,19 +97,21 @@ export interface ViagemDetalheViewProps {
   session: SaudeMunicSession
   viagem: ViagemDetalheOutput
   prestacao: PrestacaoDetalheViagemNovaOutput | null
+  financeiro: ViagemFinanceiroPcOutput | null
   processoIdForUpload?: string | null
-  initialTab?: TabId
+  initialTab?: ViagemDetalheTabId
 }
 
 export function ViagemDetalheView({
   session,
   viagem,
   prestacao,
+  financeiro,
   processoIdForUpload = null,
   initialTab,
 }: ViagemDetalheViewProps) {
   const router = useRouter()
-  const [tab, setTab] = useState<TabId>(initialTab ?? 'detalhes')
+  const [tab, setTab] = useState<ViagemDetalheTabId>(initialTab ?? 'detalhes')
   const [isPending, startTransition] = useTransition()
   const [serverError, setServerError] = useState<string | null>(null)
 
@@ -144,7 +151,7 @@ export function ViagemDetalheView({
 
   const agendamentoOptions = agendamentosDisponiveis.map((item) => ({
     value: item.id,
-    label: `${item.paciente.nome} — ${item.dataConsulta} (${item.tipoAtendimento})`,
+    label: `${item.paciente.nome} — ${formatDateOnlyBr(item.dataConsulta)} (${item.tipoAtendimento})`,
   }))
 
   async function abrirVincularDialog() {
@@ -199,35 +206,55 @@ export function ViagemDetalheView({
     })
   }
 
+  const financeiroBadge =
+    financeiro != null && financeiro.totais.estimadoSolicitacoes > 0
+      ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(
+          financeiro.totais.estimadoSolicitacoes
+        )
+      : null
+
   return (
-    <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
-      <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
-        <div
-          className="flex flex-wrap gap-[var(--space-1)] border-b border-[var(--color-border)]"
-          role="tablist"
-          aria-label="Seções da viagem TFD"
-        >
-          {TABS.map((item) => {
-            const selected = tab === item.id
-            return (
-              <button
-                key={item.id}
-                type="button"
-                role="tab"
-                aria-selected={selected}
-                className={[
-                  'rounded-t-[var(--radius)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium transition-colors',
-                  selected
-                    ? 'border border-b-0 border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-primary)]'
-                    : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
-                ].join(' ')}
-                onClick={() => setTab(item.id)}
-              >
-                {item.label}
-              </button>
-            )
-          })}
-        </div>
+    <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
+      <ViagemContextoBar
+        session={session}
+        viagem={viagem}
+        financeiro={financeiro}
+        onNavigateTab={setTab}
+      />
+
+      <div
+        className="flex flex-wrap gap-[var(--space-1)] border-b border-[var(--color-border)]"
+        role="tablist"
+        aria-label="Seções da viagem TFD"
+      >
+        {TABS.map((item) => {
+          const selected = tab === item.id
+          const showFinanceiroTotal = item.id === 'financeiro' && financeiroBadge
+
+          return (
+            <button
+              key={item.id}
+              type="button"
+              role="tab"
+              aria-selected={selected}
+              className={[
+                'inline-flex items-center gap-[var(--space-2)] rounded-t-[var(--radius)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium transition-colors',
+                selected
+                  ? 'border border-b-0 border-[var(--color-border)] bg-[var(--color-surface)] text-[var(--color-primary)]'
+                  : 'text-[var(--color-text-muted)] hover:text-[var(--color-text)]',
+              ].join(' ')}
+              onClick={() => setTab(item.id)}
+            >
+              {item.label}
+              {showFinanceiroTotal ? (
+                <span className="hidden font-mono text-[length:var(--text-xs)] tabular-nums text-[var(--color-success)] sm:inline">
+                  {financeiroBadge}
+                </span>
+              ) : null}
+            </button>
+          )
+        })}
+      </div>
 
         {serverError && tab !== 'detalhes' ? <ServerError message={serverError} /> : null}
 
@@ -366,7 +393,7 @@ export function ViagemDetalheView({
                           {passageiro.agendamento.paciente.nome}
                         </p>
                         <p className="mt-1 text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-                          Consulta: {passageiro.agendamento.dataConsulta} ·{' '}
+                          Consulta: {formatDateOnlyBr(passageiro.agendamento.dataConsulta)} ·{' '}
                           {passageiro.acompanhantesCount} acompanhante(s) · Presença:{' '}
                           {passageiro.statusPresenca}
                         </p>
@@ -405,25 +432,26 @@ export function ViagemDetalheView({
           </Card>
         ) : null}
 
-        {tab === 'prestacao' ? (
-          <PrestacaoViagemView
+        {tab === 'financeiro' && financeiro ? (
+          <ViagemFinanceiroSection
             session={session}
             viagemNovaId={viagem.id}
             viagemStatus={viagem.status}
             processoId={processoIdForUpload}
-            viagem={{
-              veiculo: viagem.veiculo,
-              dataSaida: viagem.dataSaida,
-              dataChegada: viagem.dataChegada,
-              segmentos: viagem.segmentos,
-              passageiros: viagem.passageiros,
-            }}
+            segmentos={viagem.segmentos}
+            financeiro={financeiro}
             prestacao={prestacao}
           />
         ) : null}
-      </div>
 
-      <ViagemAcoesSidebar session={session} viagem={viagem} />
+        {tab === 'prestacao' ? (
+          <PrestacaoWorkflowView
+            session={session}
+            viagemNovaId={viagem.id}
+            viagemStatus={viagem.status}
+            prestacao={prestacao}
+          />
+        ) : null}
 
       <Dialog open={vincularOpen} onOpenChange={setVincularOpen}>
         <DialogContent titulo="Vincular agendamento">

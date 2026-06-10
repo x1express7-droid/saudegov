@@ -13,6 +13,7 @@ const TFD_TIPOS_DESPESA_TODOS = [
   'TRANSPORTE_FLUVIAL',
   'DIARIA_PACIENTE',
   'DIARIA_ACOMPANHANTE',
+  'DIARIA_LIVRE',
   'OBITO',
   'DEVOLUCAO',
   'TRANSPORTE',
@@ -28,6 +29,7 @@ const TFD_TIPOS_DESPESA_ATIVOS = [
   'TRANSPORTE_FLUVIAL',
   'DIARIA_PACIENTE',
   'DIARIA_ACOMPANHANTE',
+  'DIARIA_LIVRE',
   'OBITO',
   'DEVOLUCAO',
 ] as const
@@ -209,6 +211,7 @@ const TIPOS_DESPESA_COMPROVANTE_OBRIGATORIO = [
 export const registrarDespesaViagemNovaSchema = z
   .object({
     viagemNovaId: viagemNovaIdField,
+    agendamentoId: agendamentoIdField.optional(),
     segmentoId: segmentoIdField,
     tipo: tipoDespesaAtivoField,
     descricao: despesaCamposComuns.descricao,
@@ -257,6 +260,15 @@ export const excluirItemDespesaViagemNovaSchema = z.object({
 })
 
 export type ExcluirItemDespesaViagemNovaInput = z.infer<typeof excluirItemDespesaViagemNovaSchema>
+
+export const importarCustosPlanejadosViagemPcSchema = z.object({
+  viagemNovaId: viagemNovaIdField,
+  agendamentoId: agendamentoIdField.optional(),
+})
+
+export type ImportarCustosPlanejadosViagemPcInput = z.infer<
+  typeof importarCustosPlanejadosViagemPcSchema
+>
 
 export const enviarPrestacaoContasViagemNovaSchema = z.object({
   viagemNovaId: viagemNovaIdField,

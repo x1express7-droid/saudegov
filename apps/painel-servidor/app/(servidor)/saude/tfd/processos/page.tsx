@@ -35,6 +35,7 @@ interface ProcessosTfdPageProps {
     protocolo?: string
     dataInicio?: string
     dataFim?: string
+    mostrarEncerrados?: string
     page?: string
     perPage?: string
   }>
@@ -72,14 +73,17 @@ export default async function ProcessosTfdPage({ searchParams }: ProcessosTfdPag
   const params = await searchParams
   const page = parsePositiveInt(params.page, 1)
   const perPage = Math.min(100, parsePositiveInt(params.perPage, 20))
+  const statusProcesso = parseStatusProcesso(params.statusProcesso)
+  const mostrarEncerrados = params.mostrarEncerrados === 'true'
 
   const { items, total } = await getListaProcessosTfd({
-    statusProcesso: parseStatusProcesso(params.statusProcesso),
+    statusProcesso,
     urgencia: parseUrgencia(params.urgencia),
     pacienteNome: params.pacienteNome?.trim() || undefined,
     protocolo: params.protocolo?.trim() || undefined,
     dataInicio: params.dataInicio?.trim() || undefined,
     dataFim: params.dataFim?.trim() || undefined,
+    somenteAtivos: !mostrarEncerrados && !statusProcesso,
     page,
     perPage,
   })
@@ -105,6 +109,7 @@ export default async function ProcessosTfdPage({ searchParams }: ProcessosTfdPag
           perPage={perPage}
           session={session}
           podeNovaSolicitacao={podeNovaSolicitacao}
+          mostrarEncerrados={mostrarEncerrados}
         />
       </Suspense>
     </div>

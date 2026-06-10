@@ -1,4 +1,8 @@
 import type { TfdFonteRecursoValor } from '@saude/mod-saude-tfd/client'
+import {
+  formatDateOnlyBr,
+  formatDateTimeBr as formatDateTimeBrDisplay,
+} from '@saude/ui'
 
 // BLOCO-11-SALDOS
 
@@ -22,32 +26,15 @@ export function formatBrl(value: number): string {
 }
 
 export function formatCompetenciaBr(inicio: string, fim: string): string {
-  const toBr = (iso: string) => {
-    const [year, month, day] = iso.split('-')
-    if (!year || !month || !day) {
-      return iso
-    }
-    return `${day}/${month}/${year}`
-  }
-  return `${toBr(inicio)} — ${toBr(fim)}`
+  return `${formatDateOnlyBr(inicio)} — ${formatDateOnlyBr(fim)}`
 }
 
 export function formatDateTimeBr(iso: string): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(new Date(iso))
+  return formatDateTimeBrDisplay(iso)
 }
 
 export function formatExtratoData(iso: string): string {
-  return new Intl.DateTimeFormat('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  }).format(new Date(iso))
+  return formatDateOnlyBr(iso)
 }
 
 export function formatExtratoHora(iso: string): string {

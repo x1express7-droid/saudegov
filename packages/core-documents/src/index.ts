@@ -41,7 +41,12 @@ export {
   type PdfTabelaColuna,
 } from './pdf/gerador-pdf-relatorio'
 
-export { formatDataHoraBr, DEFAULT_EXPORT_TIMEZONE } from './utils/format-data-hora'
+export {
+  formatDataHoraBr,
+  formatDateBr,
+  formatDateBrFromDate,
+  DEFAULT_EXPORT_TIMEZONE,
+} from './utils/format-data-hora'
 
 export {
   formatRodapeExport,

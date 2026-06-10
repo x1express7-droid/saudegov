@@ -612,7 +612,9 @@ export interface TfdDashboardOperacionalOutput {
 
 export interface TfdCustoPlanejadoItem {
   id: string
-  descricao: string
+  tipo: string | null
+  descricao: string | null
+  quantidadeDias: number | null
   valor: number
   createdAt: string
   updatedAt: string
@@ -623,6 +625,7 @@ export interface TfdProjecaoFinanceiraOutput {
   status: string
   custos: TfdCustoPlanejadoItem[]
   valorTotal: number
+  podeRegistrarComposicao: boolean
   reservaAtiva: {
     id: string
     valor: number
@@ -1000,6 +1003,8 @@ export interface ProcessoTfdListItem {
   paciente: {
     id: string
     nome: string
+    cpf: string | null
+    telefone: string | null
   } | null
   solicitacoes: Array<{
     id: string
@@ -1007,6 +1012,8 @@ export interface ProcessoTfdListItem {
   }>
   urgenciaMaisCritica: string | null
   statusSolicitacaoMaisRecente: string | null
+  /** Soma dos custos planejados de todas as solicitações vinculadas ao processo. */
+  valorTotalEstimado: number
   ultimaMovimentacaoEm: string
   createdAt: string
 }
@@ -1098,6 +1105,34 @@ export interface ProcessoTfdDetalheOutput {
     createdAt: string
     uploaderId: string | null
   }>
+}
+
+export interface ProcessoFinanceiroSolicitacaoItem {
+  solicitacaoId: string
+  protocolo: string
+  status: string
+  tipoAtendimento: string
+  valorTotalEstimado: number
+  projecaoConfirmada: boolean
+  solicitacaoOrigem: { id: string; protocolo: string } | null
+  saldoVinculado: { id: string; descricao: string } | null
+  reservaAtiva: {
+    id: string
+    valor: number
+    status: string
+    saldoId: string
+    saldoDescricao: string
+    confirmadaEm: string
+  } | null
+  custos: TfdCustoPlanejadoItem[]
+}
+
+export interface ProcessoFinanceiroOutput {
+  processoId: string
+  totalEstimadoProcesso: number
+  totalReservado: number
+  solicitacoesComCusto: number
+  solicitacoes: ProcessoFinanceiroSolicitacaoItem[]
 }
 
 export interface PerfilServidorOutput {

@@ -10,6 +10,7 @@ export type ItemDespesaViagemNovaRow = {
   comprovante_anexo_id: string | null
   responsavel_pagamento: string
   viagem_nova_id: string | null
+  agendamento_id: string | null
   transporte_id: string | null
   created_at: Date
 }
@@ -22,6 +23,7 @@ const itemDespesaSelect = {
   comprovante_anexo_id: true,
   responsavel_pagamento: true,
   viagem_nova_id: true,
+  agendamento_id: true,
   transporte_id: true,
   created_at: true,
 } as const

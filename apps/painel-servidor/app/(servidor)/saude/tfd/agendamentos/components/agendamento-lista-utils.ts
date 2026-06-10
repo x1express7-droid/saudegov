@@ -1,5 +1,5 @@
 import type { TfdAgendamentoConsultaListItem } from '@saude/mod-saude-tfd/client'
-import { TFD_STATUS_CONFIG, type TfdStatus } from '@saude/ui'
+import { formatDateHoraBr, TFD_STATUS_CONFIG, type TfdStatus } from '@saude/ui'
 
 // BLOCO-9-AGENDAMENTOS
 export const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
@@ -10,13 +10,7 @@ export const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
 }
 
 export function formatDataHoraAgendamento(dataConsulta: string, horaConsulta: string | null): string {
-  const parsed = dataConsulta.length === 10 ? `${dataConsulta}T12:00:00` : dataConsulta
-  const data = new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-  return horaConsulta ? `${data} às ${horaConsulta}` : data
+  return formatDateHoraBr(dataConsulta, horaConsulta)
 }
 
 export function labelTipoAtendimento(tipo: string): string {

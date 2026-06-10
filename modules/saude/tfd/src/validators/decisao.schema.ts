@@ -7,10 +7,7 @@ export const decidirSolicitacaoSchema = z.object({
   decisao: z.enum(decisaoValues, {
     errorMap: () => ({ message: 'Decisão inválida.' }),
   }),
-  fundamentacao: z
-    .string()
-    .trim()
-    .min(20, 'A fundamentação deve ter pelo menos 20 caracteres.'),
+  fundamentacao: z.string().trim(),
 })
 
 export type DecidirSolicitacaoInput = z.infer<typeof decidirSolicitacaoSchema>

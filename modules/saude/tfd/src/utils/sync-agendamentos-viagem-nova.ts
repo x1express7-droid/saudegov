@@ -1,5 +1,5 @@
 import type { Prisma } from '@prisma/client'
-import { registrarTramitacao } from '@saude/core-documents'
+import { formatDateBrFromDate, registrarTramitacao } from '@saude/core-documents'
 
 export interface AgendamentoViagemNovaSyncItem {
   id: string
@@ -95,7 +95,7 @@ export async function transicionarAgendamentosParaRealizadoNaViagem(
       },
     })
 
-    const dataConsultaLabel = agendamento.data_consulta.toISOString().slice(0, 10)
+    const dataConsultaLabel = formatDateBrFromDate(agendamento.data_consulta)
 
     await registrarTramitacao(
       {

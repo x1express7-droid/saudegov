@@ -2,12 +2,13 @@
 
 import { TfdSolicitacaoDetalhe } from '@saude/mod-saude-tfd/client'
 import { anexarDocumentosSolicitacaoTfd } from '@saude/mod-saude-tfd/actions/solicitacao'
-import { Alert, Card, CardHeader, EmptyState } from '@saude/ui'
+import { Alert, Badge, EmptyState } from '@saude/ui'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { SolicitacaoLaudoUpload } from '../../components/solicitacao-laudo-upload'
 import { DocumentosAnexoDownload } from '../../processos/[id]/components/documentos-anexo-download'
+import { SolicitacaoSecaoAccordion } from './solicitacao-secao-accordion'
 
 const dateTimeFormatter = new Intl.DateTimeFormat('pt-BR', {
   day: '2-digit',
@@ -99,14 +100,15 @@ export function SolicitacaoAnexosSection({
   )
 
   return (
-    <Card
-      header={
-        <div>
-          <CardHeader>Documentos da solicitação</CardHeader>
-          <p className="mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
-            Arquivos vinculados exclusivamente a esta solicitação.
-          </p>
-        </div>
+    <SolicitacaoSecaoAccordion
+      titulo="Documentos da solicitação"
+      subtitulo="Arquivos vinculados exclusivamente a esta solicitação."
+      badge={
+        anexos.length > 0 ? (
+          <Badge variant="gray" size="sm">
+            {anexos.length}
+          </Badge>
+        ) : undefined
       }
     >
       <div className="flex flex-col gap-[var(--space-4)]">
@@ -165,6 +167,6 @@ export function SolicitacaoAnexosSection({
           </Alert>
         ) : null}
       </div>
-    </Card>
+    </SolicitacaoSecaoAccordion>
   )
 }

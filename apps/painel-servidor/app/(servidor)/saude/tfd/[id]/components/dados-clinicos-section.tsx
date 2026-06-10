@@ -4,10 +4,12 @@ import { salvarDadosClinicosTfd } from '@saude/mod-saude-tfd/actions/processo'
 import type { TfdProcessoDadosClinicosOutput } from '@saude/mod-saude-tfd/client'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
-import { Button, Card, CardHeader, Textarea, formFieldsStackClassName } from '@saude/ui'
+import { Badge, Button, Textarea, formFieldsStackClassName } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useMemo, useState, useTransition } from 'react'
+
+import { SolicitacaoSecaoAccordion } from './solicitacao-secao-accordion'
 
 function hasConteudoClinico(dados: TfdProcessoDadosClinicosOutput): boolean {
   return Boolean(
@@ -32,7 +34,6 @@ export function DadosClinicosSection({
   dadosIniciais,
 }: DadosClinicosSectionProps) {
   const router = useRouter()
-  const [aberto, setAberto] = useState(hasConteudoClinico(dadosIniciais))
   const [editando, setEditando] = useState(false)
   const [subjetivo, setSubjetivo] = useState(dadosIniciais.subjetivo ?? '')
   const [objetivo, setObjetivo] = useState(dadosIniciais.objetivo ?? '')
@@ -64,7 +65,6 @@ export function DadosClinicosSection({
     setMotivoQuadro('')
     setObservacao('')
     setEditando(true)
-    setAberto(true)
     setServerError(null)
   }
 
@@ -92,22 +92,23 @@ export function DadosClinicosSection({
   }
 
   return (
-    <Card
-      header={<CardHeader>Dados clínicos (SOAP)</CardHeader>}
+    <SolicitacaoSecaoAccordion
+      titulo="Dados clínicos (SOAP)"
+      defaultOpen={preenchido}
+      badge={
+        preenchido ? (
+          <Badge variant="green" size="sm">
+            Preenchido
+          </Badge>
+        ) : (
+          <Badge variant="gray" size="sm">
+            Pendente
+          </Badge>
+        )
+      }
       bodyClassName={formFieldsStackClassName()}
     >
-      <details
-        open={aberto}
-        onToggle={(event) => setAberto(event.currentTarget.open)}
-        className="group"
-      >
-        <summary className="cursor-pointer list-none text-[length:var(--text-sm)] font-medium text-[var(--color-primary)] marker:content-none [&::-webkit-details-marker]:hidden">
-          <span className="inline-flex items-center gap-2">
-            {aberto ? 'Recolher seção' : 'Expandir seção'}
-          </span>
-        </summary>
-
-        <div className="mt-[var(--space-4)] flex flex-col gap-[var(--space-4)] border-t border-[var(--color-border)] pt-[var(--space-4)]">
+      <div className="flex flex-col gap-[var(--space-4)]">
           {preenchido ? (
             <div className="flex flex-col gap-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
               <p>
@@ -264,8 +265,7 @@ export function DadosClinicosSection({
               </Button>
             </PermissionGate>
           ) : null}
-        </div>
-      </details>
-    </Card>
+      </div>
+    </SolicitacaoSecaoAccordion>
   )
 }

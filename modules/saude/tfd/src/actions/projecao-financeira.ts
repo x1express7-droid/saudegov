@@ -4,6 +4,7 @@ import { Prisma } from '@prisma/client'
 import { revalidatePath } from 'next/cache'
 import {
   assertModuleActive,
+  hasPermission,
   requirePermission,
   requireTenantRole,
 } from '@saude/core-auth/server'
@@ -25,11 +26,13 @@ import {
   confirmarProjecaoFinanceiraSchema,
   excluirCustoPlanejadoSchema,
 } from '../validators/projecao-financeira.schema'
+import { registrarCustoComposicaoSolicitacaoSchema } from '../validators/composicao-custo.schema'
 
 const MODULO_TFD = 'saude.tfd'
 const STATUS_PERMITE_PLANEJAMENTO: TfdStatusSolicitacao[] = [
   'ENVIADO',
   'EM_ANALISE',
+  'PENDENTE',
   'APROVADO',
 ]
 
@@ -186,7 +189,7 @@ async function calcularDisponivelSaldo(
   }).valorDisponivel
 }
 
-function mapBusinessError(error: unknown): ActionResponse<void> {
+function mapBusinessError<T = void>(error: unknown): ActionResponse<T> {
   if (error instanceof ProjecaoFinanceiraBusinessError) {
     return { success: false, error: error.message }
   }
@@ -325,8 +328,13 @@ export async function excluirCustoPlanejadoSolicitacaoTfd(
   rawInput: unknown
 ): Promise<ActionResponse<void>> {
   await assertModuleActive('saude', 'tfd')
-  const session = await requireTenantRole('GESTOR')
-  await requirePermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO)
+  const session = await requireTenantRole('SERVIDOR')
+  if (
+    !hasPermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA) &&
+    !hasPermission(session, TFD_PERMISSIONS.GERENCIAR_SALDO)
+  ) {
+    return { success: false, error: 'Sem permissão para excluir custos da solicitação.' }
+  }
 
   const parsed = excluirCustoPlanejadoSchema.safeParse(rawInput)
   if (!parsed.success) {
@@ -499,6 +507,67 @@ export async function confirmarProjecaoFinanceiraSolicitacaoTfd(
     return { success: true, data: undefined }
   } catch (error) {
     console.error('[confirmarProjecaoFinanceiraSolicitacaoTfd] Erro:', error)
+    return mapBusinessError(error)
+  }
+}
+
+export async function registrarCustoComposicaoSolicitacaoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<{ custoId: string }>> {
+  await assertModuleActive('saude', 'tfd')
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.REGISTRAR_DESPESA)
+
+  const parsed = registrarCustoComposicaoSolicitacaoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+
+  const { solicitacaoId, tipo, descricao, valor, quantidadeDias } = parsed.data
+  const tenantId = session.user.tenantId!
+
+  try {
+    const db = await getPrismaForTenant(tenantId)
+    const solicitacao = await assertPodeEditarCustos(db, tenantId, solicitacaoId)
+
+    const custo = await db.tfdSolicitacaoCustoPlanejado.create({
+      data: {
+        tenant_id: tenantId,
+        solicitacao_id: solicitacao.id,
+        tipo,
+        descricao: descricao?.trim() || null,
+        quantidade_dias: quantidadeDias ?? null,
+        valor: roundMoney(valor),
+      },
+      select: { id: true },
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'CREATE',
+      entidade: 'saude_tfd_solicitacao_custo_planejado',
+      entidadeId: custo.id,
+      payloadDepois: {
+        solicitacaoId: solicitacao.id,
+        protocolo: solicitacao.protocolo,
+        tipo,
+        descricao: descricao ?? null,
+        quantidadeDias: quantidadeDias ?? null,
+        valor: roundMoney(valor),
+        modulo: MODULO_TFD,
+        origem: 'COMPOSICAO_SOLICITACAO',
+      },
+    })
+
+    revalidateSolicitacaoPaths(solicitacaoId)
+    return { success: true, data: { custoId: custo.id } }
+  } catch (error) {
+    console.error('[registrarCustoComposicaoSolicitacaoTfd] Erro:', error)
     return mapBusinessError(error)
   }
 }

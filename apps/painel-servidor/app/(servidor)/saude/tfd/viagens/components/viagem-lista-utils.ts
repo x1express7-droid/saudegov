@@ -1,34 +1,19 @@
 import type { ViagemTfdListItem } from '@saude/mod-saude-tfd/client'
+import { formatDateHoraBr, formatDateOnlyBr } from '@saude/ui'
 
 // BLOCO-10-VIAGENS
 export const VIAGENS_BASE = '/saude/tfd/viagens'
-
-// ViagemTfdListItem não expõe nomes de passageiros — apenas totalPassageiros.
-// Filtro por paciente omitido conforme especificação do bloco.
 
 export function viagemDetalheHref(id: string): string {
   return `${VIAGENS_BASE}/${id}`
 }
 
 export function formatDataSaida(data: string, hora: string | null): string {
-  const parsed = data.length === 10 ? `${data}T12:00:00` : data
-  const label = new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-  return hora ? `${label} às ${hora}` : label
+  return formatDateHoraBr(data, hora)
 }
 
 export function formatDataSaidaCurta(data: string): string {
-  const parsed = data.length === 10 ? `${data}T12:00:00` : data
-  return new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+  return formatDateOnlyBr(data)
 }
 
 export function labelRota(item: Pick<ViagemTfdListItem, 'origemDescricao' | 'destinoDescricao'>): string {

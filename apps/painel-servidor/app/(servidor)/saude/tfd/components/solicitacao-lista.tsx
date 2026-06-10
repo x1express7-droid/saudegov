@@ -32,7 +32,6 @@ import {
 } from './solicitacao-view-toggle'
 
 // BLOCO-6-REVISADO
-const TFD_DETAIL_BASE = '/saude/tfd'
 const DEFAULT_PER_PAGE = 20
 
 const STATUS_VALUES = new Set<string>([
@@ -193,13 +192,6 @@ export function SolicitacaoLista({
     [pathname, router, searchParams]
   )
 
-  const handleRowClick = useCallback(
-    (row: TfdSolicitacaoListItem) => {
-      router.push(`${TFD_DETAIL_BASE}/${row.id}`)
-    },
-    [router]
-  )
-
   const columns = useMemo<ColumnDef<TfdSolicitacaoListItem>[]>(() => {
     const baseColumns: ColumnDef<TfdSolicitacaoListItem>[] = [
       {
@@ -330,7 +322,6 @@ export function SolicitacaoLista({
             columns={columns}
             pagination={{ page, perPage, total }}
             onPaginationChange={handlePaginationChange}
-            onRowClick={handleRowClick}
             emptyMessage="Nenhuma solicitação encontrada"
             emptyDescription="Ajuste os filtros ou abra uma nova solicitação para iniciar o fluxo TFD."
             emptyCta={

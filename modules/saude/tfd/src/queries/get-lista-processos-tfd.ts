@@ -3,6 +3,7 @@ import { getPrismaForTenant } from '@saude/core-db'
 import type { ProcessoStatus, TfdStatusSolicitacao, TfdUrgencia } from '@prisma/client'
 
 import type { ProcessoTfdListItem } from '../types/tfd.types'
+import { PROCESSO_STATUS_ABERTOS } from './get-processo-aberto-paciente-tfd'
 
 export type { ProcessoTfdListItem } from '../types/tfd.types'
 
@@ -27,6 +28,8 @@ export interface GetListaProcessosFiltros {
   protocolo?: string
   dataInicio?: string
   dataFim?: string
+  /** Quando true (padrão sem filtro de status), retorna apenas processos em aberto/andamento. */
+  somenteAtivos?: boolean
   page?: number
   perPage?: number
 }
@@ -52,6 +55,24 @@ function calcularUrgenciaMaisCritica(
   return ativas.reduce<TfdUrgencia>((maior, atual) => {
     return URGENCIA_RANK[atual.urgencia] > URGENCIA_RANK[maior] ? atual.urgencia : maior
   }, ativas[0]!.urgencia)
+}
+
+function roundMoney(value: number): number {
+  return Math.round(value * 100) / 100
+}
+
+function calcularValorTotalEstimado(
+  solicitacoes: Array<{ custos_planejados: Array<{ valor: unknown }> }>
+): number {
+  const total = solicitacoes.reduce((accSolicitacao, solicitacao) => {
+    const subtotal = solicitacao.custos_planejados.reduce(
+      (accCusto, custo) => accCusto + Number(custo.valor),
+      0
+    )
+    return accSolicitacao + subtotal
+  }, 0)
+
+  return roundMoney(total)
 }
 
 function calcularStatusSolicitacaoMaisRecente(
@@ -102,7 +123,11 @@ export async function getListaProcessosTfd(
     tenant_id: tenantId,
     modulo: MODULO_TFD,
     ...(session.user.role === 'SERVIDOR' ? { setor_id: session.user.setorId! } : {}),
-    ...(filtros.statusProcesso ? { status: filtros.statusProcesso } : {}),
+    ...(filtros.statusProcesso
+      ? { status: filtros.statusProcesso }
+      : filtros.somenteAtivos !== false
+        ? { status: { in: PROCESSO_STATUS_ABERTOS } }
+        : {}),
     ...(createdAtFilter ? { created_at: createdAtFilter } : {}),
     ...(pacienteNome
       ? {
@@ -146,6 +171,10 @@ export async function getListaProcessosTfd(
           select: {
             id: true,
             nome: true,
+            cpf: true,
+            telefone_celular: true,
+            telefone: true,
+            telefone_alternativo: true,
           },
         },
         tfd_solicitacoes: {
@@ -155,6 +184,9 @@ export async function getListaProcessosTfd(
             urgencia: true,
             status: true,
             updated_at: true,
+            custos_planejados: {
+              select: { valor: true },
+            },
           },
           orderBy: { created_at: 'desc' },
         },
@@ -174,6 +206,12 @@ export async function getListaProcessosTfd(
       ? {
           id: row.paciente.id,
           nome: row.paciente.nome,
+          cpf: row.paciente.cpf,
+          telefone:
+            row.paciente.telefone_celular ??
+            row.paciente.telefone ??
+            row.paciente.telefone_alternativo ??
+            null,
         }
       : null,
     solicitacoes: row.tfd_solicitacoes.map((solicitacao) => ({
@@ -182,6 +220,7 @@ export async function getListaProcessosTfd(
     })),
     urgenciaMaisCritica: calcularUrgenciaMaisCritica(row.tfd_solicitacoes),
     statusSolicitacaoMaisRecente: calcularStatusSolicitacaoMaisRecente(row.tfd_solicitacoes),
+    valorTotalEstimado: calcularValorTotalEstimado(row.tfd_solicitacoes),
     ultimaMovimentacaoEm: row.updated_at.toISOString(),
     createdAt: row.created_at.toISOString(),
   }))

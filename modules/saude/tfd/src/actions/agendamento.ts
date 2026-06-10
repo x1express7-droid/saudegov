@@ -7,7 +7,7 @@ import {
   requireTenantRole,
 } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
-import { createAuditLog, registrarTramitacao } from '@saude/core-documents'
+import { createAuditLog, formatDateBrFromDate, registrarTramitacao } from '@saude/core-documents'
 import { dispararNotificacao, NOTIFICATION_EVENTS } from '@saude/core-notifications'
 import type { ActionResponse } from '@saude/validators'
 
@@ -650,8 +650,8 @@ export async function registrarRetornoAgendamento(
         statusSolicitacaoNovo = 'AGUARDANDO_PC'
       }
 
-      const dataConsultaLabel = agendamentoLocked.data_consulta.toISOString().slice(0, 10)
-      const prazoEnvioLabel = prazoEnvioAt.toISOString().slice(0, 10)
+      const dataConsultaLabel = formatDateBrFromDate(agendamentoLocked.data_consulta)
+      const prazoEnvioLabel = formatDateBrFromDate(prazoEnvioAt)
 
       await registrarTramitacao(
         {

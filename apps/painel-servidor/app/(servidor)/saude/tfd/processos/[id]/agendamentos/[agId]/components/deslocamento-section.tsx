@@ -13,6 +13,7 @@ import {
   DialogContent,
   DialogFooter,
   EmptyState,
+  formatDateOnlyBr,
   ProtocoloBadge,
   Select,
   Spinner,
@@ -52,14 +53,6 @@ function labelTipoTrecho(tipo: string): string {
   return TIPO_TRECHO_LABEL[tipo] ?? tipo
 }
 
-function formatDataSaida(iso: string): string {
-  const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
-  return new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-}
 
 function formatVagasLabel(viagem: ViagemParaVincularItem): string {
   if (viagem.capacidadeVeiculo === null) {
@@ -101,7 +94,7 @@ function ViagemVinculadaCard({ viagem }: { viagem: ViagemPorAgendamentoItem }) {
             Data de saída
           </dt>
           <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-            {formatDataSaida(viagem.dataSaida)}
+            {formatDateOnlyBr(viagem.dataSaida)}
           </dd>
         </div>
         <div className="sm:col-span-2">
@@ -175,7 +168,7 @@ function ViagemSelecaoItem({
         <ViagemStatusBadge status={viagem.status} size="sm" />
       </div>
       <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)]">
-        Saída: {formatDataSaida(viagem.dataSaida)}
+        Saída: {formatDateOnlyBr(viagem.dataSaida)}
       </p>
       <p className="mt-1 text-[length:var(--text-sm)] text-[var(--color-text)]">
         {viagem.origemDescricao}
