@@ -6,7 +6,37 @@ export const MIN_VALOR_COMPROVANTE = 50
 const viagemIdField = z.string().uuid('ID da viagem inválido.')
 const comprovanteAnexoIdField = z.string().uuid('ID do comprovante inválido.').optional()
 
-const tipoDespesaField = z.enum(['TRANSPORTE', 'ALIMENTACAO', 'HOSPEDAGEM', 'OUTRO'], {
+// PC-PARTE-2: todos os 11 valores (inclui legado para histórico)
+const TFD_TIPOS_DESPESA_TODOS = [
+  'TRANSPORTE_TERRESTRE',
+  'TRANSPORTE_AEREO',
+  'TRANSPORTE_FLUVIAL',
+  'DIARIA_PACIENTE',
+  'DIARIA_ACOMPANHANTE',
+  'OBITO',
+  'DEVOLUCAO',
+  'TRANSPORTE',
+  'ALIMENTACAO',
+  'HOSPEDAGEM',
+  'OUTRO',
+] as const
+
+// PC-PARTE-2: apenas tipos ativos para novos lançamentos na viagem nova
+const TFD_TIPOS_DESPESA_ATIVOS = [
+  'TRANSPORTE_TERRESTRE',
+  'TRANSPORTE_AEREO',
+  'TRANSPORTE_FLUVIAL',
+  'DIARIA_PACIENTE',
+  'DIARIA_ACOMPANHANTE',
+  'OBITO',
+  'DEVOLUCAO',
+] as const
+
+const tipoDespesaField = z.enum(TFD_TIPOS_DESPESA_TODOS, {
+  errorMap: () => ({ message: 'Tipo de despesa inválido.' }),
+})
+
+const tipoDespesaAtivoField = z.enum(TFD_TIPOS_DESPESA_ATIVOS, {
   errorMap: () => ({ message: 'Tipo de despesa inválido.' }),
 })
 
@@ -170,10 +200,15 @@ export const registrarDespesaTransporteSchema = z
 export type RegistrarDespesaTransporteInput = z.infer<typeof registrarDespesaTransporteSchema>
 
 // BLOCO-4.1: comprovanteAnexoId opcional — sem mínimo de valor por despesa
+// PC-PARTE-2: viagem nova aceita apenas tipos ativos (Portaria 55/1999)
 export const registrarDespesaViagemNovaSchema = z.object({
   viagemNovaId: viagemNovaIdField,
   segmentoId: segmentoIdField,
-  ...despesaCamposComuns,
+  tipo: tipoDespesaAtivoField,
+  descricao: despesaCamposComuns.descricao,
+  valor: despesaCamposComuns.valor,
+  comprovanteAnexoId: despesaCamposComuns.comprovanteAnexoId,
+  responsavelPagamento: despesaCamposComuns.responsavelPagamento,
 })
 // TODO BLOCO-4: reativar validação de comprovante após estabilização do fluxo
 // .refine(comprovanteObrigatorioRefine.refine, {

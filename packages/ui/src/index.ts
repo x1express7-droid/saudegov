@@ -97,3 +97,9 @@ export {
   formFieldsGridClassName,
   formFieldsStackClassName,
 } from './utils/field-control'
+
+export {
+  TFD_TIPO_DESPESA_CONFIG,
+  TFD_TIPOS_DESPESA_ATIVOS,
+} from './constants/tfd-despesa'
+export type { TfdTipoDespesaConfigKey } from './constants/tfd-despesa'

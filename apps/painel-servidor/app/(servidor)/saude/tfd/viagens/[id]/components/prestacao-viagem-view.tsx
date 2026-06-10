@@ -25,6 +25,8 @@ import {
   EmptyState,
   Spinner,
   Textarea,
+  TFD_TIPO_DESPESA_CONFIG,
+  type TfdTipoDespesaConfigKey,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { Plus } from 'lucide-react'
@@ -36,11 +38,13 @@ import { DespesaViagemDialog } from './despesa-viagem-dialog'
 const MIN_OBSERVACAO = 20
 const PRAZO_DIAS_APOS_CHEGADA = 10
 
-const TIPO_DESPESA_META: Record<string, { emoji: string; label: string }> = {
-  TRANSPORTE: { emoji: '🚌', label: 'Transporte' },
-  ALIMENTACAO: { emoji: '🍽', label: 'Alimentação' },
-  HOSPEDAGEM: { emoji: '🏨', label: 'Hospedagem' },
-  OUTRO: { emoji: '📎', label: 'Outro' },
+// PC-PARTE-2: labels de tipo de despesa centralizados em TFD_TIPO_DESPESA_CONFIG
+function labelTipoDespesa(tipo: string): { label: string; isLegado: boolean } {
+  const config = TFD_TIPO_DESPESA_CONFIG[tipo as TfdTipoDespesaConfigKey]
+  if (!config) {
+    return { label: tipo, isLegado: false }
+  }
+  return { label: config.label, isLegado: config.grupo === 'LEGADO' }
 }
 
 function ServerError({ message }: { message: string }) {
@@ -382,7 +386,7 @@ export function PrestacaoViagemView({
               variant="primary"
               disabled={lancarDespesaDesabilitado || isPending}
               title={lancarDespesaTooltip}
-              onClick={() => setDespesaDialogTipo('TRANSPORTE')}
+              onClick={() => setDespesaDialogTipo('TRANSPORTE_TERRESTRE')}
             >
               <Plus className="size-4" aria-hidden="true" />
               Lançar despesa
@@ -399,7 +403,7 @@ export function PrestacaoViagemView({
           ) : (
             <ul className="flex flex-col gap-[var(--space-3)]">
               {itensOrdenados.map((item) => {
-                const meta = TIPO_DESPESA_META[item.tipo] ?? TIPO_DESPESA_META.OUTRO!
+                const tipoDespesa = labelTipoDespesa(item.tipo)
                 const trecho = labelSegmento(segmentos, item.transporteId)
 
                 return (
@@ -411,8 +415,13 @@ export function PrestacaoViagemView({
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-[var(--space-2)]">
                           <Badge variant="blue" size="sm">
-                            <span aria-hidden="true">{meta.emoji}</span> {meta.label}
+                            {tipoDespesa.label}
                           </Badge>
+                          {tipoDespesa.isLegado ? (
+                            <Badge variant="gray" size="sm">
+                              Histórico
+                            </Badge>
+                          ) : null}
                           <span className="text-[length:var(--text-sm)] font-semibold tabular-nums text-[var(--color-text)]">
                             {currencyFormatter.format(item.valor)}
                           </span>
@@ -535,7 +544,7 @@ export function PrestacaoViagemView({
         session={session}
         viagemNovaId={viagemNovaId}
         segmentos={segmentos}
-        tipoInicial={despesaDialogTipo ?? 'TRANSPORTE'}
+        tipoInicial={(despesaDialogTipo ?? 'TRANSPORTE_TERRESTRE') as TfdTipoDespesaConfigKey}
       />
 
       {/* BLOCO-5: confirmação antes de enviar a prestação */}

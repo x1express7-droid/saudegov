@@ -1256,6 +1256,15 @@ model TfdSolicitacaoAnexo {
 }
 
 enum TfdTipoDespesa {
+  // PC-PARTE-2: tipos ativos (Portaria SAS/MS nº 55/1999)
+  TRANSPORTE_TERRESTRE
+  TRANSPORTE_AEREO
+  TRANSPORTE_FLUVIAL
+  DIARIA_PACIENTE
+  DIARIA_ACOMPANHANTE
+  OBITO
+  DEVOLUCAO
+  // Legado — dados históricos
   TRANSPORTE
   ALIMENTACAO
   HOSPEDAGEM

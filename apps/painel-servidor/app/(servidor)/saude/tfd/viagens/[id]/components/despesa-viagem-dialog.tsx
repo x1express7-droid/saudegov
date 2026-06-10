@@ -1,6 +1,6 @@
 'use client'
 
-import type { SegmentoViagemItem } from '@saude/mod-saude-tfd/client'
+import type { RegistrarDespesaViagemNovaInput, SegmentoViagemItem } from '@saude/mod-saude-tfd'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/client'
 import { registrarDespesaViagemNova } from '@saude/mod-saude-tfd/actions/financeiro'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
@@ -12,11 +12,15 @@ import {
   DialogFooter,
   Input,
   Select,
+  type SelectOption,
   Spinner,
+  TFD_TIPO_DESPESA_CONFIG,
+  TFD_TIPOS_DESPESA_ATIVOS,
+  type TfdTipoDespesaConfigKey,
 } from '@saude/ui'
 import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
-import { useEffect, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 
 import { labelTipoSegmento } from '@/app/(servidor)/saude/tfd/processos/[id]/agendamentos/[agId]/components/transporte-constants'
 
@@ -25,13 +29,49 @@ const SEGMENTO_NENHUM = '__segmento_nenhum__'
 
 const MAX_DESCRICAO_CHARS = 200
 
-function tipoDespesaSugeridoPorSegmento(tipoSegmento: string): string | null {
-  if (
-    tipoSegmento === 'TERRESTRE_PROPRIO' ||
-    tipoSegmento === 'TERRESTRE_TERCEIRO' ||
-    tipoSegmento === 'AEREO'
-  ) {
-    return 'TRANSPORTE'
+const TIPO_DESPESA_PADRAO: TfdTipoDespesaConfigKey = 'TRANSPORTE_TERRESTRE'
+
+// PC-PARTE-2: agrupamento de opções no select por grupo de despesa
+const GRUPO_DESPESA_LABELS: Record<string, string> = {
+  TRANSPORTE: '── TRANSPORTE ──',
+  DIARIA: '── DIÁRIAS ──',
+  ESPECIAL: '── ESPECIAL ──',
+}
+
+const GRUPOS_DESPESA_ORDEM = ['TRANSPORTE', 'DIARIA', 'ESPECIAL'] as const
+
+function buildTipoDespesaSelectOptions(): SelectOption[] {
+  const options: SelectOption[] = []
+
+  for (const grupo of GRUPOS_DESPESA_ORDEM) {
+    const itensGrupo = TFD_TIPOS_DESPESA_ATIVOS.filter((item) => item.grupo === grupo)
+    if (itensGrupo.length === 0) {
+      continue
+    }
+
+    options.push({
+      value: `__grupo_${grupo}__`,
+      label: GRUPO_DESPESA_LABELS[grupo] ?? grupo,
+      disabled: true,
+    })
+
+    for (const item of itensGrupo) {
+      options.push({ value: item.tipo, label: item.label })
+    }
+  }
+
+  return options
+}
+
+function tipoDespesaSugeridoPorSegmento(tipoSegmento: string): TfdTipoDespesaConfigKey | null {
+  if (tipoSegmento === 'TERRESTRE_PROPRIO' || tipoSegmento === 'TERRESTRE_TERCEIRO') {
+    return 'TRANSPORTE_TERRESTRE'
+  }
+  if (tipoSegmento === 'AEREO') {
+    return 'TRANSPORTE_AEREO'
+  }
+  if (tipoSegmento === 'FLUVIAL') {
+    return 'TRANSPORTE_FLUVIAL'
   }
   return null
 }
@@ -39,28 +79,6 @@ function tipoDespesaSugeridoPorSegmento(tipoSegmento: string): string | null {
 function labelSegmentoOption(segmento: SegmentoViagemItem): string {
   return `${labelTipoSegmento(segmento.tipoSegmento)} — ${segmento.origemDescricao} → ${segmento.destinoDescricao}`
 }
-
-const TIPO_DESPESA_OPTIONS = [
-  { value: 'TRANSPORTE', label: 'Transporte' },
-  { value: 'ALIMENTACAO', label: 'Alimentação' },
-  { value: 'HOSPEDAGEM', label: 'Hospedagem' },
-  { value: 'OUTRO', label: 'Outro' },
-] as const
-
-const TIPO_DESPESA_AJUDA: Record<string, string> = {
-  TRANSPORTE:
-    'Passagem terrestre, aérea ou fluvial. Canhoto ou comprovante de compra obrigatório conforme Portaria SAS/MS 55/1999.',
-  ALIMENTACAO:
-    'Ajuda de custo para alimentação durante o deslocamento. Valor conforme tabela SUS vigente.',
-  HOSPEDAGEM:
-    'Diária de pernoite quando necessário. Não aplicável para pacientes hospitalizados no destino.',
-  OUTRO: 'Outros gastos justificados. Descreva no campo observações.',
-}
-
-const RESPONSAVEL_OPTIONS = [
-  { value: 'MUNICIPIO', label: 'Município' },
-  { value: 'PACIENTE_REEMBOLSO', label: 'Paciente (reembolso)' },
-] as const
 
 function ServerError({ message }: { message: string }) {
   return (
@@ -76,7 +94,7 @@ export interface DespesaViagemDialogProps {
   session: SaudeMunicSession
   viagemNovaId: string
   segmentos: SegmentoViagemItem[]
-  tipoInicial?: string
+  tipoInicial?: TfdTipoDespesaConfigKey
 }
 
 export function DespesaViagemDialog({
@@ -85,19 +103,19 @@ export function DespesaViagemDialog({
   session,
   viagemNovaId,
   segmentos,
-  tipoInicial = 'TRANSPORTE',
+  tipoInicial = TIPO_DESPESA_PADRAO,
 }: DespesaViagemDialogProps) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [serverError, setServerError] = useState<string | null>(null)
 
-  const [tipo, setTipo] = useState(tipoInicial)
+  const [tipo, setTipo] = useState<TfdTipoDespesaConfigKey>(tipoInicial)
   const [segmentoId, setSegmentoId] = useState(SEGMENTO_NENHUM)
   const [descricao, setDescricao] = useState('')
   const [valor, setValor] = useState('')
-  const [responsavelPagamento, setResponsavelPagamento] = useState('MUNICIPIO')
 
   const valorNumerico = Number.parseFloat(valor.replace(',', '.'))
+  const tipoDespesaOptions = useMemo(() => buildTipoDespesaSelectOptions(), [])
 
   useEffect(() => {
     if (open) {
@@ -134,7 +152,6 @@ export function DespesaViagemDialog({
     setSegmentoId(SEGMENTO_NENHUM)
     setDescricao('')
     setValor('')
-    setResponsavelPagamento('MUNICIPIO')
     setServerError(null)
   }
 
@@ -158,10 +175,11 @@ export function DespesaViagemDialog({
       const result = await registrarDespesaViagemNova({
         viagemNovaId,
         segmentoId: segmentoId === SEGMENTO_NENHUM ? undefined : segmentoId,
-        tipo: tipo as 'TRANSPORTE' | 'ALIMENTACAO' | 'HOSPEDAGEM' | 'OUTRO',
+        tipo: tipo as RegistrarDespesaViagemNovaInput['tipo'],
         descricao: descricao.trim() || undefined,
         valor: valorNumerico,
-        responsavelPagamento: responsavelPagamento as 'MUNICIPIO' | 'PACIENTE_REEMBOLSO',
+        // PC-PARTE-1: responsável fixo no backend; não expor na UI da viagem nova
+        responsavelPagamento: 'MUNICIPIO',
       })
 
       if (!result.success) {
@@ -174,10 +192,8 @@ export function DespesaViagemDialog({
     })
   }
 
-  const tipoLabel =
-    TIPO_DESPESA_OPTIONS.find((option) => option.value === tipoInicial)?.label ?? 'Despesa'
-
-  const ajudaTipo = TIPO_DESPESA_AJUDA[tipo]
+  const tipoLabel = TFD_TIPO_DESPESA_CONFIG[tipoInicial]?.label ?? 'Despesa'
+  const ajudaTipo = TFD_TIPO_DESPESA_CONFIG[tipo]?.descricao
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -197,19 +213,18 @@ export function DespesaViagemDialog({
             <Select
               label="Tipo de despesa"
               value={tipo}
-              onValueChange={setTipo}
-              options={[...TIPO_DESPESA_OPTIONS]}
+              onValueChange={(value) => setTipo(value as TfdTipoDespesaConfigKey)}
+              options={tipoDespesaOptions}
               disabled={isPending}
             />
 
             {ajudaTipo ? (
-              // BLOCO-4: ajuda contextual por tipo de despesa
+              // PC-PARTE-2: ajuda contextual por tipo de despesa (Portaria 55/1999)
               <p className="text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
                 {ajudaTipo}
               </p>
             ) : null}
 
-            {/* BLOCO-4: descrição opcional para detalhar a despesa */}
             <Input
               label="Descrição (opcional)"
               value={descricao}
@@ -227,14 +242,6 @@ export function DespesaViagemDialog({
               onChange={(event) => setValor(event.target.value)}
               disabled={isPending}
               placeholder="0,00"
-            />
-
-            <Select
-              label="Responsável pelo pagamento"
-              value={responsavelPagamento}
-              onValueChange={setResponsavelPagamento}
-              options={[...RESPONSAVEL_OPTIONS]}
-              disabled={isPending}
             />
 
             {/* TODO BLOCO-4: reativar comprovantes após estabilização do fluxo */}
