@@ -9,6 +9,7 @@
     "db:migrate": "prisma migrate dev",
     "db:generate": "prisma generate",
     "db:seed": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seed.ts",
+    "db:seed:tfd-cids": "tsx prisma/seeds/run-tfd-cid-completo.ts",
     "db:seed:sprint-1-1-features": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/sprint-1-1-platform-features.ts",
     "db:seed:sprint-1-7-features": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/sprint-1-7-platform-features.ts",
     "db:seed:sprint-1-8-features": "ts-node --compiler-options \"{\\\"module\\\":\\\"CommonJS\\\"}\" prisma/seeds/sprint-1-8-platform-features.ts",
