@@ -58,6 +58,8 @@ export function LocalEnderecoAutocomplete({
   const [options, setOptions] = useState<LocalOption[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [searchWarning, setSearchWarning] = useState<string | null>(null)
+  const [noResultsFound, setNoResultsFound] = useState(false)
 
   const closeDropdown = useCallback(() => {
     setIsOpen(false)
@@ -134,12 +136,16 @@ export function LocalEnderecoAutocomplete({
       setOptions([])
       setIsLoading(false)
       setSearchError(null)
+      setSearchWarning(null)
+      setNoResultsFound(false)
       return
     }
 
     const requestId = ++requestIdRef.current
     setIsLoading(true)
     setSearchError(null)
+    setSearchWarning(null)
+    setNoResultsFound(false)
 
     const timeoutId = window.setTimeout(async () => {
       try {
@@ -160,6 +166,7 @@ export function LocalEnderecoAutocomplete({
 
         const payload = (await response.json()) as {
           items?: Array<{ id: string; label: string; value: string }>
+          warning?: string
         }
 
         if (requestId !== requestIdRef.current) {
@@ -173,6 +180,8 @@ export function LocalEnderecoAutocomplete({
         }))
 
         setOptions(nextOptions)
+        setSearchWarning(payload.warning ?? null)
+        setNoResultsFound(nextOptions.length === 0)
         setIsOpen(true)
         setHighlightedIndex(0)
       } catch {
@@ -215,6 +224,8 @@ export function LocalEnderecoAutocomplete({
     setQuery(nextQuery)
     onChange(nextQuery)
     setSearchError(null)
+    setSearchWarning(null)
+    setNoResultsFound(false)
 
     if (nextQuery.trim().length >= MIN_QUERY_LENGTH) {
       setIsOpen(true)
@@ -264,7 +275,9 @@ export function LocalEnderecoAutocomplete({
     }
   }
 
-  const showDropdown = isOpen && (isLoading || options.length > 0 || Boolean(searchError))
+  const showDropdown =
+    isOpen &&
+    (isLoading || options.length > 0 || Boolean(searchError) || Boolean(searchWarning) || noResultsFound)
   const displayError = error ?? searchError
 
   return (
@@ -344,7 +357,12 @@ export function LocalEnderecoAutocomplete({
               {searchError}
             </li>
           ) : null}
-          {!isLoading && !searchError && options.length === 0 ? (
+          {!isLoading && !searchError && searchWarning ? (
+            <li className="px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-warning)]">
+              {searchWarning}
+            </li>
+          ) : null}
+          {!isLoading && !searchError && noResultsFound && !searchWarning ? (
             <li className="px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
               Nenhum endereço encontrado. Você pode informar o local manualmente.
             </li>

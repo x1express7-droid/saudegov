@@ -30,7 +30,7 @@ export async function loadIbgeMunicipiosResumo(): Promise<IbgeMunicipioResumo[]>
 
   municipiosPromise = fetch(
     'https://servicodados.ibge.gov.br/api/v1/localidades/municipios?orderBy=nome',
-    { next: { revalidate: 60 * 60 * 24 } }
+    { cache: 'no-store' }
   )
     .then(async (response) => {
       if (!response.ok) {
@@ -70,6 +70,18 @@ export function normalizeMunicipioSearch(text: string): string {
     .trim()
 }
 
+function municipioCorrespondeTermo(municipio: IbgeMunicipioResumo, termo: string): boolean {
+  const label = normalizeMunicipioSearch(labelMunicipioIbge(municipio))
+  const nome = normalizeMunicipioSearch(municipio.nome)
+
+  if (label.includes(termo) || nome.includes(termo)) {
+    return true
+  }
+
+  const palavras = termo.split(/\s+/).filter((parte) => parte.length >= 3)
+  return palavras.some((palavra) => nome.includes(palavra) || label.includes(palavra))
+}
+
 export function filtrarMunicipiosIbge(
   municipios: IbgeMunicipioResumo[],
   termo: string,
@@ -83,8 +95,7 @@ export function filtrarMunicipiosIbge(
   const resultados: IbgeMunicipioResumo[] = []
 
   for (const municipio of municipios) {
-    const label = labelMunicipioIbge(municipio)
-    if (normalizeMunicipioSearch(label).includes(normalized)) {
+    if (municipioCorrespondeTermo(municipio, normalized)) {
       resultados.push(municipio)
       if (resultados.length >= limite) {
         break
