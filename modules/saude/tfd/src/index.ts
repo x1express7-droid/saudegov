@@ -635,9 +635,11 @@ export {
   isCnhVencida,
   isCnhVencendoEmBreve,
   calcMinDataAgendamento72h,
+  calcMinDataAgendamentoAposAprovacao,
   calcPrazoEnvioPrestacao,
   PRAZO_PRESTACAO_DIAS,
 } from './utils/prazos'
+export { podeEditarAgendamentoDados } from './utils/agendamento-edicao'
 export { verificaCapacidadeVeiculo, calcProximaSequenciaViagem } from './utils/viagem'
 export { gerarProtocoloViagemNova } from './utils/gerar-protocolo-tfd'
 export { calcSaldoDisponivel } from './utils/saldo'

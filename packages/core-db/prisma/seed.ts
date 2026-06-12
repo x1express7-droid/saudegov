@@ -510,12 +510,12 @@ async function main() {
     },
     create: {
       slug: 'campograndems',
-      name: 'Prefeitura Municipal de Campo Grande',
+      name: 'Campo Grande-MS',
       domain: 'campograndems.saudemunic.com.br',
       modules: MODULES_TFD,
       theme: {
         primaryColor: '#1a5fa8',
-        municipalityName: 'Prefeitura Municipal de Campo Grande',
+        municipalityName: 'Campo Grande-MS',
       },
       settings: {
         timezone: 'America/Campo_Grande',

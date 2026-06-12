@@ -137,5 +137,43 @@ export const cancelarAgendamentoSchema = z.object({
 
 export type CancelarAgendamentoInput = z.infer<typeof cancelarAgendamentoSchema>
 
+export const atualizarAgendamentoSchema = z.object({
+  agendamentoId: z.string().uuid('ID do agendamento inválido.'),
+  dataConsulta: dataConsultaField,
+  horaConsulta: horaConsultaField,
+  prestadorId: z.string().uuid('ID do prestador inválido.').optional(),
+  profissionalNome: z
+    .string()
+    .trim()
+    .max(200, 'O nome do profissional deve ter no máximo 200 caracteres.')
+    .optional()
+    .transform((value) => (value === '' ? undefined : value)),
+  tipoAtendimento: z.enum(TIPO_ATENDIMENTO_VALUES, {
+    errorMap: () => ({ message: 'Tipo de atendimento inválido.' }),
+  }),
+  convenio: z
+    .enum(TFD_CONVENIO_VALUES, {
+      errorMap: () => ({ message: 'Convênio inválido.' }),
+    })
+    .optional(),
+  tipoViagem: z
+    .enum(TFD_TIPO_VIAGEM_VALUES, {
+      errorMap: () => ({ message: 'Tipo de viagem inválido.' }),
+    })
+    .optional(),
+  acompanhanteId: z
+    .union([z.string().uuid('ID do acompanhante inválido.'), z.literal('')])
+    .optional()
+    .transform((value) => (value === '' ? null : (value ?? null))),
+  orientacoes: z
+    .string()
+    .trim()
+    .max(2000, 'As orientações devem ter no máximo 2.000 caracteres.')
+    .optional()
+    .transform((value) => (value === '' ? undefined : value)),
+})
+
+export type AtualizarAgendamentoInput = z.infer<typeof atualizarAgendamentoSchema>
+
 export type TfdConvenio = (typeof TFD_CONVENIO_VALUES)[number]
 export type TfdTipoViagem = (typeof TFD_TIPO_VIAGEM_VALUES)[number]

@@ -920,6 +920,8 @@ export interface AgendamentoProcessoListItem {
     estado: string | null
   }
   profissionalNome: string | null
+  convenio?: string | null
+  tipoViagem?: string | null
   acompanhante: {
     id: string | null
     nome: string | null

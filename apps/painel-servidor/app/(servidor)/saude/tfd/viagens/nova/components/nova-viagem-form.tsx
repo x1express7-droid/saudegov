@@ -9,7 +9,6 @@ import {
   formatCnhCategorias,
   type AgendamentoDisponivelViagemItem,
   type TfdMotoristaAgendamentoItem,
-  type TfdPrestadorListItem,
   type TfdVeiculoAgendamentoItem,
 } from '@saude/mod-saude-tfd/client'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
@@ -40,10 +39,7 @@ import {
   buscarAgendamentosDisponiveisViagemAction,
   buscarMotoristasViagemAction,
 } from '../actions'
-import {
-  LocalEnderecoAutocomplete,
-  type MunicipioSedeOption,
-} from './local-endereco-autocomplete'
+import { LocalEnderecoAutocomplete } from './local-endereco-autocomplete'
 
 const TIPO_TRECHO_OPTIONS = [
   { value: 'IDA', label: 'Ida' },
@@ -103,8 +99,6 @@ function isCnhVencendoEmBreve(validadeIso: string): boolean {
 export interface NovaViagemFormProps {
   session: SaudeMunicSession
   veiculos: TfdVeiculoAgendamentoItem[]
-  prestadores: TfdPrestadorListItem[]
-  municipioSede: MunicipioSedeOption | null
   agendamentoIdPreSelecionado?: string
   dataSaidaInicial?: string
 }
@@ -112,8 +106,6 @@ export interface NovaViagemFormProps {
 export function NovaViagemForm({
   session,
   veiculos,
-  prestadores,
-  municipioSede,
   agendamentoIdPreSelecionado,
   dataSaidaInicial,
 }: NovaViagemFormProps) {
@@ -269,6 +261,11 @@ export function NovaViagemForm({
     setSubmitMode(mode)
     setServerError(null)
 
+    if (!origemDescricao.trim() || !destinoDescricao.trim()) {
+      setServerError('Informe origem/local e destino/local.')
+      return
+    }
+
     if (!dataSaida) {
       setServerError('Informe a data de saída da viagem.')
       return
@@ -340,23 +337,19 @@ export function NovaViagemForm({
           <div className={formFieldsGridClassName()}>
             <LocalEnderecoAutocomplete
               id="nova-viagem-origem"
-              label="Origem"
-              placeholder="Ex: Campo Grande/MS ou Hospital Regional"
+              label="Origem / Local"
+              placeholder="Ex: Rua das Flores, 100 — Campo Grande, MS"
               value={origemDescricao}
               onChange={setOrigemDescricao}
-              prestadores={prestadores}
-              municipioSede={municipioSede}
               required
               disabled={isPending}
             />
             <LocalEnderecoAutocomplete
               id="nova-viagem-destino"
-              label="Destino"
-              placeholder="Ex: São Paulo/SP ou Hospital das Clínicas"
+              label="Destino / Local"
+              placeholder="Ex: Hospital das Clínicas — São Paulo, SP"
               value={destinoDescricao}
               onChange={setDestinoDescricao}
-              prestadores={prestadores}
-              municipioSede={municipioSede}
               required
               disabled={isPending}
             />

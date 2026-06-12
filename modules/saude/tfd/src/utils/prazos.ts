@@ -44,6 +44,23 @@ export function calcMinDataAgendamento72h(dataHoraAgora: Date, timezone: string)
 }
 
 /**
+ * Instantâneo mínimo para agendar consulta: início do dia da aprovação no fuso do município.
+ */
+export function calcMinDataAgendamentoAposAprovacao(dataAprovacao: Date, timezone: string): Date {
+  const aprovacaoNoTenant = toZonedTime(dataAprovacao, timezone)
+  const inicioDiaAprovacao = new Date(
+    aprovacaoNoTenant.getFullYear(),
+    aprovacaoNoTenant.getMonth(),
+    aprovacaoNoTenant.getDate(),
+    0,
+    0,
+    0,
+    0
+  )
+  return fromZonedTime(inicioDiaAprovacao, timezone)
+}
+
+/**
  * Prazo limite (`prazo_envio_at`) para envio da prestação de contas.
  * Regra: data da viagem + 10 dias corridos, fim do dia no fuso do município
  * (BUSINESS_RULES.md §1.7, §1.10; DATABASE_SCHEMA.md §4.6).

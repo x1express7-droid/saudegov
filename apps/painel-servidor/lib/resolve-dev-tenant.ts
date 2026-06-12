@@ -29,7 +29,7 @@ export function resolveDevTenantFromEnv(): TenantContext | null {
     slug: process.env.DEV_TENANT_SLUG?.trim() ?? 'campograndems',
     name: process.env.DEV_TENANT_NAME?.trim() ?? 'Município (dev)',
     theme: parseJsonEnv<Record<string, string>>(process.env.DEV_TENANT_THEME, {
-      municipalityName: 'Prefeitura Municipal de Campo Grande',
+      municipalityName: 'Campo Grande-MS',
       primaryColor: '#1a5fa8',
     }),
     modules: parseJsonEnv<Record<string, Record<string, boolean>>>(

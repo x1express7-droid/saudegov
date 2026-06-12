@@ -3,13 +3,10 @@ import {
   getTenantContext,
   requireTenantRole,
 } from '@saude/core-auth/server'
-import { getPrismaForTenant } from '@saude/core-db'
 import {
   getAgendamentoDetalhe,
-  getPrestadoresTfd,
   getSolicitacaoTfd,
   getVeiculosAgendamentoTfd,
-  TFD_CATALOGO_OPCOES_PER_PAGE,
 } from '@saude/mod-saude-tfd'
 import { Alert, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
@@ -29,32 +26,6 @@ function isUuid(value: string): boolean {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
     value
   )
-}
-
-function pickMunicipioSede(settings: unknown): { cidade: string; estado: string } | null {
-  if (typeof settings !== 'object' || settings === null) {
-    return null
-  }
-
-  const record = settings as Record<string, unknown>
-  const cidade =
-    typeof record.municipio_origem_cidade === 'string'
-      ? record.municipio_origem_cidade.trim()
-      : typeof record.municipioOrigemCidade === 'string'
-        ? record.municipioOrigemCidade.trim()
-        : ''
-  const estado =
-    typeof record.municipio_origem_estado === 'string'
-      ? record.municipio_origem_estado.trim()
-      : typeof record.municipioOrigemEstado === 'string'
-        ? record.municipioOrigemEstado.trim()
-        : ''
-
-  if (!cidade || !estado) {
-    return null
-  }
-
-  return { cidade, estado }
 }
 
 export default async function NovaViagemPage({ searchParams }: NovaViagemPageProps) {
@@ -87,18 +58,7 @@ export default async function NovaViagemPage({ searchParams }: NovaViagemPagePro
     }
   }
 
-  const db = await getPrismaForTenant(session.user.tenantId!)
-  const tenantRow = await db.tenant.findUnique({
-    where: { id: session.user.tenantId! },
-    select: { settings: true },
-  })
-  const municipioSede = pickMunicipioSede(tenantRow?.settings)
-
   const veiculos = await getVeiculosAgendamentoTfd(false)
-  const prestadoresResult = await getPrestadoresTfd({
-    ativo: true,
-    perPage: TFD_CATALOGO_OPCOES_PER_PAGE,
-  })
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -122,8 +82,6 @@ export default async function NovaViagemPage({ searchParams }: NovaViagemPagePro
       <NovaViagemForm
         session={session}
         veiculos={veiculos}
-        prestadores={prestadoresResult.items}
-        municipioSede={municipioSede}
         agendamentoIdPreSelecionado={agendamentoIdPreSelecionado}
         dataSaidaInicial={dataSaidaInicial}
       />

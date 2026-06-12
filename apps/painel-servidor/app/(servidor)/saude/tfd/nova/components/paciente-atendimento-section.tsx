@@ -25,6 +25,7 @@ import { useCallback, useEffect, useRef, useState, useTransition } from 'react'
 import { MunicipioNascimentoCombobox } from '../../components/municipio-nascimento-combobox'
 import {
   BUSCA_PACIENTE_DEBOUNCE_MS,
+  formatCepDisplay,
   formatCpfDisplay,
   formatTelefoneBr,
   hintTermoBuscaPaciente,
@@ -128,7 +129,7 @@ function detalheToFormState(detalhe: TfdPacienteAtendimentoDetalhe): PacienteAte
     sexo: detalhe.sexo ?? 'NAO_INFORMADO',
     nomeMae: detalhe.nomeMae ?? '',
     municipioNascimento: detalhe.municipioNascimento ?? '',
-    cep: detalhe.cep ?? '',
+    cep: detalhe.cep ? formatCepDisplay(detalhe.cep) : '',
     logradouro: detalhe.logradouro ?? '',
     numero: detalhe.numero ?? '',
     complemento: detalhe.complemento ?? '',
@@ -360,7 +361,7 @@ export function PacienteAtendimentoSection({
     }
     setForm((prev) => ({
       ...prev,
-      cep,
+      cep: formatCepDisplay(cep),
       logradouro: endereco.logradouro || prev.logradouro,
       complemento: endereco.complemento || prev.complemento,
       bairro: endereco.bairro || prev.bairro,
@@ -689,11 +690,12 @@ export function PacienteAtendimentoSection({
               id="paciente-cep"
               label="CEP"
               value={form.cep}
-              onChange={(event) => updateField('cep', onlyDigits(event.target.value).slice(0, 8))}
+              onChange={(event) => updateField('cep', formatCepDisplay(event.target.value))}
               onBlur={() => void handleCepBlur()}
               disabled={disabled || isPending || cepLoading}
               inputMode="numeric"
-              maxLength={8}
+              placeholder="00000-000"
+              maxLength={9}
               hint={cepLoading ? 'Buscando endereço…' : 'Ao sair do campo, o endereço é preenchido automaticamente.'}
             />
             <Input

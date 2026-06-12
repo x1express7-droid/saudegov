@@ -79,7 +79,7 @@ function ViagemVinculadaCard({ viagem }: { viagem: ViagemPorAgendamentoItem }) {
             href={`/saude/tfd/viagens/${viagem.id}`}
             className="hover:opacity-90"
           >
-            <ProtocoloBadge protocolo={viagem.protocolo} />
+            <ProtocoloBadge protocolo={viagem.protocolo} copyable={false} />
           </Link>
           <ViagemStatusBadge status={viagem.status} size="sm" />
         </div>
@@ -164,7 +164,7 @@ function ViagemSelecaoItem({
       }`}
     >
       <div className="flex flex-wrap items-center justify-between gap-[var(--space-2)]">
-        <ProtocoloBadge protocolo={viagem.protocolo} />
+        <ProtocoloBadge protocolo={viagem.protocolo} copyable={false} />
         <ViagemStatusBadge status={viagem.status} size="sm" />
       </div>
       <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)]">

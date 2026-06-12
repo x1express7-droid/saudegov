@@ -21,6 +21,14 @@ export function formatCpfDisplay(value: string): string {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`
 }
 
+export function formatCepDisplay(value: string): string {
+  const digits = onlyDigits(value).slice(0, 8)
+  if (digits.length <= 5) {
+    return digits
+  }
+  return `${digits.slice(0, 5)}-${digits.slice(5)}`
+}
+
 export function formatTelefoneBr(value: string): string {
   const digits = onlyDigits(value).slice(0, 11)
   if (digits.length === 0) {

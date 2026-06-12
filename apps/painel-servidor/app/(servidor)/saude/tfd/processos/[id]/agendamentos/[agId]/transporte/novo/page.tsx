@@ -3,12 +3,9 @@ import {
   getTenantContext,
   requireTenantRole,
 } from '@saude/core-auth/server'
-import { getPrismaForTenant } from '@saude/core-db'
 import {
   getAgendamentoDetalhe,
-  getPrestadoresTfd,
   getSolicitacaoTfd,
-  TFD_CATALOGO_OPCOES_PER_PAGE,
 } from '@saude/mod-saude-tfd'
 import { Alert, Button, PageHeader } from '@saude/ui'
 import type { Metadata } from 'next'
@@ -17,38 +14,10 @@ import { notFound } from 'next/navigation'
 
 import { SegmentoTransporteForm } from './components/segmento-transporte-form'
 
-const CATALOGO_PER_PAGE = TFD_CATALOGO_OPCOES_PER_PAGE
-
 function formatDataConsultaLabel(iso: string, hora: string | null): string {
   const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
   const data = new Date(parsed).toLocaleDateString('pt-BR')
   return hora ? `${data} às ${hora}` : data
-}
-
-function pickMunicipioSede(settings: unknown): { cidade: string; estado: string } | null {
-  if (typeof settings !== 'object' || settings === null) {
-    return null
-  }
-
-  const record = settings as Record<string, unknown>
-  const cidade =
-    typeof record.municipio_origem_cidade === 'string'
-      ? record.municipio_origem_cidade.trim()
-      : typeof record.municipioOrigemCidade === 'string'
-        ? record.municipioOrigemCidade.trim()
-        : ''
-  const estado =
-    typeof record.municipio_origem_estado === 'string'
-      ? record.municipio_origem_estado.trim()
-      : typeof record.municipioOrigemEstado === 'string'
-        ? record.municipioOrigemEstado.trim()
-        : ''
-
-  if (!cidade || !estado) {
-    return null
-  }
-
-  return { cidade, estado }
 }
 
 interface NovoTransportePageProps {
@@ -87,18 +56,6 @@ export default async function NovoTransportePage({ params }: NovoTransportePageP
   if (!solicitacao) {
     notFound()
   }
-
-  const db = await getPrismaForTenant(session.user.tenantId!)
-  const tenantRow = await db.tenant.findUnique({
-    where: { id: session.user.tenantId! },
-    select: { settings: true },
-  })
-  const municipioSede = pickMunicipioSede(tenantRow?.settings)
-
-  const prestadoresResult = await getPrestadoresTfd({
-    ativo: true,
-    perPage: CATALOGO_PER_PAGE,
-  })
 
   const dataLabel = formatDataConsultaLabel(
     agendamento.dataConsulta,
@@ -143,8 +100,6 @@ export default async function NovoTransportePage({ params }: NovoTransportePageP
           session={session}
           processoId={processoId}
           agendamentoId={agendamentoId}
-          prestadores={prestadoresResult.items}
-          municipioSede={municipioSede}
           successRedirectPath={`/saude/tfd/processos/${processoId}/agendamentos/${agendamentoId}`}
         />
       </div>

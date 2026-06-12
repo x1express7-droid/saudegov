@@ -19,11 +19,16 @@ import {
   parseHoraConsultaUtc,
   resolveTenantTimezone,
 } from '../utils/agendamento-novo'
-import { calcMinDataAgendamento72h, calcPrazoEnvioPrestacao } from '../utils/prazos'
+import {
+  calcMinDataAgendamentoAposAprovacao,
+  calcPrazoEnvioPrestacao,
+} from '../utils/prazos'
+import { podeEditarAgendamentoDados } from '../utils/agendamento-edicao'
 import { gerarProtocoloTfd } from '../utils/gerar-protocolo-tfd'
 import {
   adicionarAcompanhanteAgendamentoSchema,
   adicionarLocalAgendamentoSchema,
+  atualizarAgendamentoSchema,
   cancelarAgendamentoSchema,
   criarAgendamentoNovoSchema,
   registrarRetornoAgendamentoSchema,
@@ -38,8 +43,8 @@ const MSG_SOLICITACAO_NAO_ENCONTRADA = 'Solicitação não encontrada.'
 const MSG_STATUS_SOLICITACAO_INVALIDO =
   'A solicitação precisa estar aprovada para criar um agendamento.'
 const MSG_PROCESSO_INCONSISTENTE = 'A solicitação não pertence ao processo informado.'
-const MSG_ANTECEDENCIA_72H =
-  'A data e hora da consulta devem ser pelo menos 72 horas após o momento do agendamento.'
+const MSG_DATA_ANTES_APROVACAO =
+  'A data e hora da consulta devem ser iguais ou posteriores à data de aprovação da solicitação.'
 const MSG_AGENDAMENTO_NAO_ENCONTRADO = 'Agendamento não encontrado.'
 const MSG_STATUS_RETORNO_INVALIDO =
   'O retorno só pode ser registrado para agendamentos com status Agendado ou Em viagem.'
@@ -54,6 +59,8 @@ const MSG_AGENDAMENTO_DUPLICADO =
 const MSG_LOCAL_NAO_ENCONTRADO = 'Local adicional não encontrado.'
 const MSG_VINCULO_ACOMPANHANTE_NAO_ENCONTRADO =
   'Acompanhante não vinculado a este agendamento.'
+const MSG_AGENDAMENTO_NAO_EDITAVEL =
+  'Este agendamento não pode mais ser editado (somente antes da data da consulta e com status Agendado).'
 
 type DbClient = Awaited<ReturnType<typeof getPrismaForTenant>>
 type PrismaTx = Omit<DbClient, '$connect' | '$disconnect' | '$on' | '$transaction' | '$extends'>
@@ -249,6 +256,8 @@ export async function criarAgendamentoNovo(
         processo_id: true,
         protocolo: true,
         urgencia: true,
+        decidido_at: true,
+        created_at: true,
         especialidade: { select: { nome: true } },
       },
     })
@@ -326,9 +335,10 @@ export async function criarAgendamentoNovo(
       data.horaConsulta,
       timezone
     )
-    const minimoPermitido = calcMinDataAgendamento72h(new Date(), timezone)
+    const dataReferenciaAprovacao = solicitacao.decidido_at ?? solicitacao.created_at
+    const minimoPermitido = calcMinDataAgendamentoAposAprovacao(dataReferenciaAprovacao, timezone)
     if (inicioConsulta < minimoPermitido) {
-      return { success: false, error: MSG_ANTECEDENCIA_72H }
+      return { success: false, error: MSG_DATA_ANTES_APROVACAO }
     }
 
     const protocoloSolicitacao = solicitacao.protocolo
@@ -1252,6 +1262,198 @@ export async function removerAcompanhanteAgendamento(
     return {
       success: false,
       error: 'Não foi possível remover o acompanhante do agendamento. Tente novamente.',
+    }
+  }
+}
+
+export async function atualizarAgendamentoTfd(
+  rawInput: unknown
+): Promise<ActionResponse<void>> {
+  await assertModuleActive('saude', 'tfd')
+
+  const session = await requireTenantRole('SERVIDOR')
+  await requirePermission(session, TFD_PERMISSIONS.CRIAR_AGENDAMENTO)
+
+  const parsed = atualizarAgendamentoSchema.safeParse(rawInput)
+  if (!parsed.success) {
+    return {
+      success: false,
+      error: 'Dados inválidos.',
+      fieldErrors: parsed.error.flatten().fieldErrors,
+    }
+  }
+  const data = parsed.data
+
+  try {
+    const tenantId = session.user.tenantId!
+    const db = await getPrismaForTenant(tenantId)
+
+    const tenant = await db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { settings: true },
+    })
+    const timezone = resolveTenantTimezone(tenant?.settings)
+
+    const agendamento = await db.tfdAgendamento.findFirst({
+      where: {
+        id: data.agendamentoId,
+        tenant_id: tenantId,
+      },
+      select: {
+        id: true,
+        status: true,
+        processo_id: true,
+        solicitacao_id: true,
+        sequencia: true,
+        data_consulta: true,
+        prestador_id: true,
+        solicitacao: {
+          select: {
+            decidido_at: true,
+            created_at: true,
+          },
+        },
+      },
+    })
+
+    if (!agendamento) {
+      return { success: false, error: MSG_AGENDAMENTO_NAO_ENCONTRADO }
+    }
+
+    const dataConsultaAtual = agendamento.data_consulta.toISOString().slice(0, 10)
+    if (
+      !podeEditarAgendamentoDados(agendamento.status, dataConsultaAtual, timezone)
+    ) {
+      return { success: false, error: MSG_AGENDAMENTO_NAO_EDITAVEL }
+    }
+
+    if (data.prestadorId) {
+      const prestadorValido = await validarPrestadorAgendamento(db, tenantId, data.prestadorId)
+      if (!prestadorValido) {
+        return { success: false, error: MSG_PRESTADOR_INVALIDO }
+      }
+    }
+
+    if (data.acompanhanteId) {
+      const acompanhanteValido = await validarAcompanhantesSolicitacao(
+        db,
+        tenantId,
+        agendamento.solicitacao_id,
+        [data.acompanhanteId]
+      )
+      if (!acompanhanteValido) {
+        return { success: false, error: MSG_ACOMPANHANTE_INVALIDO }
+      }
+    }
+
+    const dataConsultaDb = parseDataConsultaUtc(data.dataConsulta)
+    const prestadorIdNovo = data.prestadorId ?? null
+
+    const agendamentoDuplicado = await db.tfdAgendamento.findFirst({
+      where: {
+        tenant_id: tenantId,
+        solicitacao_id: agendamento.solicitacao_id,
+        data_consulta: dataConsultaDb,
+        prestador_id: prestadorIdNovo,
+        status: { not: 'CANCELADO' },
+        id: { not: agendamento.id },
+      },
+      select: { id: true },
+    })
+
+    if (agendamentoDuplicado) {
+      return { success: false, error: MSG_AGENDAMENTO_DUPLICADO }
+    }
+
+    const inicioConsulta = buildInicioConsultaInstant(
+      data.dataConsulta,
+      data.horaConsulta,
+      timezone
+    )
+    const dataReferenciaAprovacao =
+      agendamento.solicitacao.decidido_at ?? agendamento.solicitacao.created_at
+    const minimoPermitido = calcMinDataAgendamentoAposAprovacao(dataReferenciaAprovacao, timezone)
+    if (inicioConsulta < minimoPermitido) {
+      return { success: false, error: MSG_DATA_ANTES_APROVACAO }
+    }
+
+    const horaConsultaDb = parseHoraConsultaUtc(data.horaConsulta)
+    const acompanhanteIdNovo = data.acompanhanteId ?? null
+
+    await db.$transaction(async (tx) => {
+      await tx.tfdAgendamento.update({
+        where: { id: agendamento.id },
+        data: {
+          data_consulta: dataConsultaDb,
+          hora_consulta: horaConsultaDb,
+          prestador_id: prestadorIdNovo,
+          profissional_nome: data.profissionalNome ?? null,
+          tipo_atendimento: data.tipoAtendimento,
+          tipo_viagem: data.tipoViagem ?? null,
+          convenio: data.convenio ?? null,
+          acompanhante_id: acompanhanteIdNovo,
+          orientacoes: data.orientacoes ?? null,
+        },
+      })
+
+      if (acompanhanteIdNovo) {
+        await tx.tfdAgendamentoAcompanhante.createMany({
+          data: [
+            {
+              tenant_id: tenantId,
+              agendamento_id: agendamento.id,
+              acompanhante_id: acompanhanteIdNovo,
+            },
+          ],
+          skipDuplicates: true,
+        })
+      }
+
+      const descricaoTramitacao =
+        data.horaConsulta !== undefined
+          ? `Agendamento ${agendamento.sequencia} atualizado para ${data.dataConsulta} às ${data.horaConsulta}.`
+          : `Agendamento ${agendamento.sequencia} atualizado para ${data.dataConsulta}.`
+
+      await registrarTramitacao(
+        {
+          tenantId,
+          processoId: agendamento.processo_id,
+          tipo: 'AGENDAMENTO',
+          descricao: descricaoTramitacao,
+          usuarioId: session.user.id,
+          metadata: { agendamentoId: agendamento.id, acao: 'ATUALIZACAO' },
+        },
+        tx
+      )
+    })
+
+    await createAuditLog({
+      tenantId,
+      userId: session.user.id,
+      acao: 'UPDATE',
+      entidade: 'saude_tfd_agendamento',
+      entidadeId: agendamento.id,
+      payloadDepois: {
+        modulo: MODULO_TFD,
+        processoId: agendamento.processo_id,
+        dataConsulta: data.dataConsulta,
+        horaConsulta: data.horaConsulta ?? null,
+        prestadorId: prestadorIdNovo,
+        tipoAtendimento: data.tipoAtendimento,
+      },
+    })
+
+    revalidateAgendamentoPaths(agendamento.processo_id, agendamento.id)
+
+    return { success: true, data: undefined }
+  } catch (error) {
+    console.error('[atualizarAgendamentoTfd] Erro:', {
+      tenantId: session.user.tenantId,
+      error: error instanceof Error ? error.message : 'Erro desconhecido',
+    })
+    return {
+      success: false,
+      error: 'Não foi possível atualizar o agendamento. Tente novamente.',
     }
   }
 }

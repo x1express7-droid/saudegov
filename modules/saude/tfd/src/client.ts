@@ -76,6 +76,7 @@ export type {
   EnviarSolicitacaoOutput,
   RelatorioSelectOption,
   AgendamentoProcessoListItem,
+  AgendamentoDetalheOutput,
   TfdProcessoDadosClinicosOutput,
   TfdPacienteProcessoListItem,
   TfdPacientePerfilCadastro,
@@ -108,6 +109,7 @@ export type { AgendamentoDisponivelViagemItem } from './queries/get-agendamentos
 export type { VagasViagemOutput } from './queries/get-vagas-viagem'
 
 export type { AcompanhanteSolicitacaoOption } from './utils/acompanhante-labels'
+export { podeEditarAgendamentoDados } from './utils/agendamento-edicao'
 export { labelRelacaoAcompanhante } from './utils/acompanhante-labels'
 
 export {
@@ -269,6 +271,7 @@ export {
   isCnhVencida,
   isCnhVencendoEmBreve,
   calcMinDataAgendamento72h,
+  calcMinDataAgendamentoAposAprovacao,
   calcPrazoEnvioPrestacao,
   PRAZO_PRESTACAO_DIAS,
 } from './utils/prazos'

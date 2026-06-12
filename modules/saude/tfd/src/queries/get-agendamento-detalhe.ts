@@ -28,6 +28,8 @@ export async function getAgendamentoDetalhe(
       data_consulta: true,
       hora_consulta: true,
       tipo_atendimento: true,
+      tipo_viagem: true,
+      convenio: true,
       status: true,
       profissional_nome: true,
       orientacoes: true,
@@ -88,6 +90,8 @@ export async function getAgendamentoDetalhe(
       estado: row.prestador?.estado ?? null,
     },
     profissionalNome: row.profissional_nome,
+    convenio: row.convenio,
+    tipoViagem: row.tipo_viagem,
     acompanhante: {
       id: row.acompanhante?.id ?? null,
       nome: row.acompanhante?.nome ?? null,

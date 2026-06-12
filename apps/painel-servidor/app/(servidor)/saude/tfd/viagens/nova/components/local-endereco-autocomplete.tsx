@@ -1,16 +1,18 @@
 'use client'
 
-import type { TfdPrestadorListItem } from '@saude/mod-saude-tfd/client'
 import { cn } from '@saude/ui'
-import { useCallback, useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from 'react'
+import { Loader2 } from 'lucide-react'
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from 'react'
 
 const MIN_QUERY_LENGTH = 2
-const MUNICIPIO_SEDE_VALUE_PREFIX = '__municipio_sede__'
-
-export interface MunicipioSedeOption {
-  cidade: string
-  estado: string
-}
+const DEBOUNCE_MS = 300
 
 export interface LocalEnderecoAutocompleteProps {
   id?: string
@@ -18,8 +20,6 @@ export interface LocalEnderecoAutocompleteProps {
   placeholder?: string
   value: string
   onChange: (value: string) => void
-  prestadores: TfdPrestadorListItem[]
-  municipioSede: MunicipioSedeOption | null
   required?: boolean
   disabled?: boolean
   error?: string
@@ -31,42 +31,12 @@ interface LocalOption {
   value: string
 }
 
-function normalizeSearch(text: string): string {
-  return text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase()
-    .trim()
-}
-
-function formatPrestadorDescricao(prestador: TfdPrestadorListItem): string {
-  return `${prestador.nome} — ${prestador.cidade}/${prestador.estado}`
-}
-
-function formatMunicipioSedeLabel(municipio: MunicipioSedeOption): string {
-  return `Município sede — ${municipio.cidade}/${municipio.estado}`
-}
-
-function formatMunicipioSedeValue(municipio: MunicipioSedeOption): string {
-  return `${municipio.cidade}/${municipio.estado}`
-}
-
-function buildMunicipioSedeOption(municipio: MunicipioSedeOption): LocalOption {
-  return {
-    id: MUNICIPIO_SEDE_VALUE_PREFIX,
-    label: formatMunicipioSedeLabel(municipio),
-    value: formatMunicipioSedeValue(municipio),
-  }
-}
-
 export function LocalEnderecoAutocomplete({
   id,
   label,
-  placeholder = 'Digite para buscar ou informe o local',
+  placeholder = 'Digite o endereço ou local',
   value,
   onChange,
-  prestadores,
-  municipioSede,
   required,
   disabled,
   error,
@@ -74,56 +44,20 @@ export function LocalEnderecoAutocomplete({
   const generatedId = useId()
   const fieldId = id ?? generatedId
   const listboxId = `${fieldId}-listbox`
-  const hasError = Boolean(error)
 
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const listRef = useRef<HTMLUListElement>(null)
   const isSelectingOptionRef = useRef(false)
+  const requestIdRef = useRef(0)
 
   const [isOpen, setIsOpen] = useState(false)
   const [query, setQuery] = useState(value)
   const [highlightedIndex, setHighlightedIndex] = useState(0)
   const [isFocused, setIsFocused] = useState(false)
-
-  const municipioOption = useMemo(
-    () => (municipioSede ? buildMunicipioSedeOption(municipioSede) : null),
-    [municipioSede]
-  )
-
-  const filteredOptions = useMemo(() => {
-    const normalizedQuery = normalizeSearch(query)
-    if (normalizedQuery.length < MIN_QUERY_LENGTH) {
-      return []
-    }
-
-    const options: LocalOption[] = []
-
-    // BLOCO-2: município sede sempre como primeira opção quando o dropdown está aberto
-    if (municipioOption) {
-      options.push(municipioOption)
-    }
-
-    for (const prestador of prestadores) {
-      if (!prestador.ativo) {
-        continue
-      }
-
-      const searchable = normalizeSearch(
-        `${prestador.nome} ${prestador.cidade} ${prestador.estado}`
-      )
-
-      if (searchable.includes(normalizedQuery)) {
-        options.push({
-          id: prestador.id,
-          label: formatPrestadorDescricao(prestador),
-          value: formatPrestadorDescricao(prestador),
-        })
-      }
-    }
-
-    return options
-  }, [municipioOption, prestadores, query])
+  const [options, setOptions] = useState<LocalOption[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [searchError, setSearchError] = useState<string | null>(null)
 
   const closeDropdown = useCallback(() => {
     setIsOpen(false)
@@ -165,10 +99,10 @@ export function LocalEnderecoAutocomplete({
   }, [isFocused, value])
 
   useEffect(() => {
-    if (highlightedIndex >= filteredOptions.length) {
-      setHighlightedIndex(filteredOptions.length > 0 ? filteredOptions.length - 1 : 0)
+    if (highlightedIndex >= options.length) {
+      setHighlightedIndex(options.length > 0 ? options.length - 1 : 0)
     }
-  }, [filteredOptions.length, highlightedIndex])
+  }, [options.length, highlightedIndex])
 
   useEffect(() => {
     if (!isOpen || !listRef.current) {
@@ -193,6 +127,73 @@ export function LocalEnderecoAutocomplete({
     return () => document.removeEventListener('mousedown', handlePointerDown)
   }, [closeDropdown])
 
+  useEffect(() => {
+    const trimmed = query.trim()
+
+    if (!isFocused || trimmed.length < MIN_QUERY_LENGTH) {
+      setOptions([])
+      setIsLoading(false)
+      setSearchError(null)
+      return
+    }
+
+    const requestId = ++requestIdRef.current
+    setIsLoading(true)
+    setSearchError(null)
+
+    const timeoutId = window.setTimeout(async () => {
+      try {
+        const params = new URLSearchParams({ q: trimmed })
+        const response = await fetch(`/api/saude/places/autocomplete?${params.toString()}`)
+
+        if (requestId !== requestIdRef.current) {
+          return
+        }
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as { error?: string } | null
+          setOptions([])
+          setSearchError(payload?.error ?? 'Não foi possível buscar endereços.')
+          setIsOpen(true)
+          return
+        }
+
+        const payload = (await response.json()) as {
+          items?: Array<{ id: string; label: string; value: string }>
+        }
+
+        if (requestId !== requestIdRef.current) {
+          return
+        }
+
+        const nextOptions = (payload.items ?? []).map((item) => ({
+          id: item.id,
+          label: item.label,
+          value: item.value,
+        }))
+
+        setOptions(nextOptions)
+        setIsOpen(true)
+        setHighlightedIndex(0)
+      } catch {
+        if (requestId !== requestIdRef.current) {
+          return
+        }
+        setOptions([])
+        setSearchError('Não foi possível buscar endereços.')
+        setIsOpen(true)
+      } finally {
+        if (requestId === requestIdRef.current) {
+          setIsLoading(false)
+        }
+      }
+    }, DEBOUNCE_MS)
+
+    return () => {
+      window.clearTimeout(timeoutId)
+    }
+  }, [isFocused, query])
+
   function handleBlur() {
     if (isSelectingOptionRef.current) {
       return
@@ -212,15 +213,15 @@ export function LocalEnderecoAutocomplete({
 
   function handleInputChange(nextQuery: string) {
     setQuery(nextQuery)
-    if (normalizeSearch(nextQuery).length >= MIN_QUERY_LENGTH) {
+    onChange(nextQuery)
+    setSearchError(null)
+
+    if (nextQuery.trim().length >= MIN_QUERY_LENGTH) {
       setIsOpen(true)
       setHighlightedIndex(0)
     } else {
       setIsOpen(false)
-    }
-
-    if (nextQuery.trim() !== value) {
-      onChange('')
+      setOptions([])
     }
   }
 
@@ -232,22 +233,22 @@ export function LocalEnderecoAutocomplete({
     switch (event.key) {
       case 'ArrowDown':
         event.preventDefault()
-        if (filteredOptions.length > 0) {
+        if (options.length > 0) {
           setIsOpen(true)
-          setHighlightedIndex((index) => Math.min(index + 1, filteredOptions.length - 1))
+          setHighlightedIndex((index) => Math.min(index + 1, options.length - 1))
         }
         break
       case 'ArrowUp':
         event.preventDefault()
-        if (filteredOptions.length > 0) {
+        if (options.length > 0) {
           setIsOpen(true)
           setHighlightedIndex((index) => Math.max(index - 1, 0))
         }
         break
       case 'Enter':
         event.preventDefault()
-        if (isOpen && filteredOptions[highlightedIndex]) {
-          selectOption(filteredOptions[highlightedIndex])
+        if (isOpen && options[highlightedIndex]) {
+          selectOption(options[highlightedIndex])
         } else {
           commitFreeText()
         }
@@ -263,7 +264,8 @@ export function LocalEnderecoAutocomplete({
     }
   }
 
-  const showDropdown = isOpen && filteredOptions.length > 0
+  const showDropdown = isOpen && (isLoading || options.length > 0 || Boolean(searchError))
+  const displayError = error ?? searchError
 
   return (
     <div ref={containerRef} className="relative w-full">
@@ -291,12 +293,12 @@ export function LocalEnderecoAutocomplete({
           aria-expanded={showDropdown}
           aria-controls={listboxId}
           aria-activedescendant={
-            showDropdown && filteredOptions[highlightedIndex]
+            showDropdown && options[highlightedIndex]
               ? `${listboxId}-option-${highlightedIndex}`
               : undefined
           }
-          aria-invalid={hasError || undefined}
-          aria-describedby={error ? `${fieldId}-error` : undefined}
+          aria-invalid={Boolean(displayError) || undefined}
+          aria-describedby={displayError ? `${fieldId}-error` : undefined}
           autoComplete="off"
           disabled={disabled}
           placeholder={placeholder}
@@ -313,10 +315,16 @@ export function LocalEnderecoAutocomplete({
             'border-[var(--color-border)] placeholder:text-[var(--color-text-subtle)]',
             'focus-visible:outline-none focus:border-[var(--color-primary)] focus:ring-2 focus:ring-[var(--color-primary-light)]',
             'disabled:cursor-not-allowed disabled:bg-[var(--color-bg)] disabled:text-[var(--color-text-muted)]',
-            hasError &&
+            displayError &&
               'border-[var(--color-error)] focus:border-[var(--color-error)] focus:ring-[var(--color-error-light)]'
           )}
         />
+        {isLoading ? (
+          <Loader2
+            className="pointer-events-none absolute right-[var(--space-3)] top-1/2 size-4 -translate-y-1/2 animate-spin text-[var(--color-text-muted)]"
+            aria-hidden="true"
+          />
+        ) : null}
       </div>
 
       {showDropdown ? (
@@ -326,26 +334,43 @@ export function LocalEnderecoAutocomplete({
           role="listbox"
           className="absolute z-[var(--z-dropdown)] mt-[var(--space-1)] max-h-60 w-full overflow-auto rounded-[var(--radius)] border border-[var(--color-border)] bg-[var(--color-surface)] p-[var(--space-1)] shadow-[0_4px_12px_color-mix(in_srgb,var(--color-text)_12%,transparent)]"
         >
-          {filteredOptions.map((option, index) => (
-            <li
-              key={option.id}
-              id={`${listboxId}-option-${index}`}
-              role="option"
-              aria-selected={index === highlightedIndex}
-              data-local-option-index={index}
-              className={cn(
-                'cursor-pointer rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)]',
-                index === highlightedIndex && 'bg-[var(--color-primary-light)]'
-              )}
-              onMouseDown={(event) => {
-                event.preventDefault()
-                selectOption(option)
-              }}
-              onMouseEnter={() => setHighlightedIndex(index)}
-            >
-              {option.label}
+          {isLoading ? (
+            <li className="px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              Buscando endereços…
             </li>
-          ))}
+          ) : null}
+          {!isLoading && searchError ? (
+            <li className="px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-error)]">
+              {searchError}
+            </li>
+          ) : null}
+          {!isLoading && !searchError && options.length === 0 ? (
+            <li className="px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text-muted)]">
+              Nenhum endereço encontrado. Você pode informar o local manualmente.
+            </li>
+          ) : null}
+          {!isLoading
+            ? options.map((option, index) => (
+                <li
+                  key={option.id}
+                  id={`${listboxId}-option-${index}`}
+                  role="option"
+                  aria-selected={index === highlightedIndex}
+                  data-local-option-index={index}
+                  className={cn(
+                    'cursor-pointer rounded-[var(--radius-sm)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--color-text)]',
+                    index === highlightedIndex && 'bg-[var(--color-primary-light)]'
+                  )}
+                  onMouseDown={(event) => {
+                    event.preventDefault()
+                    selectOption(option)
+                  }}
+                  onMouseEnter={() => setHighlightedIndex(index)}
+                >
+                  {option.label}
+                </li>
+              ))
+            : null}
         </ul>
       ) : null}
 
@@ -356,6 +381,12 @@ export function LocalEnderecoAutocomplete({
           className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--color-error)]"
         >
           {error}
+        </p>
+      ) : null}
+
+      {!error ? (
+        <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
+          Digite para buscar locais (Google Maps ou municípios) ou informe manualmente.
         </p>
       ) : null}
     </div>

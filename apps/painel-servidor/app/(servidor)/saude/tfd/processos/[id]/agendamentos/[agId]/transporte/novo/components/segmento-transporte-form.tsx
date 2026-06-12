@@ -1,7 +1,6 @@
 'use client'
 
 import { criarSegmentoTransporte } from '@saude/mod-saude-tfd/actions/transporte'
-import type { TfdPrestadorListItem } from '@saude/mod-saude-tfd/client'
 import { TFD_PERMISSIONS } from '@saude/mod-saude-tfd/permissions'
 import type { SaudeMunicSession } from '@saude/core-auth/types/session'
 import {
@@ -19,10 +18,7 @@ import { PermissionGate } from '@saude/ui/permission-gate'
 import { useRouter } from 'next/navigation'
 import { useState, useTransition } from 'react'
 
-import {
-  LocalEnderecoAutocomplete,
-  type MunicipioSedeOption,
-} from '../../../../../../../viagens/nova/components/local-endereco-autocomplete'
+import { LocalEnderecoAutocomplete } from '../../../../../../../viagens/nova/components/local-endereco-autocomplete'
 import { TIPO_SEGMENTO_CONFIG } from '../../../components/transporte-constants'
 
 const TIPO_SEGMENTO_OPTIONS = Object.entries(TIPO_SEGMENTO_CONFIG).map(([value, config]) => ({
@@ -40,8 +36,6 @@ function ServerError({ message }: { message: string }) {
 
 export interface SegmentoTransporteFormProps {
   session: SaudeMunicSession
-  prestadores: TfdPrestadorListItem[]
-  municipioSede: MunicipioSedeOption | null
   agendamentoId?: string
   viagemId?: string
   processoId?: string
@@ -54,8 +48,6 @@ export function SegmentoTransporteForm({
   session,
   agendamentoId,
   viagemId,
-  prestadores,
-  municipioSede,
   successRedirectPath,
   viagemVeiculo,
   viagemMotorista,
@@ -113,7 +105,7 @@ export function SegmentoTransporteForm({
     setServerError(null)
 
     if (!origemDescricao.trim() || !destinoDescricao.trim()) {
-      setServerError('Informe origem e destino.')
+      setServerError('Informe origem/local e destino/local.')
       return
     }
 
@@ -192,26 +184,21 @@ export function SegmentoTransporteForm({
         />
 
         <div className={formFieldsGridClassName()}>
-          {/* BLOCO-3: origem/destino com autocomplete (substitui atalhos de prestador) */}
           <LocalEnderecoAutocomplete
             id="segmento-origem"
-            label="Origem"
-            placeholder="Ex: Campo Grande/MS ou Hospital Regional"
+            label="Origem / Local"
+            placeholder="Ex: Rua das Flores, 100 — Campo Grande, MS"
             value={origemDescricao}
             onChange={setOrigemDescricao}
-            prestadores={prestadores}
-            municipioSede={municipioSede}
             required
             disabled={isPending}
           />
           <LocalEnderecoAutocomplete
             id="segmento-destino"
-            label="Destino"
-            placeholder="Ex: São Paulo/SP ou Hospital das Clínicas"
+            label="Destino / Local"
+            placeholder="Ex: Hospital das Clínicas — São Paulo, SP"
             value={destinoDescricao}
             onChange={setDestinoDescricao}
-            prestadores={prestadores}
-            municipioSede={municipioSede}
             required
             disabled={isPending}
           />

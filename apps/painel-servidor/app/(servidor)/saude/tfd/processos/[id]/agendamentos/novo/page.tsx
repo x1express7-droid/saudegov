@@ -5,13 +5,9 @@ import {
 } from '@saude/core-auth/server'
 import { getPrismaForTenant } from '@saude/core-db'
 import {
-  calcMinDataAgendamento72h,
-  getAcompanhantesSolicitacao,
-  getPrestadoresTfd,
-  getProcedimentosTfd,
+  calcMinDataAgendamentoAposAprovacao,
   getProcessoTfdDetalhe,
   getSolicitacaoTfd,
-  TFD_CATALOGO_OPCOES_PER_PAGE,
 } from '@saude/mod-saude-tfd'
 import { PageHeader } from '@saude/ui'
 import { formatInTimeZone } from 'date-fns-tz'
@@ -20,7 +16,6 @@ import { notFound, redirect } from 'next/navigation'
 
 import { AgendamentoNovoForm } from './components/agendamento-novo-form'
 
-const CATALOGO_PER_PAGE = TFD_CATALOGO_OPCOES_PER_PAGE
 const DEFAULT_TIMEZONE = 'America/Sao_Paulo'
 
 interface NovoAgendamentoPageProps {
@@ -86,20 +81,17 @@ export default async function NovoAgendamentoPage({
     select: { settings: true },
   })
   const timezone = resolveTenantTimezone(tenantRow?.settings)
-  const minimoPermitido = calcMinDataAgendamento72h(new Date(), timezone)
+  const solicitacaoAprovacao = await db.tfdSolicitacao.findFirst({
+    where: { id: solicitacao.id, tenant_id: session.user.tenantId! },
+    select: { decidido_at: true, created_at: true },
+  })
+  const dataReferenciaAprovacao =
+    solicitacaoAprovacao?.decidido_at ?? solicitacaoAprovacao?.created_at ?? new Date()
+  const minimoPermitido = calcMinDataAgendamentoAposAprovacao(dataReferenciaAprovacao, timezone)
   const minDataConsulta = formatInTimeZone(minimoPermitido, timezone, 'yyyy-MM-dd')
   const minDataConsultaLabel = formatInTimeZone(minimoPermitido, timezone, 'dd/MM/yyyy')
 
-  const [processo, prestadoresResult, acompanhantes, procedimentosResult] = await Promise.all([
-    getProcessoTfdDetalhe(processoId),
-    getPrestadoresTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
-    getAcompanhantesSolicitacao(solicitacao.id),
-    getProcedimentosTfd({
-      ativo: true,
-      perPage: CATALOGO_PER_PAGE,
-      especialidadeId: solicitacao.especialidade?.id,
-    }),
-  ])
+  const processo = await getProcessoTfdDetalhe(processoId)
 
   if (!processo) {
     notFound()
@@ -125,14 +117,9 @@ export default async function NovoAgendamentoPage({
         pacienteNome={processo.paciente?.nome ?? solicitacao.paciente.nome}
         protocoloProcesso={processo.protocolo}
         especialidadeNome={solicitacao.especialidade?.nome ?? 'Não informada'}
-        especialidadeId={solicitacao.especialidade?.id ?? null}
         minDataConsulta={minDataConsulta}
         minDataConsultaLabel={minDataConsultaLabel}
-        prestadores={prestadoresResult.items}
-        procedimentos={procedimentosResult.items}
-        acompanhantes={acompanhantes}
         tipoAtendimentoInicial={solicitacao.tipoAtendimento}
-        prestadorIdInicial={solicitacao.prestador?.id ?? null}
       />
     </div>
   )

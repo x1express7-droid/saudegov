@@ -3,32 +3,39 @@ import {
   getTenantContext,
   requireTenantRole,
 } from '@saude/core-auth/server'
+import { getPrismaForTenant } from '@saude/core-db'
 import {
+  calcMinDataAgendamentoAposAprovacao,
   getAgendamentoDetalhe,
+  getAcompanhantesSolicitacao,
+  getPrestadoresTfd,
   getSolicitacaoTfd,
   getTransportesPorAgendamento,
+  podeEditarAgendamentoDados,
+  TFD_CATALOGO_OPCOES_PER_PAGE,
 } from '@saude/mod-saude-tfd'
-import {
-  Card,
-  CardHeader,
-  PageHeader,
-  ProtocoloBadge,
-  UrgenciaBadge,
-  type TfdUrgencia,
-} from '@saude/ui'
+import { PageHeader, ProtocoloBadge, UrgenciaBadge, type TfdUrgencia } from '@saude/ui'
+import { formatInTimeZone } from 'date-fns-tz'
 import type { Metadata } from 'next'
 import { notFound } from 'next/navigation'
 
 import { AgendamentoStatusBadge } from '../../../../components/agendamento-status-badge'
 import { AgendamentoAcoesSidebar } from './components/agendamento-acoes-sidebar'
+import { AgendamentoDadosSection } from './components/agendamento-dados-section'
 import { DeslocamentoSection } from './components/deslocamento-section'
 import { SegmentosHistoricosLegadoAccordion } from './components/segmentos-historicos-legado-accordion'
 
-const TIPO_ATENDIMENTO_LABEL: Record<string, string> = {
-  CONSULTA: 'Consulta',
-  RETORNO: 'Retorno',
-  EXAME: 'Exame',
-  CIRURGIA: 'Cirurgia',
+const CATALOGO_PER_PAGE = TFD_CATALOGO_OPCOES_PER_PAGE
+const DEFAULT_TIMEZONE = 'America/Sao_Paulo'
+
+function resolveTenantTimezone(settings: unknown): string {
+  if (typeof settings !== 'object' || settings === null) {
+    return DEFAULT_TIMEZONE
+  }
+  const timezone = (settings as Record<string, unknown>).timezone
+  return typeof timezone === 'string' && timezone.trim() !== ''
+    ? timezone.trim()
+    : DEFAULT_TIMEZONE
 }
 
 function isTfdUrgencia(value: string): value is TfdUrgencia {
@@ -39,32 +46,6 @@ function isTfdUrgencia(value: string): value is TfdUrgencia {
       GRAVE: true,
       MUITO_URGENTE: true,
     }
-}
-
-function formatDataConsulta(iso: string, hora: string | null): string {
-  const parsed = iso.length === 10 ? `${iso}T12:00:00` : iso
-  const data = new Date(parsed).toLocaleDateString('pt-BR', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
-  return hora ? `${data} às ${hora}` : data
-}
-
-function labelPrestador(
-  prestador: {
-    nome: string | null
-    cidade: string | null
-    estado: string | null
-  } | null
-): string {
-  if (!prestador?.nome) {
-    return '—'
-  }
-  if (prestador.cidade && prestador.estado) {
-    return `${prestador.nome} (${prestador.cidade}/${prestador.estado})`
-  }
-  return prestador.nome
 }
 
 interface AgendamentoDetalhePageProps {
@@ -103,7 +84,33 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
   const protocolo = agendamento.protocolo
   const protocoloSolicitacao = solicitacao.protocolo
 
-  const transportesLegado = await getTransportesPorAgendamento(agId)
+  const db = await getPrismaForTenant(session.user.tenantId!)
+  const [tenantRow, solicitacaoAprovacao, prestadoresResult, acompanhantes, transportesLegado] =
+    await Promise.all([
+      db.tenant.findUnique({
+        where: { id: session.user.tenantId! },
+        select: { settings: true },
+      }),
+      db.tfdSolicitacao.findFirst({
+        where: { id: solicitacao.id, tenant_id: session.user.tenantId! },
+        select: { decidido_at: true, created_at: true },
+      }),
+      getPrestadoresTfd({ ativo: true, perPage: CATALOGO_PER_PAGE }),
+      getAcompanhantesSolicitacao(solicitacao.id),
+      getTransportesPorAgendamento(agId),
+    ])
+
+  const timezone = resolveTenantTimezone(tenantRow?.settings)
+  const dataReferenciaAprovacao =
+    solicitacaoAprovacao?.decidido_at ?? solicitacaoAprovacao?.created_at ?? new Date()
+  const minimoPermitido = calcMinDataAgendamentoAposAprovacao(dataReferenciaAprovacao, timezone)
+  const minDataConsulta = formatInTimeZone(minimoPermitido, timezone, 'yyyy-MM-dd')
+  const minDataConsultaLabel = formatInTimeZone(minimoPermitido, timezone, 'dd/MM/yyyy')
+  const podeEditar = podeEditarAgendamentoDados(
+    agendamento.status,
+    agendamento.dataConsulta,
+    timezone
+  )
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -132,59 +139,15 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
 
       <div className="grid gap-[var(--space-6)] lg:grid-cols-[minmax(0,1fr)_minmax(280px,360px)]">
         <div className="flex min-w-0 flex-col gap-[var(--space-6)]">
-          <Card header={<CardHeader>Dados do agendamento</CardHeader>}>
-            <dl className="grid gap-[var(--space-3)] sm:grid-cols-2">
-              <div>
-                <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  Data / hora
-                </dt>
-                <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  {formatDataConsulta(agendamento.dataConsulta, agendamento.horaConsulta)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  Tipo de atendimento
-                </dt>
-                <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  {TIPO_ATENDIMENTO_LABEL[agendamento.tipoAtendimento] ??
-                    agendamento.tipoAtendimento}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  Prestador
-                </dt>
-                <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  {labelPrestador(agendamento.prestador)}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  Profissional
-                </dt>
-                <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  {agendamento.profissionalNome ?? '—'}
-                </dd>
-              </div>
-              <div>
-                <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  Acompanhante
-                </dt>
-                <dd className="text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  {agendamento.acompanhante.nome ?? '—'}
-                </dd>
-              </div>
-              <div className="sm:col-span-2">
-                <dt className="text-[length:var(--text-xs)] text-[var(--color-text-muted)]">
-                  Orientações
-                </dt>
-                <dd className="whitespace-pre-wrap text-[length:var(--text-sm)] text-[var(--color-text)]">
-                  {agendamento.orientacoes?.trim() || '—'}
-                </dd>
-              </div>
-            </dl>
-          </Card>
+          <AgendamentoDadosSection
+            session={session}
+            agendamento={agendamento}
+            podeEditar={podeEditar}
+            minDataConsulta={minDataConsulta}
+            minDataConsultaLabel={minDataConsultaLabel}
+            prestadores={prestadoresResult.items}
+            acompanhantes={acompanhantes}
+          />
 
           <DeslocamentoSection
             session={session}
@@ -193,7 +156,6 @@ export default async function AgendamentoDetalhePage({ params }: AgendamentoDeta
             viagensVinculadas={agendamento.viagensVinculadas}
           />
 
-          {/* BLOCO-1: accordion legado após Deslocamento, colapsado por padrão */}
           <SegmentosHistoricosLegadoAccordion transportesLegado={transportesLegado} />
         </div>
 

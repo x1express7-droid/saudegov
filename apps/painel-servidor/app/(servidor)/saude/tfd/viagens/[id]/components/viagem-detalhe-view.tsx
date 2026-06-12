@@ -21,6 +21,7 @@ import {
   DialogContent,
   DialogFooter,
   EmptyState,
+  formatDateHoraBr,
   formatDateOnlyBr,
   Select,
   Spinner,
@@ -61,13 +62,6 @@ const TIPO_TRECHO_OPTIONS = [
   { value: 'VOLTA', label: 'Volta' },
   { value: 'IDA_VOLTA', label: 'Ida e volta' },
 ] as const
-
-function formatDataHora(data: string | null, hora: string | null): string {
-  if (!data) {
-    return '—'
-  }
-  return hora ? `${data} ${hora}` : data
-}
 
 function cnhStatusBadge(validade: string) {
   const vencimento = new Date(`${validade}T12:00:00`)
@@ -287,14 +281,16 @@ export function ViagemDetalheView({
                   <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
                     Saída
                   </dt>
-                  <dd className="mt-1">{formatDataHora(viagem.dataSaida, viagem.horaSaida)}</dd>
+                  <dd className="mt-1">{formatDateHoraBr(viagem.dataSaida, viagem.horaSaida)}</dd>
                 </div>
                 <div>
                   <dt className="text-[length:var(--text-xs)] font-medium text-[var(--color-text-muted)]">
                     Chegada
                   </dt>
                   <dd className="mt-1">
-                    {formatDataHora(viagem.dataChegada, viagem.horaChegada)}
+                    {viagem.dataChegada
+                      ? formatDateHoraBr(viagem.dataChegada, viagem.horaChegada)
+                      : '—'}
                   </dd>
                 </div>
                 <div>

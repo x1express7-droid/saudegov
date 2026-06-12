@@ -101,7 +101,7 @@ export function SolicitacaoDetalhe({ solicitacao }: SolicitacaoDetalheProps) {
           </h3>
           <dl className="mt-[var(--space-4)] grid gap-[var(--space-4)] sm:grid-cols-2">
             <DetalheCampo label="CID principal">{solicitacao.cidPrincipal ?? '—'}</DetalheCampo>
-            <DetalheCampo label="Diagnóstico">
+            <DetalheCampo label="Motivo/Diagnóstico/Justificativa">
               {solicitacao.diagnostico ? (
                 <span className="whitespace-pre-wrap">{solicitacao.diagnostico}</span>
               ) : (
